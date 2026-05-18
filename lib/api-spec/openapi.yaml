@@ -1,0 +1,893 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: CPI Norte — Sistema Integral de Asistencia
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: centers
+    description: Centros CPI
+  - name: rooms
+    description: Salas ECO
+  - name: children
+    description: Ninos/as inscriptos
+  - name: attendance
+    description: Registro de asistencia
+  - name: contacts
+    description: Historial de contactos con familias
+  - name: dashboard
+    description: Tablero administrativo
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /centers:
+    get:
+      operationId: listCenters
+      tags: [centers]
+      summary: List all centers
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Center"
+    post:
+      operationId: createCenter
+      tags: [centers]
+      summary: Create a new center
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CenterInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Center"
+
+  /centers/{centerId}:
+    patch:
+      operationId: updateCenter
+      tags: [centers]
+      summary: Update center name
+      parameters:
+        - in: path
+          name: centerId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CenterInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Center"
+    delete:
+      operationId: deleteCenter
+      tags: [centers]
+      summary: Delete a center (only if no rooms assigned)
+      parameters:
+        - in: path
+          name: centerId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+
+  /rooms:
+    get:
+      operationId: listRooms
+      tags: [rooms]
+      summary: List all rooms
+      parameters:
+        - in: query
+          name: centerId
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Room"
+    post:
+      operationId: createRoom
+      tags: [rooms]
+      summary: Create a new room
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoomInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Room"
+
+  /rooms/{roomId}:
+    delete:
+      operationId: deleteRoom
+      tags: [rooms]
+      summary: Delete a room (only if no children assigned)
+      parameters:
+        - in: path
+          name: roomId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+        "409":
+          description: Room has children
+    patch:
+      operationId: updateRoom
+      tags: [rooms]
+      summary: Update room name or capacity
+      parameters:
+        - in: path
+          name: roomId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoomUpdate"
+      responses:
+        "200":
+          description: Updated room
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Room"
+
+  /rooms/summary:
+    get:
+      operationId: getRoomsSummary
+      tags: [rooms]
+      summary: Today attendance and vacancy summary per room
+      parameters:
+        - in: query
+          name: centerId
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RoomSummary"
+
+  /children:
+    get:
+      operationId: listChildren
+      tags: [children]
+      summary: List children with optional filters
+      parameters:
+        - in: query
+          name: roomId
+          schema:
+            type: integer
+        - in: query
+          name: centerId
+          schema:
+            type: integer
+        - in: query
+          name: active
+          schema:
+            type: boolean
+        - in: query
+          name: search
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Child"
+    post:
+      operationId: createChild
+      tags: [children]
+      summary: Register new child
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChildInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Child"
+
+  /children/{id}:
+    get:
+      operationId: getChild
+      tags: [children]
+      summary: Get child with full history
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChildDetail"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateChild
+      tags: [children]
+      summary: Update child data
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChildUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Child"
+
+    delete:
+      operationId: deleteChild
+      tags: [children]
+      summary: Permanently delete a child record
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+        "404":
+          description: Not found
+
+  /children/{id}/discharge:
+    post:
+      operationId: dischargeChild
+      tags: [children]
+      summary: Register child discharge (baja)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DischargeInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Child"
+
+  /children/{id}/reinstate:
+    post:
+      operationId: reinstateChild
+      tags: [children]
+      summary: Reinstate discharged child (alta)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReinstateInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Child"
+
+  /attendance:
+    get:
+      operationId: listAttendance
+      tags: [attendance]
+      summary: Get attendance records
+      parameters:
+        - in: query
+          name: date
+          schema:
+            type: string
+        - in: query
+          name: roomId
+          schema:
+            type: integer
+        - in: query
+          name: childId
+          schema:
+            type: integer
+        - in: query
+          name: month
+          schema:
+            type: string
+        - in: query
+          name: year
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AttendanceRecord"
+    post:
+      operationId: markAttendance
+      tags: [attendance]
+      summary: Mark or update attendance for a child on a date
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttendanceInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceRecord"
+
+  /contacts:
+    get:
+      operationId: listContacts
+      tags: [contacts]
+      summary: List contact history
+      parameters:
+        - in: query
+          name: childId
+          schema:
+            type: integer
+        - in: query
+          name: roomId
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Contact"
+    post:
+      operationId: createContact
+      tags: [contacts]
+      summary: Register family contact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contact"
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Global attendance and alert stats
+      parameters:
+        - in: query
+          name: centerId
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /dashboard/alerts:
+    get:
+      operationId: getAlerts
+      tags: [dashboard]
+      summary: Children with 2+ consecutive absences
+      parameters:
+        - in: query
+          name: centerId
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Alert"
+
+  /dashboard/recent-contacts:
+    get:
+      operationId: getRecentContacts
+      tags: [dashboard]
+      summary: Latest 10 family contacts across all rooms
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Contact"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+
+    StatusResponse:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+
+    Center:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+      required: [id, name]
+
+    CenterInput:
+      type: object
+      properties:
+        name:
+          type: string
+      required: [name]
+
+    RoomInput:
+      type: object
+      properties:
+        centerId:
+          type: integer
+        ecoNumber:
+          type: integer
+        name:
+          type: string
+        capacity:
+          type: integer
+      required: [centerId, ecoNumber, name, capacity]
+
+    RoomUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        capacity:
+          type: integer
+
+    Room:
+      type: object
+      properties:
+        id:
+          type: integer
+        centerId:
+          type: integer
+        ecoNumber:
+          type: integer
+        name:
+          type: string
+        capacity:
+          type: integer
+      required: [id, centerId, ecoNumber, name, capacity]
+
+    RoomSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        centerId:
+          type: integer
+        ecoNumber:
+          type: integer
+        name:
+          type: string
+        capacity:
+          type: integer
+        total:
+          type: integer
+        present:
+          type: integer
+        absent:
+          type: integer
+        mercaderia:
+          type: integer
+        unmarked:
+          type: integer
+        alerts:
+          type: integer
+        pct:
+          type: integer
+      required: [id, centerId, ecoNumber, name, capacity, total, present, absent, mercaderia, unmarked, alerts, pct]
+
+    Child:
+      type: object
+      properties:
+        id:
+          type: integer
+        roomId:
+          type: integer
+        ecoNumber:
+          type: integer
+        apellido:
+          type: string
+        nombre:
+          type: string
+        dni:
+          type: ["string", "null"]
+        fnac:
+          type: ["string", "null"]
+        genero:
+          type: ["string", "null"]
+        domicilio:
+          type: ["string", "null"]
+        barrio:
+          type: ["string", "null"]
+        localidad:
+          type: ["string", "null"]
+        famApellido:
+          type: ["string", "null"]
+        famNombre:
+          type: ["string", "null"]
+        vinculo:
+          type: ["string", "null"]
+        celular:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        estado:
+          type: string
+        estAsist:
+          type: ["string", "null"]
+        activo:
+          type: boolean
+        inscripto:
+          type: ["string", "null"]
+        registro:
+          type: ["string", "null"]
+        obs:
+          type: ["string", "null"]
+        fechaBaja:
+          type: ["string", "null"]
+        motivoBaja:
+          type: ["string", "null"]
+        tipoBaja:
+          type: ["string", "null"]
+      required: [id, roomId, ecoNumber, apellido, nombre, estado, activo]
+
+    ChildDetail:
+      allOf:
+        - $ref: "#/components/schemas/Child"
+        - type: object
+          properties:
+            attendance:
+              type: array
+              items:
+                $ref: "#/components/schemas/AttendanceRecord"
+            contacts:
+              type: array
+              items:
+                $ref: "#/components/schemas/Contact"
+            consecutiveAbsences:
+              type: integer
+          required: [attendance, contacts, consecutiveAbsences]
+
+    ChildInput:
+      type: object
+      properties:
+        roomId:
+          type: integer
+        apellido:
+          type: string
+        nombre:
+          type: string
+        dni:
+          type: string
+        fnac:
+          type: string
+        genero:
+          type: string
+        domicilio:
+          type: string
+        barrio:
+          type: string
+        localidad:
+          type: string
+        famApellido:
+          type: string
+        famNombre:
+          type: string
+        vinculo:
+          type: string
+        celular:
+          type: string
+        email:
+          type: string
+        obs:
+          type: string
+      required: [roomId, apellido, nombre]
+
+    ChildUpdate:
+      type: object
+      properties:
+        roomId:
+          type: integer
+        apellido:
+          type: string
+        nombre:
+          type: string
+        dni:
+          type: string
+        fnac:
+          type: string
+        genero:
+          type: string
+        domicilio:
+          type: string
+        barrio:
+          type: string
+        localidad:
+          type: string
+        famApellido:
+          type: string
+        famNombre:
+          type: string
+        vinculo:
+          type: string
+        celular:
+          type: string
+        email:
+          type: string
+        obs:
+          type: string
+        estAsist:
+          type: string
+
+    DischargeInput:
+      type: object
+      properties:
+        tipo:
+          type: string
+        obs:
+          type: string
+      required: [tipo]
+
+    ReinstateInput:
+      type: object
+      properties:
+        obs:
+          type: string
+
+    AttendanceRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        childId:
+          type: integer
+        fecha:
+          type: string
+        estado:
+          type: ["string", "null"]
+        nota:
+          type: ["string", "null"]
+        motivo:
+          type: ["string", "null"]
+        mercaderia:
+          type: boolean
+      required: [id, childId, fecha, mercaderia]
+
+    AttendanceInput:
+      type: object
+      properties:
+        childId:
+          type: integer
+        fecha:
+          type: string
+        estado:
+          type: ["string", "null"]
+        nota:
+          type: ["string", "null"]
+        motivo:
+          type: ["string", "null"]
+        mercaderia:
+          type: boolean
+      required: [childId, fecha]
+
+    Contact:
+      type: object
+      properties:
+        id:
+          type: integer
+        childId:
+          type: integer
+        childName:
+          type: ["string", "null"]
+        ecoNumber:
+          type: ["integer", "null"]
+        fecha:
+          type: string
+        quien:
+          type: ["string", "null"]
+        motivo:
+          type: ["string", "null"]
+        obs:
+          type: ["string", "null"]
+        resultado:
+          type: ["string", "null"]
+      required: [id, childId, fecha]
+
+    ContactInput:
+      type: object
+      properties:
+        childId:
+          type: integer
+        fecha:
+          type: string
+        quien:
+          type: string
+        motivo:
+          type: string
+        obs:
+          type: string
+        resultado:
+          type: string
+      required: [childId, fecha]
+
+    DashboardSummary:
+      type: object
+      properties:
+        totalActive:
+          type: integer
+        totalPresent:
+          type: integer
+        totalAbsent:
+          type: integer
+        totalAlerts:
+          type: integer
+        totalDischarge:
+          type: integer
+        totalCapacity:
+          type: integer
+        pctPresent:
+          type: integer
+      required: [totalActive, totalPresent, totalAbsent, totalAlerts, totalDischarge, totalCapacity, pctPresent]
+
+    Alert:
+      type: object
+      properties:
+        childId:
+          type: integer
+        apellido:
+          type: string
+        nombre:
+          type: string
+        ecoNumber:
+          type: integer
+        celular:
+          type: ["string", "null"]
+        famNombre:
+          type: ["string", "null"]
+        famApellido:
+          type: ["string", "null"]
+        consecutiveAbsences:
+          type: integer
+      required: [childId, apellido, nombre, ecoNumber, consecutiveAbsences]

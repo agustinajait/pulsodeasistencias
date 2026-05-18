@@ -1,0 +1,201 @@
+import { Router } from "express";
+import { db, childrenTable, attendanceTable, contactsTable, roomsTable } from "@workspace/db";
+import { eq, desc, gte, and, inArray } from "drizzle-orm";
+
+const router = Router();
+
+const TODAY = () => new Date().toISOString().slice(0, 10);
+
+function getWorkdaysBefore(dateStr: string, n: number): string[] {
+  const result: string[] = [];
+  const d = new Date(dateStr + "T12:00:00");
+  while (result.length < n) {
+    d.setDate(d.getDate() - 1);
+    const dow = d.getDay();
+    if (dow !== 0 && dow !== 6) {
+      result.push(d.toISOString().slice(0, 10));
+    }
+  }
+  return result;
+}
+
+// GET /dashboard/summary
+router.get("/dashboard/summary", async (req, res) => {
+  try {
+    const today = TODAY();
+    const { centerId } = req.query as { centerId?: string };
+
+    const allRooms = await db.select().from(roomsTable);
+    const rooms = centerId ? allRooms.filter((r) => r.centerId === parseInt(centerId)) : allRooms;
+    const roomIds = rooms.map((r) => r.id);
+    const totalCapacity = rooms.reduce((s, r) => s + r.capacity, 0);
+
+    const allChildrenQ = roomIds.length > 0
+      ? await db.select().from(childrenTable).where(inArray(childrenTable.roomId, roomIds))
+      : await db.select().from(childrenTable);
+    const allChildren = allChildrenQ;
+    const active = allChildren.filter((c) => c.activo);
+    const discharged = allChildren.filter((c) => !c.activo);
+
+    const todayAtt = await db
+      .select()
+      .from(attendanceTable)
+      .where(eq(attendanceTable.fecha, today));
+
+    const present = todayAtt.filter((a) => a.estado === "P").length;
+    const absent = todayAtt.filter((a) => a.estado === "A").length;
+    const pctPresent = active.length > 0 ? Math.round((present / active.length) * 100) : 0;
+
+    // Calc alerts
+    const past14 = getWorkdaysBefore(today, 14);
+    const cutoff = past14[past14.length - 1];
+    const allDays = [today, ...past14];
+
+    let recentAtt: Array<{ childId: number; fecha: string; estado: string | null }> = [];
+    if (active.length > 0) {
+      const activeIds = active.map((k) => k.id);
+      recentAtt = await db
+        .select({ childId: attendanceTable.childId, fecha: attendanceTable.fecha, estado: attendanceTable.estado })
+        .from(attendanceTable)
+        .where(and(gte(attendanceTable.fecha, cutoff), inArray(attendanceTable.childId, activeIds)));
+    }
+
+    const kidAttMap: Record<number, Record<string, string | null>> = {};
+    recentAtt.forEach((a) => {
+      if (!kidAttMap[a.childId]) kidAttMap[a.childId] = {};
+      kidAttMap[a.childId][a.fecha] = a.estado ?? null;
+    });
+
+    let totalAlerts = 0;
+    active.forEach((kid) => {
+      const dayMap = kidAttMap[kid.id] ?? {};
+      let consec = 0;
+      for (const d of allDays) {
+        const v = dayMap[d];
+        if (v === "A") consec++;
+        else break;
+      }
+      if (consec >= 2) totalAlerts++;
+    });
+
+    res.json({
+      totalActive: active.length,
+      totalPresent: present,
+      totalAbsent: absent,
+      totalAlerts,
+      totalDischarge: discharged.length,
+      totalCapacity,
+      pctPresent,
+    });
+  } catch (err) {
+    req.log.error(err, "Error getting dashboard summary");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /dashboard/alerts
+router.get("/dashboard/alerts", async (req, res) => {
+  try {
+    const today = TODAY();
+    const { centerId } = req.query as { centerId?: string };
+    const past14 = getWorkdaysBefore(today, 14);
+    const cutoff = past14[past14.length - 1];
+    const allDays = [today, ...past14];
+
+    const allRooms = await db.select().from(roomsTable);
+    const rooms = centerId ? allRooms.filter((r) => r.centerId === parseInt(centerId)) : allRooms;
+    const roomIds = rooms.map((r) => r.id);
+
+    const active = roomIds.length > 0
+      ? await db.select().from(childrenTable).where(and(eq(childrenTable.activo, true), inArray(childrenTable.roomId, roomIds)))
+      : await db.select().from(childrenTable).where(eq(childrenTable.activo, true));
+    const roomMap: Record<number, number> = {};
+    rooms.forEach((r) => (roomMap[r.id] = r.ecoNumber));
+
+    if (!active.length) {
+      res.json([]);
+      return;
+    }
+
+    const activeIds = active.map((k) => k.id);
+    const recentAtt = await db
+      .select({ childId: attendanceTable.childId, fecha: attendanceTable.fecha, estado: attendanceTable.estado })
+      .from(attendanceTable)
+      .where(and(gte(attendanceTable.fecha, cutoff), inArray(attendanceTable.childId, activeIds)));
+
+    const kidAttMap: Record<number, Record<string, string | null>> = {};
+    recentAtt.forEach((a) => {
+      if (!kidAttMap[a.childId]) kidAttMap[a.childId] = {};
+      kidAttMap[a.childId][a.fecha] = a.estado ?? null;
+    });
+
+    const alerts = active
+      .map((kid) => {
+        const dayMap = kidAttMap[kid.id] ?? {};
+        let consec = 0;
+        for (const d of allDays) {
+          const v = dayMap[d];
+          if (v === "A") consec++;
+          else break;
+        }
+        return { kid, consec };
+      })
+      .filter(({ consec }) => consec >= 2)
+      .sort((a, b) => b.consec - a.consec)
+      .map(({ kid, consec }) => ({
+        childId: kid.id,
+        apellido: kid.apellido,
+        nombre: kid.nombre,
+        ecoNumber: roomMap[kid.roomId] ?? 0,
+        celular: kid.celular ?? null,
+        famNombre: kid.famNombre ?? null,
+        famApellido: kid.famApellido ?? null,
+        consecutiveAbsences: consec,
+      }));
+
+    res.json(alerts);
+  } catch (err) {
+    req.log.error(err, "Error getting alerts");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /dashboard/recent-contacts
+router.get("/dashboard/recent-contacts", async (req, res) => {
+  try {
+    const contacts = await db
+      .select()
+      .from(contactsTable)
+      .orderBy(desc(contactsTable.fecha), desc(contactsTable.createdAt))
+      .limit(10);
+
+    const children = await db.select().from(childrenTable);
+    const rooms = await db.select().from(roomsTable);
+    const roomMap: Record<number, number> = {};
+    rooms.forEach((r) => (roomMap[r.id] = r.ecoNumber));
+    const childMap: Record<number, { name: string; ecoNumber: number }> = {};
+    children.forEach((c) => {
+      childMap[c.id] = {
+        name: `${c.apellido} — ${c.nombre}`,
+        ecoNumber: roomMap[c.roomId] ?? 0,
+      };
+    });
+
+    res.json(
+      contacts.map((c) => ({
+        ...c,
+        childName: childMap[c.childId]?.name ?? null,
+        ecoNumber: childMap[c.childId]?.ecoNumber ?? null,
+        quien: c.quien ?? null,
+        motivo: c.motivo ?? null,
+        obs: c.obs ?? null,
+        resultado: c.resultado ?? null,
+      }))
+    );
+  } catch (err) {
+    req.log.error(err, "Error getting recent contacts");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+export default router;

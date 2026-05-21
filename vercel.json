@@ -1,6 +1,6 @@
 {
   "installCommand": "pnpm install",
-  "buildCommand": "pnpm --filter @workspace/cpi-sistema build",
+  "buildCommand": "pnpm --filter @workspace/api-server build && pnpm --filter @workspace/cpi-sistema build",
   "outputDirectory": "artifacts/cpi-sistema/dist/public",
   "rewrites": [
     {

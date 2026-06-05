@@ -1,11 +1,3 @@
-async function loadApp() {
-  const { default: app } = await import("../artifacts/api-server/dist/index.mjs");
-  return app;
-}
+import app from "../artifacts/api-server/dist/app.mjs";
 
-let appPromise = loadApp();
-
-export default async function handler(req, res) {
-  const app = await appPromise;
-  return app(req, res);
-}
+export default app;

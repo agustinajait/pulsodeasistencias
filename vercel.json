@@ -1,5 +1,5 @@
 {
-  "installCommand": "pnpm install",
+  "installCommand": "pnpm install --no-frozen-lockfile",
   "buildCommand": "pnpm --filter @workspace/api-server build && pnpm --filter @workspace/cpi-sistema build",
   "outputDirectory": "artifacts/cpi-sistema/dist/public",
   "rewrites": [

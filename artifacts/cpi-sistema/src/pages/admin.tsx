@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Search, LogOut, Phone, ExternalLink, AlertTriangle, Plus, Copy, Download, Pencil, Check, X, Upload, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, LogOut, Phone, ExternalLink, AlertTriangle, Plus, Copy, Download, Pencil, Check, X, Upload, Trash2, ChevronLeft, ChevronRight, FileText } from "lucide-react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import type { Child, Alert, RoomSummary, Contact, AttendanceRecord, Center, Room } from "@workspace/api-client-react";
@@ -142,14 +142,14 @@ function ImportarCSVDialog({ rooms, onSuccess }: { rooms: RoomSummaryType[]; onS
   const TEMPLATE_COLS = ["Apellido","Nombre","Sala ECO","DNI","Fecha Nac","Genero","Domicilio","Barrio","Localidad","Fam Apellido","Fam Nombre","Vinculo","Celular","Email"];
 
   function downloadTemplate() {
-    const csv = [TEMPLATE_COLS.join(","), ',"EJEMPLO",0,"70000000","2022-03-15","FEMENINO","AV SIEMPREVIVA 742","FLORES","CABA","GARCIA","MARIA","MADRE/PADRE","1155551234","",'].join("\n");
+    const csv = [TEMPLATE_COLS.join(","), '"GARCIA","JUAN",0,"70000000","2022-03-15","FEMENINO","AV SIEMPREVIVA 742","FLORES","CABA","GARCIA","MARIA","MADRE/PADRE","1155551234",""'].join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = "plantilla-nomina.csv"; a.click();
     URL.revokeObjectURL(url);
   }
 
-  function parseCSV(text: string) {
+  function parseCSV(text: string): Record<string, string>[] {
     const lines = text.split(/\r?\n/).filter(l => l.trim());
     const [header, ...dataLines] = lines;
     const cols = header.split(",").map(c => c.trim().replace(/^"|"$/g, ""));
@@ -161,16 +161,73 @@ function ImportarCSVDialog({ rooms, onSuccess }: { rooms: RoomSummaryType[]; onS
     }).filter(r => r["Apellido"] || r["Nombre"]);
   }
 
-  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+  // Mapeo de columnas del Excel de focalización al formato interno
+  function mapExcelRow(r: Record<string, unknown>): Record<string, string> {
+    function str(v: unknown): string {
+      if (v == null) return "";
+      if (v instanceof Date) return v.toISOString().slice(0, 10);
+      return String(v).trim();
+    }
+    return {
+      "Apellido": str(r["Apellidos"]),
+      "Nombre": str(r["Nombres"]),
+      "Sala ECO": str(r["Sala"]),
+      "DNI": str(r["Número Doc"]),
+      "Fecha Nac": str(r["F.Nacimiento"]).slice(0, 10),
+      "Genero": str(r["Género"]).toUpperCase(),
+      "Domicilio": str(r["Domicilio"]),
+      "Barrio": str(r["Barrio"]),
+      "Localidad": str(r["Localidad"]),
+      "Fam Apellido": str(r["Ad.Apellidos"]),
+      "Fam Nombre": str(r["Ad.Nombres"]),
+      "Vinculo": str(r["Vínculo c/niñx"]),
+      "Celular": str(r["Teléfonos"]),
+      "Email": str(r["Email"]),
+      "Registro": str(r["Nro.Registro"]),
+    };
+  }
+
+  async function parseExcel(file: File): Promise<Record<string, string>[]> {
+    const XLSX = await import("xlsx");
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: "array", cellDates: true });
+    // Buscar hoja "Sistema" primero, sino la primera
+    const sheetName = wb.SheetNames.includes("Sistema") ? "Sistema" : wb.SheetNames[0];
+    const ws = wb.Sheets[sheetName];
+    const raw = XLSX.utils.sheet_to_json(ws, { defval: "" }) as Record<string, unknown>[];
+    // Detectar si es el formato de focalización (tiene "Apellidos") o plantilla propia (tiene "Apellido")
+    if (raw.length > 0 && "Apellidos" in raw[0]) {
+      return raw.map(mapExcelRow).filter(r => r["Apellido"]);
+    }
+    // Formato propio — columnas iguales al CSV
+    return raw.map(r => {
+      const obj: Record<string, string> = {};
+      Object.entries(r).forEach(([k, v]) => {
+        obj[k] = v instanceof Date ? v.toISOString().slice(0, 10) : String(v ?? "").trim();
+      });
+      return obj;
+    }).filter(r => r["Apellido"] || r["Nombre"]);
+  }
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
-      setRows(parseCSV(text));
-    };
-    reader.readAsText(file, "utf-8");
     e.target.value = "";
+    if (file.name.endsWith(".xlsx") || file.name.endsWith(".xls")) {
+      try {
+        const parsed = await parseExcel(file);
+        setRows(parsed);
+      } catch {
+        toast({ title: "Error al leer el Excel", variant: "destructive" });
+      }
+    } else {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const text = ev.target?.result as string;
+        setRows(parseCSV(text));
+      };
+      reader.readAsText(file, "utf-8");
+    }
   }
 
   async function handleImport() {
@@ -210,7 +267,7 @@ function ImportarCSVDialog({ rooms, onSuccess }: { rooms: RoomSummaryType[]; onS
       setProgress(i + 1);
     }
     setImporting(false);
-    toast({ title: "Importacion completada", description: `${ok} altas registradas${err ? `, ${err} errores` : ""}` });
+    toast({ title: "Importación completada", description: `${ok} altas registradas${err ? `, ${err} errores` : ""}` });
     setRows([]);
     setOpen(false);
     onSuccess();
@@ -221,28 +278,28 @@ function ImportarCSVDialog({ rooms, onSuccess }: { rooms: RoomSummaryType[]; onS
       <DialogTrigger asChild>
         <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors" data-testid="btn-importar-csv">
           <Upload className="w-3.5 h-3.5" />
-          Importar CSV
+          Importar nómina
         </button>
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Importar nomina desde CSV</DialogTitle>
+          <DialogTitle>Importar nómina</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 mt-2">
           <div className="text-sm text-muted-foreground">
-            El archivo debe tener las columnas: <span className="font-medium">Apellido, Nombre, Sala ECO (0-3)</span> y opcionalmente DNI, Fecha Nac, Genero, Domicilio, Barrio, Localidad, Fam Apellido, Fam Nombre, Vinculo, Celular, Email.
+            Aceptamos <span className="font-medium">Excel de focalización (.xlsx)</span> o CSV con columnas: Apellido, Nombre, Sala ECO, DNI, Fecha Nac, etc.
           </div>
           <button onClick={downloadTemplate} className="flex items-center gap-1.5 text-xs text-primary underline hover:no-underline">
             <Download className="w-3.5 h-3.5" />
             Descargar plantilla CSV
           </button>
           <div>
-            <Label className="text-xs">Seleccionar archivo CSV</Label>
-            <Input type="file" accept=".csv,text/csv" onChange={handleFile} className="mt-1 text-xs" />
+            <Label className="text-xs">Seleccionar archivo (.xlsx o .csv)</Label>
+            <Input type="file" accept=".csv,.xlsx,.xls,text/csv" onChange={handleFile} className="mt-1 text-xs" />
           </div>
           {rows.length > 0 && (
             <div className="bg-muted rounded-lg px-3 py-2 text-sm">
-              {rows.length} {rows.length === 1 ? "fila detectada" : "filas detectadas"} para importar
+              <span className="font-semibold">{rows.length}</span> {rows.length === 1 ? "fila detectada" : "filas detectadas"} para importar
               {importing && <div className="text-xs text-muted-foreground mt-1">Procesando {progress} / {rows.length}...</div>}
             </div>
           )}
@@ -253,6 +310,25 @@ function ImportarCSVDialog({ rooms, onSuccess }: { rooms: RoomSummaryType[]; onS
       </DialogContent>
     </Dialog>
   );
+}
+
+const SUPABASE_URL = "https://idsqnnyyoybknwqugspv.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlkc3Fubnl5b3lia253cXVnc3B2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNzk2ODYsImV4cCI6MjA5NDk1NTY4Nn0.HRSQQwryyi7i_1TMUVKNUT4AzzGu6CJd_iHuI79qHE0";
+
+async function uploadVacunas(childId: number, file: File): Promise<string | null> {
+  const ext = file.name.split(".").pop() ?? "jpg";
+  const path = `${childId}/carnet.${ext}`;
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/vacunas/${path}`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+      "Content-Type": file.type,
+      "x-upsert": "true",
+    },
+    body: file,
+  });
+  if (!res.ok) return null;
+  return `${SUPABASE_URL}/storage/v1/object/vacunas/${path}`;
 }
 
 function NuevaAltaDialog({ onSuccess }: { onSuccess: () => void }) {
@@ -271,10 +347,13 @@ function NuevaAltaDialog({ onSuccess }: { onSuccess: () => void }) {
   const [celular, setCelular] = useState("");
   const [email, setEmail] = useState("");
   const [obs, setObs] = useState("");
+  const [vacunasFile, setVacunasFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
   const createChild = useCreateChild();
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!apellido || !nombre) return;
+    setUploading(true);
     createChild.mutate(
       {
         data: {
@@ -287,12 +366,30 @@ function NuevaAltaDialog({ onSuccess }: { onSuccess: () => void }) {
         }
       },
       {
-        onSuccess: () => {
+        onSuccess: async (child) => {
+          // Si hay carnet, subirlo a Supabase Storage
+          if (vacunasFile && child?.id) {
+            const url = await uploadVacunas(child.id, vacunasFile);
+            if (url) {
+              // Guardar URL en la DB via PATCH
+              await fetch(`/api/children/${child.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ vacunasUrl: url }),
+              });
+            }
+          }
+          setUploading(false);
           toast({ title: "Alta registrada", description: `${apellido}, ${nombre}` });
           setOpen(false);
           setApellido(""); setNombre(""); setDni(""); setFnac(""); setDomicilio("");
           setFamApellido(""); setFamNombre(""); setCelular(""); setEmail(""); setObs("");
+          setVacunasFile(null);
           onSuccess();
+        },
+        onError: () => {
+          setUploading(false);
+          toast({ title: "Error al registrar alta", variant: "destructive" });
         },
       }
     );
@@ -359,8 +456,24 @@ function NuevaAltaDialog({ onSuccess }: { onSuccess: () => void }) {
           </div>
           <div><Label className="text-xs">Email</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1" data-testid="input-alta-email" /></div>
           <div><Label className="text-xs">Observaciones</Label><Textarea value={obs} onChange={(e) => setObs(e.target.value)} rows={2} className="mt-1" data-testid="textarea-alta-obs" /></div>
-          <Button className="w-full" onClick={handleSubmit} disabled={!apellido || !nombre || createChild.isPending} data-testid="btn-confirmar-alta">
-            {createChild.isPending ? "Registrando..." : "Registrar alta"}
+          <div>
+            <Label className="text-xs">Carnet de vacunas (imagen o PDF)</Label>
+            <div className="mt-1 flex items-center gap-2">
+              <label className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-border bg-muted/30 text-xs text-muted-foreground cursor-pointer hover:bg-muted/60 transition-colors">
+                <FileText className="w-4 h-4 shrink-0" />
+                <span className="truncate">{vacunasFile ? vacunasFile.name : "Seleccionar archivo..."}</span>
+                <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => setVacunasFile(e.target.files?.[0] ?? null)} data-testid="input-alta-vacunas" />
+              </label>
+              {vacunasFile && (
+                <button onClick={() => setVacunasFile(null)} className="text-muted-foreground hover:text-red-500 p-1">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1">Opcional — se puede cargar después desde la ficha del niño/a</p>
+          </div>
+          <Button className="w-full" onClick={handleSubmit} disabled={!apellido || !nombre || createChild.isPending || uploading} data-testid="btn-confirmar-alta">
+            {uploading ? "Subiendo carnet..." : createChild.isPending ? "Registrando..." : "Registrar alta"}
           </Button>
         </div>
       </DialogContent>

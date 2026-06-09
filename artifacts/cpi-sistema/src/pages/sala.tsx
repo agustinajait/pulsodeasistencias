@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, ChevronLeft, ChevronRight, LogOut, AlertTriangle, MessageCircle } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, LogOut, AlertTriangle, MessageCircle, X } from "lucide-react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import type { Child, AttendanceRecord, Room, RoomSummary, Alert } from "@workspace/api-client-react";
@@ -57,6 +57,7 @@ export default function SalaPage() {
   const [search, setSearch] = useState("");
   const [calMonth, setCalMonth] = useState(MES_ACTUAL);
   const [selectedChild, setSelectedChild] = useState<number | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [closingDay, setClosingDay] = useState(false);
   const [notasDraft, setNotasDraft] = useState<Record<number, string>>({});
 
@@ -464,6 +465,7 @@ export default function SalaPage() {
                       key={dateStr}
                       className={`aspect-square rounded-lg flex items-center justify-center text-xs font-semibold border transition-all ${color} ${isToday ? "ring-2 ring-primary" : "border-transparent"} ${weekend ? "" : "cursor-pointer hover:opacity-80"}`}
                       data-testid={`cal-day-${dateStr}`}
+                      onClick={() => !weekend && dayAtt.length > 0 && setSelectedDay(dateStr)}
                     >
                       {!weekend && day.getDate()}
                     </div>
@@ -471,6 +473,56 @@ export default function SalaPage() {
                 })}
               </div>
             </div>
+
+            {/* Modal detalle del día */}
+            {selectedDay && (
+              <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center backdrop-blur-sm" onClick={() => setSelectedDay(null)}>
+                <div
+                  className="bg-card rounded-t-2xl w-full max-w-xl max-h-[80vh] overflow-y-auto shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border sticky top-0 bg-card z-10">
+                    <div>
+                      <h2 className="text-base font-bold capitalize">{formatDateLabel(selectedDay)}</h2>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {(calAttMap[selectedDay] ?? []).filter(a => a.estado === "P").length} presentes ·{" "}
+                        {(calAttMap[selectedDay] ?? []).filter(a => a.estado === "A").length} ausentes
+                      </p>
+                    </div>
+                    <button onClick={() => setSelectedDay(null)} className="text-muted-foreground hover:text-foreground p-1">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="divide-y divide-border px-2 py-2">
+                    {(children.data ?? []).map((child: Child) => {
+                      const att = (calAttMap[selectedDay] ?? []).find(a => a.childId === child.id);
+                      const estado = att?.estado ?? null;
+                      return (
+                        <div key={child.id} className="flex items-center gap-3 px-3 py-2.5">
+                          <div
+                            className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
+                            style={{ background: child.genero === "FEMENINO" ? "hsl(var(--primary)/0.1)" : "hsl(215 60% 92%)", color: child.genero === "FEMENINO" ? "hsl(var(--primary))" : "hsl(215 60% 35%)" }}
+                          >
+                            {child.apellido.slice(0, 1)}{child.nombre.slice(0, 1)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold truncate">{child.apellido} {child.nombre}</div>
+                            {att?.motivo && <div className="text-xs text-muted-foreground">{att.motivo}</div>}
+                            {att?.nota && <div className="text-xs text-muted-foreground italic">{att.nota}</div>}
+                          </div>
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${estado === "P" ? "bg-green-100 text-green-700" : estado === "A" ? "bg-red-100 text-red-700" : "bg-muted text-muted-foreground"}`}>
+                            {estado ?? "—"}
+                          </div>
+                          {att?.mercaderia && (
+                            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold bg-purple-100 text-purple-700 shrink-0">M</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>

@@ -95,7 +95,9 @@ export default function SalaPage() {
 
   function waUrl(alert: Alert) {
     if (!alert.celular) return null;
-    const phone = alert.celular.replace(/\D/g, "");
+    // Tomar solo el primer número (puede haber varios separados por / o espacio)
+    const firstNumber = alert.celular.split(/[\/,;\s]+/)[0];
+    const phone = firstNumber.replace(/\D/g, "");
     const msg = encodeURIComponent(
       `Hola ${alert.famNombre ?? "familia"}, le contactamos del CPI Norte. Notamos que ${alert.apellido} ${alert.nombre} lleva ${alert.consecutiveAbsences} día${alert.consecutiveAbsences !== 1 ? "s" : ""} sin asistir. ¿Todo bien?`
     );

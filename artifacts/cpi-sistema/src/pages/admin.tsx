@@ -188,7 +188,17 @@ function ImportarCSVDialog({ rooms, onSuccess }: { rooms: RoomSummaryType[]; onS
   }
 
   async function parseExcel(file: File): Promise<Record<string, string>[]> {
-    const XLSX = await import("xlsx");
+    // Cargar xlsx desde CDN sin necesidad de instalación
+    if (!(window as any).XLSX) {
+      await new Promise<void>((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error("No se pudo cargar xlsx"));
+        document.head.appendChild(s);
+      });
+    }
+    const XLSX = (window as any).XLSX;
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf, { type: "array", cellDates: true });
     // Buscar hoja "Sistema" primero, sino la primera

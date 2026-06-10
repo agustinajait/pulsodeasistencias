@@ -8,4 +8,5 @@
 
 export interface CenterInput {
   name: string;
+  passcode?: string | null;
 }

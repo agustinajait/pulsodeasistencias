@@ -6,8 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface Center {
-  id: number;
-  name: string;
-  hasPasscode: boolean;
-}
+export type VerifyCenterPasscodeBody = {
+  passcode: string;
+};

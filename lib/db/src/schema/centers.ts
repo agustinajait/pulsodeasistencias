@@ -5,6 +5,7 @@ import { z } from "zod/v4";
 export const centersTable = pgTable("centers", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 100 }).notNull(),
+  passcode: varchar("passcode", { length: 50 }),
 });
 
 export const insertCenterSchema = createInsertSchema(centersTable).omit({ id: true });

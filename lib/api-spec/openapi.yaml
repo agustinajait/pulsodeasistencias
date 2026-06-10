@@ -110,6 +110,41 @@ paths:
               schema:
                 $ref: "#/components/schemas/StatusResponse"
 
+  /centers/{centerId}/verify:
+    post:
+      operationId: verifyCenterPasscode
+      tags: [centers]
+      summary: Verify center passcode
+      parameters:
+        - in: path
+          name: centerId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                passcode:
+                  type: string
+              required: [passcode]
+      responses:
+        "200":
+          description: Passcode correct
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+        "401":
+          description: Passcode incorrecto
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+
   /rooms:
     get:
       operationId: listRooms
@@ -544,13 +579,18 @@ components:
           type: integer
         name:
           type: string
-      required: [id, name]
+        hasPasscode:
+          type: boolean
+      required: [id, name, hasPasscode]
 
     CenterInput:
       type: object
       properties:
         name:
           type: string
+        passcode:
+          type: string
+          nullable: true
       required: [name]
 
     RoomInput:

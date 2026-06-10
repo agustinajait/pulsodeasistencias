@@ -44,6 +44,7 @@ import type {
   RoomSummary,
   RoomUpdate,
   StatusResponse,
+  VerifyCenterPasscodeBody,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -458,6 +459,94 @@ export const useDeleteCenter = <
   TContext
 > => {
   return useMutation(getDeleteCenterMutationOptions(options));
+};
+
+/**
+ * @summary Verify center passcode
+ */
+export const getVerifyCenterPasscodeUrl = (centerId: number) => {
+  return `/api/centers/${centerId}/verify`;
+};
+
+export const verifyCenterPasscode = async (
+  centerId: number,
+  verifyCenterPasscodeBody: VerifyCenterPasscodeBody,
+  options?: RequestInit,
+): Promise<StatusResponse> => {
+  return customFetch<StatusResponse>(getVerifyCenterPasscodeUrl(centerId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(verifyCenterPasscodeBody),
+  });
+};
+
+export const getVerifyCenterPasscodeMutationOptions = <
+  TError = ErrorType<StatusResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof verifyCenterPasscode>>,
+    TError,
+    { centerId: number; data: BodyType<VerifyCenterPasscodeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof verifyCenterPasscode>>,
+  TError,
+  { centerId: number; data: BodyType<VerifyCenterPasscodeBody> },
+  TContext
+> => {
+  const mutationKey = ["verifyCenterPasscode"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof verifyCenterPasscode>>,
+    { centerId: number; data: BodyType<VerifyCenterPasscodeBody> }
+  > = (props) => {
+    const { centerId, data } = props ?? {};
+
+    return verifyCenterPasscode(centerId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type VerifyCenterPasscodeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof verifyCenterPasscode>>
+>;
+export type VerifyCenterPasscodeMutationBody =
+  BodyType<VerifyCenterPasscodeBody>;
+export type VerifyCenterPasscodeMutationError = ErrorType<StatusResponse>;
+
+/**
+ * @summary Verify center passcode
+ */
+export const useVerifyCenterPasscode = <
+  TError = ErrorType<StatusResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof verifyCenterPasscode>>,
+    TError,
+    { centerId: number; data: BodyType<VerifyCenterPasscodeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof verifyCenterPasscode>>,
+  TError,
+  { centerId: number; data: BodyType<VerifyCenterPasscodeBody> },
+  TContext
+> => {
+  return useMutation(getVerifyCenterPasscodeMutationOptions(options));
 };
 
 /**

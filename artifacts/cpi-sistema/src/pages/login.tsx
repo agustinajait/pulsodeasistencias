@@ -1,31 +1,54 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth, Role } from "@/lib/auth-context";
-import { useListCenters, useListRooms, getListRoomsQueryKey } from "@workspace/api-client-react";
+import { useListCenters, useListRooms, getListRoomsQueryKey, verifyCenterPasscode } from "@workspace/api-client-react";
 import type { Center, Room } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { BookOpen, Users, ChevronLeft, Plus } from "lucide-react";
+import { BookOpen, Users, ChevronLeft, Plus, Lock } from "lucide-react";
 
 export default function Login() {
   const { login } = useAuth();
   const [, setLocation] = useLocation();
-  const [step, setStep] = useState<"center" | "role">("center");
+  const [step, setStep] = useState<"center" | "passcode" | "role">("center");
   const [selectedCenter, setSelectedCenter] = useState<Center | null>(null);
   const [newCenterName, setNewCenterName] = useState("");
   const [creatingCenter, setCreatingCenter] = useState(false);
+  const [passcode, setPasscode] = useState("");
+  const [passcodeError, setPasscodeError] = useState("");
+  const [verifyingPasscode, setVerifyingPasscode] = useState(false);
 
   const centers = useListCenters();
   const roomsParams = selectedCenter ? { centerId: selectedCenter.id } : {};
   const rooms = useListRooms(
     roomsParams,
-    { query: { enabled: !!selectedCenter, queryKey: getListRoomsQueryKey(roomsParams) } }
+    { query: { enabled: !!selectedCenter && step === "role", queryKey: getListRoomsQueryKey(roomsParams) } }
   );
 
   const handleSelectCenter = (center: Center) => {
     setSelectedCenter(center);
-    setStep("role");
+    setPasscode("");
+    setPasscodeError("");
+    if (center.hasPasscode) {
+      setStep("passcode");
+    } else {
+      setStep("role");
+    }
+  };
+
+  const handleVerifyPasscode = async () => {
+    if (!selectedCenter || !passcode.trim()) return;
+    setVerifyingPasscode(true);
+    setPasscodeError("");
+    try {
+      await verifyCenterPasscode(selectedCenter.id, { passcode: passcode.trim() });
+      setStep("role");
+    } catch {
+      setPasscodeError("Codigo incorrecto. Intenta de nuevo.");
+    } finally {
+      setVerifyingPasscode(false);
+    }
   };
 
   const handleCreateCenter = async () => {
@@ -60,7 +83,6 @@ export default function Login() {
   };
 
   const centerRooms: Room[] = rooms.data ?? [];
-  // Group rooms by eco number for sala buttons
   const salaRoles = centerRooms
     .filter((r) => r.ecoNumber != null)
     .sort((a, b) => a.ecoNumber - b.ecoNumber);
@@ -98,9 +120,12 @@ export default function Login() {
                     onClick={() => handleSelectCenter(center)}
                     data-testid={`btn-center-${center.id}`}
                   >
-                    <div>
-                      <div className="font-semibold">{center.name}</div>
-                      <div className="text-xs text-muted-foreground font-normal">Ingresar</div>
+                    <div className="flex items-center gap-2 w-full">
+                      <div className="flex-1 text-left">
+                        <div className="font-semibold">{center.name}</div>
+                        <div className="text-xs text-muted-foreground font-normal">Ingresar</div>
+                      </div>
+                      {center.hasPasscode && <Lock className="w-4 h-4 text-muted-foreground shrink-0" />}
                     </div>
                   </Button>
                 ))}
@@ -130,6 +155,52 @@ export default function Login() {
           </Card>
         )}
 
+        {step === "passcode" && selectedCenter && (
+          <Card className="border-none shadow-lg">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-8 h-8 -ml-1"
+                  onClick={() => { setStep("center"); setSelectedCenter(null); setPasscode(""); setPasscodeError(""); }}
+                  data-testid="btn-back-passcode"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <div>
+                  <CardTitle>{selectedCenter.name}</CardTitle>
+                  <CardDescription>Ingresá el código de acceso</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Input
+                  type="password"
+                  placeholder="Codigo de acceso"
+                  value={passcode}
+                  onChange={(e) => { setPasscode(e.target.value); setPasscodeError(""); }}
+                  onKeyDown={(e) => e.key === "Enter" && handleVerifyPasscode()}
+                  autoFocus
+                  data-testid="input-passcode"
+                />
+                {passcodeError && (
+                  <p className="text-sm text-destructive">{passcodeError}</p>
+                )}
+              </div>
+              <Button
+                className="w-full"
+                onClick={handleVerifyPasscode}
+                disabled={!passcode.trim() || verifyingPasscode}
+                data-testid="btn-verify-passcode"
+              >
+                {verifyingPasscode ? "Verificando..." : "Ingresar"}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {step === "role" && selectedCenter && (
           <Card className="border-none shadow-lg">
             <CardHeader>
@@ -138,7 +209,14 @@ export default function Login() {
                   variant="ghost"
                   size="icon"
                   className="w-8 h-8 -ml-1"
-                  onClick={() => { setStep("center"); setSelectedCenter(null); }}
+                  onClick={() => {
+                    if (selectedCenter.hasPasscode) {
+                      setStep("passcode");
+                    } else {
+                      setStep("center");
+                      setSelectedCenter(null);
+                    }
+                  }}
                   data-testid="btn-back-center"
                 >
                   <ChevronLeft className="w-4 h-4" />

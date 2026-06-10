@@ -33,3 +33,4 @@ export * from "./roomInput";
 export * from "./roomSummary";
 export * from "./roomUpdate";
 export * from "./statusResponse";
+export * from "./verifyCenterPasscodeBody";

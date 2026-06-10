@@ -20,6 +20,7 @@ export const HealthCheckResponse = zod.object({
 export const ListCentersResponseItem = zod.object({
   id: zod.number(),
   name: zod.string(),
+  hasPasscode: zod.boolean(),
 });
 export const ListCentersResponse = zod.array(ListCentersResponseItem);
 
@@ -28,6 +29,7 @@ export const ListCentersResponse = zod.array(ListCentersResponseItem);
  */
 export const CreateCenterBody = zod.object({
   name: zod.string(),
+  passcode: zod.string().nullish(),
 });
 
 /**
@@ -39,11 +41,13 @@ export const UpdateCenterParams = zod.object({
 
 export const UpdateCenterBody = zod.object({
   name: zod.string(),
+  passcode: zod.string().nullish(),
 });
 
 export const UpdateCenterResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
+  hasPasscode: zod.boolean(),
 });
 
 /**
@@ -54,6 +58,21 @@ export const DeleteCenterParams = zod.object({
 });
 
 export const DeleteCenterResponse = zod.object({
+  status: zod.string(),
+});
+
+/**
+ * @summary Verify center passcode
+ */
+export const VerifyCenterPasscodeParams = zod.object({
+  centerId: zod.coerce.number(),
+});
+
+export const VerifyCenterPasscodeBody = zod.object({
+  passcode: zod.string(),
+});
+
+export const VerifyCenterPasscodeResponse = zod.object({
   status: zod.string(),
 });
 

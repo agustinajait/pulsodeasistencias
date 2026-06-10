@@ -16,10 +16,12 @@ export interface StatusResponse {
 export interface Center {
   id: number;
   name: string;
+  hasPasscode: boolean;
 }
 
 export interface CenterInput {
   name: string;
+  passcode?: string | null;
 }
 
 export interface RoomInput {
@@ -230,6 +232,10 @@ export interface Alert {
   famApellido?: string | null;
   consecutiveAbsences: number;
 }
+
+export type VerifyCenterPasscodeBody = {
+  passcode: string;
+};
 
 export type ListRoomsParams = {
   centerId?: number;

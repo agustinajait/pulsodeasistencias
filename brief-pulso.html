@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pulso de Asistencias — Guía de uso</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --violet: #6d28d9;
+      --violet-dark: #3b0764;
+      --violet-light: #ede9fe;
+      --violet-mid: #8b5cf6;
+      --violet-pale: #f5f3ff;
+      --green: #16a34a;
+      --green-light: #dcfce7;
+      --red: #dc2626;
+      --red-light: #fee2e2;
+      --amber: #d97706;
+      --amber-light: #fef3c7;
+      --text: #1e1333;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --white: #ffffff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--white);
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    @page {
+      size: A4;
+      margin: 0;
+    }
+
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto;
+      background: var(--white);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: linear-gradient(135deg, var(--violet-dark) 0%, var(--violet) 60%, var(--violet-mid) 100%);
+      padding: 28px 32px 24px;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 44px;
+      height: 44px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+
+    .logo-text h1 {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+    }
+
+    .logo-text p {
+      font-size: 11px;
+      color: rgba(255,255,255,0.7);
+      font-weight: 500;
+    }
+
+    .header-right {
+      text-align: right;
+    }
+
+    .header-right p {
+      font-size: 11px;
+      color: rgba(255,255,255,0.7);
+    }
+
+    .header-right strong {
+      font-size: 13px;
+      color: white;
+    }
+
+    /* ── INTRO STRIP ── */
+    .intro {
+      background: var(--violet-pale);
+      border-bottom: 1px solid var(--violet-light);
+      padding: 14px 32px;
+      font-size: 12px;
+      color: var(--violet);
+      font-weight: 500;
+    }
+
+    /* ── BODY ── */
+    .body {
+      flex: 1;
+      padding: 24px 32px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    /* ── ROLE CARD ── */
+    .role-card {
+      border-radius: 14px;
+      border: 1.5px solid var(--border);
+      overflow: hidden;
+    }
+
+    .role-header {
+      padding: 14px 18px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .role-header.docente { background: linear-gradient(135deg, #4f46e5 0%, var(--violet) 100%); }
+    .role-header.coordinadora { background: linear-gradient(135deg, var(--violet-dark) 0%, #4f46e5 100%); }
+
+    .role-icon {
+      width: 36px;
+      height: 36px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .role-header-text h2 {
+      font-size: 15px;
+      font-weight: 800;
+      color: white;
+    }
+
+    .role-header-text p {
+      font-size: 10px;
+      color: rgba(255,255,255,0.75);
+      font-weight: 500;
+      margin-top: 1px;
+    }
+
+    .role-body {
+      padding: 14px 18px;
+    }
+
+    /* ── ACCESS CHIP ── */
+    .access-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--violet-pale);
+      border: 1px solid var(--violet-light);
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 10.5px;
+      color: var(--violet);
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+
+    /* ── FEATURE LIST ── */
+    .feature-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .feature-item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .feature-dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .dot-violet { background: var(--violet-light); color: var(--violet); }
+    .dot-green  { background: var(--green-light);  color: var(--green); }
+    .dot-red    { background: var(--red-light);    color: var(--red); }
+    .dot-amber  { background: var(--amber-light);  color: var(--amber); }
+
+    .feature-text strong {
+      font-weight: 700;
+      font-size: 12px;
+      color: var(--text);
+      display: block;
+      line-height: 1.3;
+    }
+
+    .feature-text span {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    /* ── STATUS BADGES ── */
+    .badges {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      margin-bottom: 4px;
+    }
+
+    .badge {
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 700;
+      border: 1px solid;
+    }
+
+    .badge-green  { background: var(--green-light);  color: var(--green);  border-color: #bbf7d0; }
+    .badge-red    { background: var(--red-light);    color: var(--red);    border-color: #fecaca; }
+    .badge-yellow { background: #fef9c3;             color: #854d0e;       border-color: #fde047; }
+    .badge-gray   { background: #f3f4f6;             color: #6b7280;       border-color: #e5e7eb; }
+
+    /* ── SUPER ADMIN STRIP ── */
+    .superadmin-strip {
+      margin: 0 32px 20px;
+      background: linear-gradient(135deg, var(--violet-dark) 0%, #312e81 100%);
+      border-radius: 12px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .superadmin-strip .sa-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .superadmin-strip h3 {
+      font-size: 13px;
+      font-weight: 800;
+      color: white;
+      margin-bottom: 2px;
+    }
+
+    .superadmin-strip p {
+      font-size: 11px;
+      color: rgba(255,255,255,0.7);
+    }
+
+    /* ── FOOTER ── */
+    .footer {
+      border-top: 1px solid var(--border);
+      padding: 12px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .footer p {
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .footer .url {
+      font-size: 10px;
+      color: var(--violet);
+      font-weight: 600;
+    }
+
+    /* ── DIVIDER ── */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 10px 0;
+    }
+
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo-area">
+      <div class="logo-icon">📊</div>
+      <div class="logo-text">
+        <h1>Pulso de Asistencias</h1>
+        <p>By Caipli Lab · Red de Centros de Primera Infancia</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <strong>Guía de uso rápido</strong>
+      <p>pulsodeasistencias.vercel.app</p>
+    </div>
+  </div>
+
+  <!-- INTRO -->
+  <div class="intro">
+    Sistema de gestión de asistencia en tiempo real para centros de primera infancia. Ingresás con tu centro y tu rol — sin usuario ni contraseña.
+  </div>
+
+  <!-- BODY: two columns -->
+  <div class="body">
+
+    <!-- DOCENTE -->
+    <div class="role-card">
+      <div class="role-header docente">
+        <div class="role-icon">👩‍🏫</div>
+        <div class="role-header-text">
+          <h2>Docente</h2>
+          <p>Toma de asistencia diaria</p>
+        </div>
+      </div>
+      <div class="role-body">
+
+        <div class="access-chip">
+          🔑 &nbsp;Seleccioná tu centro → elegí tu sala (ECO 0, 1, 2 o 3)
+        </div>
+
+        <ul class="feature-list">
+          <li class="feature-item">
+            <div class="feature-dot dot-green">✓</div>
+            <div class="feature-text">
+              <strong>Tomar asistencia del día</strong>
+              <span>Marcá cada niño/a con P (presente), A (ausente) o M (recibió mercadería). Se guarda al instante.</span>
+            </div>
+          </li>
+          <li class="feature-item">
+            <div class="feature-dot dot-violet">📅</div>
+            <div class="feature-text">
+              <strong>Completar días anteriores</strong>
+              <span>Desde el calendario podés marcar o corregir la asistencia de cualquier día de la semana pasada.</span>
+            </div>
+          </li>
+          <li class="feature-item">
+            <div class="feature-dot dot-red">⚠</div>
+            <div class="feature-text">
+              <strong>Alertas de ausencias</strong>
+              <span>Si un niño/a falta varios días seguidos aparece una alerta automática.</span>
+            </div>
+          </li>
+          <li class="feature-item">
+            <div class="feature-dot dot-green">📱</div>
+            <div class="feature-text">
+              <strong>Contacto por WhatsApp</strong>
+              <span>Con un toque abrís WhatsApp con el familiar y un mensaje pre-armado.</span>
+            </div>
+          </li>
+          <li class="feature-item">
+            <div class="feature-dot dot-violet">👤</div>
+            <div class="feature-text">
+              <strong>Ficha del niño/a</strong>
+              <span>Al tocar cualquier nombre ves datos personales, familiares y el historial de asistencia individual.</span>
+            </div>
+          </li>
+        </ul>
+
+        <div class="divider"></div>
+
+        <div style="font-size:11px; color: var(--muted); font-weight:600; margin-bottom:5px;">ESTADOS DE ASISTENCIA</div>
+        <div class="badges">
+          <span class="badge badge-green">P Presente</span>
+          <span class="badge badge-red">A Ausente</span>
+          <span class="badge badge-yellow">M Mercadería</span>
+          <span class="badge badge-gray">— Sin marcar</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- COORDINADORA -->
+    <div class="role-card">
+      <div class="role-header coordinadora">
+        <div class="role-icon">🗂️</div>
+        <div class="role-header-text">
+          <h2>Coordinadora</h2>
+          <p>Panel de administración del centro</p>
+        </div>
+      </div>
+      <div class="role-body">
+
+        <div class="access-chip">
+          🔑 &nbsp;Seleccioná tu centro → Administración
+        </div>
+
+        <ul class="feature-list">
+          <li class="feature-item">
+            <div class="feature-dot dot-violet">📊</div>
+            <div class="feature-text">
+              <strong>Tablero general</strong>
+              <span>Ves presentes, ausentes, % asistencia y alertas de todas las salas hoy, de un vistazo.</span>
+            </div>
+          </li>
+          <li class="feature-item">
+            <div class="feature-dot dot-red">⚠</div>
+            <div class="feature-text">
+              <strong>Alertas de ausencias</strong>
+              <span>Lista de niños/as con faltas repetidas + botón WhatsApp directo al familiar.</span>
+            </div>
+          </li>
+          <li class="feature-item">
+            <div class="feature-dot dot-violet">👥</div>
+            <div class="feature-text">
+              <strong>Nómina</strong>
+              <span>Alta de alumnos, importación desde Excel, exportación CSV, búsqueda y filtro por sala.</span>
+            </div>
+          </li>
+          <li class="feature-item">
+            <div class="feature-dot dot-green">✓</div>
+            <div class="feature-text">
+              <strong>Asistencia — Ver lista</strong>
+              <span>Abrís cualquier sala y ves al instante el estado de cada alumno/a hoy, sin cambiar de pantalla.</span>
+            </div>
+          </li>
+          <li class="feature-item">
+            <div class="feature-dot dot-amber">📋</div>
+            <div class="feature-text">
+              <strong>Historial</strong>
+              <span>Asistencia mensual, anual y resumen por niño/a (días P/A, % del mes) y por sala.</span>
+            </div>
+          </li>
+          <li class="feature-item">
+            <div class="feature-dot dot-violet">💺</div>
+            <div class="feature-text">
+              <strong>Vacantes</strong>
+              <span>Cuántos lugares disponibles tiene cada sala en tiempo real.</span>
+            </div>
+          </li>
+          <li class="feature-item">
+            <div class="feature-dot dot-gray" style="background:#f3f4f6; color:#6b7280;">↩</div>
+            <div class="feature-text">
+              <strong>Tomar asistencia directamente</strong>
+              <span>Puede entrar a cualquier sala como docente desde el botón "Tomar asistencia".</span>
+            </div>
+          </li>
+        </ul>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SUPER ADMIN -->
+  <div class="superadmin-strip">
+    <div class="sa-icon">🛡️</div>
+    <div>
+      <h3>Super Admin</h3>
+      <p>Acceso con código especial desde la pantalla de ingreso. Ve todos los centros, gestiona salas, capacidades y códigos de acceso por centro.</p>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <p>© 2026 Caipli Lab · Red de Centros de Primera Infancia</p>
+    <p class="url">pulsodeasistencias.vercel.app</p>
+  </div>
+
+</div>
+</body>
+</html>

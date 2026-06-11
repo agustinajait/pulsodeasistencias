@@ -115,11 +115,11 @@ export default function Login() {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
-            <BookOpen className="w-8 h-8 text-primary" />
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-primary mb-4 shadow-lg shadow-primary/30">
+            <BookOpen className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-3xl font-serif text-foreground">Sistema CPI</h1>
-          <p className="text-muted-foreground">Asistencia e Integración</p>
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">Pulso de Asistencias</h1>
+          <p className="text-sm text-muted-foreground font-medium">By <span className="text-primary font-semibold">Caipli Lab</span></p>
         </div>
 
         {step === "center" && (

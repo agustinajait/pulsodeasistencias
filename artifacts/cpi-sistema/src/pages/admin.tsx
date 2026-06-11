@@ -492,7 +492,8 @@ function NuevaAltaDialog({ onSuccess }: { onSuccess: () => void }) {
 }
 
 export default function AdminPage() {
-  const { logout, centerId: authCenterId } = useAuth();
+  const { logout, centerId: authCenterId, role } = useAuth();
+  const isSuperAdmin = role === "superadmin";
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -504,7 +505,7 @@ export default function AdminPage() {
   const [editRoomName, setEditRoomName] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
-  // Centro selector
+  // Super admin ve todos los centros; admin de centro solo ve el suyo
   const [activeCenterId, setActiveCenterId] = useState<number | null>(authCenterId);
   const [showCenterMgmt, setShowCenterMgmt] = useState(false);
   const [newCenterName, setNewCenterName] = useState("");
@@ -726,34 +727,36 @@ export default function AdminPage() {
             Salir
           </Button>
         </div>
-        {/* Centro selector bar */}
-        <div className="flex items-center gap-1.5 px-4 pb-2 overflow-x-auto">
-          <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider shrink-0 mr-1">Centro:</span>
-          <button
-            onClick={() => setActiveCenterId(null)}
-            className={`px-2.5 py-1 rounded-md text-xs font-semibold border shrink-0 transition-all ${activeCenterId === null ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-muted-foreground hover:border-primary/50"}`}
-            data-testid="btn-center-all"
-          >
-            Todos
-          </button>
-          {(centers.data ?? []).map((c: Center) => (
+        {/* Centro selector bar — solo visible para superadmin */}
+        {isSuperAdmin && (
+          <div className="flex items-center gap-1.5 px-4 pb-2 overflow-x-auto">
+            <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider shrink-0 mr-1">Centro:</span>
             <button
-              key={c.id}
-              onClick={() => setActiveCenterId(c.id)}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold border shrink-0 transition-all ${activeCenterId === c.id ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-muted-foreground hover:border-primary/50"}`}
-              data-testid={`btn-center-filter-${c.id}`}
+              onClick={() => setActiveCenterId(null)}
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold border shrink-0 transition-all ${activeCenterId === null ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-muted-foreground hover:border-primary/50"}`}
+              data-testid="btn-center-all"
             >
-              {c.name}
+              Todos
             </button>
-          ))}
-          <button
-            onClick={() => setShowCenterMgmt(!showCenterMgmt)}
-            className={`ml-1 px-2.5 py-1 rounded-md text-xs font-semibold border shrink-0 transition-all ${showCenterMgmt ? "bg-primary/10 border-primary/30 text-primary" : "border-dashed border-border text-muted-foreground hover:border-primary/50"}`}
-            data-testid="btn-toggle-center-mgmt"
-          >
-            Gestionar
-          </button>
-        </div>
+            {(centers.data ?? []).map((c: Center) => (
+              <button
+                key={c.id}
+                onClick={() => setActiveCenterId(c.id)}
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold border shrink-0 transition-all ${activeCenterId === c.id ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-muted-foreground hover:border-primary/50"}`}
+                data-testid={`btn-center-filter-${c.id}`}
+              >
+                {c.name}
+              </button>
+            ))}
+            <button
+              onClick={() => setShowCenterMgmt(!showCenterMgmt)}
+              className={`ml-1 px-2.5 py-1 rounded-md text-xs font-semibold border shrink-0 transition-all ${showCenterMgmt ? "bg-primary/10 border-primary/30 text-primary" : "border-dashed border-border text-muted-foreground hover:border-primary/50"}`}
+              data-testid="btn-toggle-center-mgmt"
+            >
+              Gestionar
+            </button>
+          </div>
+        )}
       </header>
 
       {/* Panel gestión centros/salas */}

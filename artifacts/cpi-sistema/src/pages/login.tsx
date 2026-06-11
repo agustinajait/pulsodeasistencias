@@ -6,18 +6,21 @@ import type { Center, Room } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { BookOpen, Users, ChevronLeft, Plus, Lock } from "lucide-react";
+import { BookOpen, Users, ChevronLeft, Plus, Lock, ShieldCheck } from "lucide-react";
 
 export default function Login() {
   const { login } = useAuth();
   const [, setLocation] = useLocation();
-  const [step, setStep] = useState<"center" | "passcode" | "role">("center");
+  const [step, setStep] = useState<"center" | "passcode" | "role" | "superadmin">("center");
   const [selectedCenter, setSelectedCenter] = useState<Center | null>(null);
   const [newCenterName, setNewCenterName] = useState("");
   const [creatingCenter, setCreatingCenter] = useState(false);
   const [passcode, setPasscode] = useState("");
   const [passcodeError, setPasscodeError] = useState("");
   const [verifyingPasscode, setVerifyingPasscode] = useState(false);
+  const [superPasscode, setSuperPasscode] = useState("");
+  const [superPasscodeError, setSuperPasscodeError] = useState("");
+  const [verifyingSuper, setVerifyingSuper] = useState(false);
 
   const centers = useListCenters();
   const roomsParams = selectedCenter ? { centerId: selectedCenter.id } : {};
@@ -48,6 +51,27 @@ export default function Login() {
       setPasscodeError("Codigo incorrecto. Intenta de nuevo.");
     } finally {
       setVerifyingPasscode(false);
+    }
+  };
+
+  const handleVerifySuperAdmin = async () => {
+    if (!superPasscode.trim()) return;
+    setVerifyingSuper(true);
+    setSuperPasscodeError("");
+    try {
+      const res = await fetch("/api/auth/super-admin/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ passcode: superPasscode.trim() }),
+      });
+      if (res.ok) {
+        login(0, "superadmin" as Role);
+        setLocation("/admin");
+      } else {
+        setSuperPasscodeError("Codigo incorrecto. Intenta de nuevo.");
+      }
+    } finally {
+      setVerifyingSuper(false);
     }
   };
 
@@ -151,6 +175,63 @@ export default function Login() {
                   </Button>
                 </div>
               </div>
+
+              <div className="border-t border-border pt-4">
+                <Button
+                  variant="ghost"
+                  className="w-full text-muted-foreground text-sm"
+                  onClick={() => { setSuperPasscode(""); setSuperPasscodeError(""); setStep("superadmin"); }}
+                  data-testid="btn-superadmin"
+                >
+                  <ShieldCheck className="w-4 h-4 mr-2" />
+                  Super Admin
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {step === "superadmin" && (
+          <Card className="border-none shadow-lg">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-8 h-8 -ml-1"
+                  onClick={() => setStep("center")}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <div>
+                  <CardTitle>Super Admin</CardTitle>
+                  <CardDescription>Ingresá el código de acceso</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Input
+                  type="password"
+                  placeholder="Codigo de acceso"
+                  value={superPasscode}
+                  onChange={(e) => { setSuperPasscode(e.target.value); setSuperPasscodeError(""); }}
+                  onKeyDown={(e) => e.key === "Enter" && handleVerifySuperAdmin()}
+                  autoFocus
+                  data-testid="input-superadmin-passcode"
+                />
+                {superPasscodeError && (
+                  <p className="text-sm text-destructive">{superPasscodeError}</p>
+                )}
+              </div>
+              <Button
+                className="w-full"
+                onClick={handleVerifySuperAdmin}
+                disabled={!superPasscode.trim() || verifyingSuper}
+                data-testid="btn-verify-superadmin"
+              >
+                {verifyingSuper ? "Verificando..." : "Ingresar"}
+              </Button>
             </CardContent>
           </Card>
         )}

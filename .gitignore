@@ -8,4 +8,4 @@ build
 .local
 .agents
 *.tar.gz
-*.zip
+*.zip.claude/worktrees/

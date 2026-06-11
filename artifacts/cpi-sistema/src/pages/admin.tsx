@@ -611,6 +611,10 @@ export default function AdminPage() {
   const [editingRoomId, setEditingRoomId] = useState<number | null>(null);
   const [editRoomName, setEditRoomName] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   // Super admin ve todos los centros; admin de centro solo ve el suyo
   const [activeCenterId, setActiveCenterId] = useState<number | null>(authCenterId);
@@ -753,6 +757,22 @@ export default function AdminPage() {
         invalidateAll();
       },
     });
+  }
+
+  async function handleBulkDelete() {
+    setBulkDeleting(true);
+    const ids = Array.from(selectedIds);
+    for (const id of ids) {
+      await new Promise<void>((resolve) => {
+        deleteChild.mutate({ id }, { onSuccess: () => resolve(), onError: () => resolve() });
+      });
+    }
+    setBulkDeleting(false);
+    setSelectedIds(new Set());
+    setBulkDeleteMode(false);
+    setConfirmBulkDelete(false);
+    invalidateAll();
+    toast({ title: `${ids.length} alumno${ids.length !== 1 ? "s" : ""} eliminado${ids.length !== 1 ? "s" : ""}` });
   }
 
   const absentsByRoom = useMemo(() => {
@@ -1130,32 +1150,86 @@ export default function AdminPage() {
             <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
               <div className="flex gap-1.5">
                 <button
-                  onClick={() => setNominaTab("activos")}
+                  onClick={() => { setNominaTab("activos"); setBulkDeleteMode(false); setSelectedIds(new Set()); }}
                   className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${nominaTab === "activos" ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}
                   data-testid="btn-nomina-activos"
                 >
                   Activos ({allChildren.data?.length ?? 0})
                 </button>
                 <button
-                  onClick={() => setNominaTab("bajas")}
+                  onClick={() => { setNominaTab("bajas"); setBulkDeleteMode(false); setSelectedIds(new Set()); }}
                   className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${nominaTab === "bajas" ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}
                   data-testid="btn-nomina-bajas"
                 >
                   Egresos ({dischargedChildren.data?.length ?? 0})
                 </button>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => exportCSV(allChildren.data ?? [], `nomina-activos-${TODAY}.csv`)}
-                  disabled={!allChildren.data?.length}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors disabled:opacity-40"
-                  data-testid="btn-export-csv"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  Exportar CSV
-                </button>
-                <ImportarCSVDialog rooms={roomSummary.data ?? []} onSuccess={invalidateAll} />
-                <NuevaAltaDialog onSuccess={invalidateAll} />
+              <div className="flex gap-2 flex-wrap">
+                {!bulkDeleteMode ? (
+                  <>
+                    <button
+                      onClick={() => exportCSV(allChildren.data ?? [], `nomina-activos-${TODAY}.csv`)}
+                      disabled={!allChildren.data?.length}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors disabled:opacity-40"
+                      data-testid="btn-export-csv"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Exportar CSV
+                    </button>
+                    <ImportarCSVDialog rooms={roomSummary.data ?? []} onSuccess={invalidateAll} />
+                    <NuevaAltaDialog onSuccess={invalidateAll} />
+                    <button
+                      onClick={() => { setBulkDeleteMode(true); setSelectedIds(new Set()); setConfirmBulkDelete(false); }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-xs font-semibold text-red-600 hover:bg-red-100 transition-colors"
+                      data-testid="btn-bulk-delete-mode"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Eliminar varios
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-muted-foreground font-medium">{selectedIds.size} seleccionado{selectedIds.size !== 1 ? "s" : ""}</span>
+                    <button
+                      onClick={() => {
+                        const allIds = new Set((nominaTab === "activos" ? filteredActive : filteredBajas).map((c: Child) => c.id));
+                        setSelectedIds(selectedIds.size === allIds.size ? new Set() : allIds);
+                      }}
+                      className="px-2.5 py-1.5 rounded-lg border border-border bg-background text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors"
+                    >
+                      {selectedIds.size === (nominaTab === "activos" ? filteredActive : filteredBajas).length ? "Deseleccionar todo" : "Seleccionar todo"}
+                    </button>
+                    {selectedIds.size > 0 && !confirmBulkDelete && (
+                      <button
+                        onClick={() => setConfirmBulkDelete(true)}
+                        className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 transition-colors"
+                        data-testid="btn-bulk-delete-confirm"
+                      >
+                        Eliminar {selectedIds.size}
+                      </button>
+                    )}
+                    {confirmBulkDelete && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-red-600 font-semibold">¿Confirmar eliminación de {selectedIds.size}?</span>
+                        <button
+                          onClick={handleBulkDelete}
+                          disabled={bulkDeleting}
+                          className="px-2.5 py-1.5 rounded-lg bg-red-600 text-white text-xs font-bold hover:bg-red-700 disabled:opacity-50"
+                        >{bulkDeleting ? "Eliminando..." : "Sí, eliminar"}</button>
+                        <button
+                          onClick={() => setConfirmBulkDelete(false)}
+                          className="px-2.5 py-1.5 rounded-lg bg-muted text-muted-foreground text-xs font-semibold hover:bg-muted/80"
+                        >Cancelar</button>
+                      </div>
+                    )}
+                    <button
+                      onClick={() => { setBulkDeleteMode(false); setSelectedIds(new Set()); setConfirmBulkDelete(false); }}
+                      className="px-2.5 py-1.5 rounded-lg border border-border text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
             <div className="relative mb-3">
@@ -1166,42 +1240,46 @@ export default function AdminPage() {
               {(nominaTab === "activos" ? filteredActive : filteredBajas).map((child: Child) => (
                 <div
                   key={child.id}
-                  className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-0 hover:bg-muted/50 transition-colors"
+                  className={`flex items-center gap-3 px-4 py-3 border-b border-border last:border-0 hover:bg-muted/50 transition-colors ${bulkDeleteMode && selectedIds.has(child.id) ? "bg-red-50" : ""}`}
                   data-testid={`row-nomina-${child.id}`}
+                  onClick={bulkDeleteMode ? () => setSelectedIds(prev => { const n = new Set(prev); n.has(child.id) ? n.delete(child.id) : n.add(child.id); return n; }) : undefined}
                 >
-                  <div
-                    className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground shrink-0 cursor-pointer"
-                    onClick={() => setSelectedChild(child.id)}
-                  >
-                    {child.apellido.slice(0, 1)}{child.nombre.slice(0, 1)}
-                  </div>
-                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setSelectedChild(child.id)}>
+                  {bulkDeleteMode ? (
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${selectedIds.has(child.id) ? "bg-red-600 border-red-600" : "border-border bg-background"}`}>
+                      {selectedIds.has(child.id) && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                  ) : (
+                    <div
+                      className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground shrink-0 cursor-pointer"
+                      onClick={() => setSelectedChild(child.id)}
+                    >
+                      {child.apellido.slice(0, 1)}{child.nombre.slice(0, 1)}
+                    </div>
+                  )}
+                  <div className={`flex-1 min-w-0 ${!bulkDeleteMode ? "cursor-pointer" : ""}`} onClick={!bulkDeleteMode ? () => setSelectedChild(child.id) : undefined}>
                     <div className="text-sm font-semibold truncate">{child.apellido} {child.nombre}</div>
                     <div className="text-xs text-muted-foreground">ECO {child.ecoNumber} · {child.famNombre} · {child.celular ?? "sin tel."}</div>
                   </div>
-                  <Badge variant={child.estAsist === "Regular" ? "secondary" : "outline"} className="text-[11px] shrink-0">{child.estAsist}</Badge>
-                  {confirmDeleteId === child.id ? (
-                    <div className="flex items-center gap-1 shrink-0">
-                      <span className="text-xs text-red-600 font-medium">Eliminar?</span>
-                      <button
-                        onClick={() => handleDeleteChild(child.id)}
-                        disabled={deleteChild.isPending}
-                        className="px-2 py-0.5 rounded bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-50"
-                      >Si</button>
-                      <button
-                        onClick={() => setConfirmDeleteId(null)}
-                        className="px-2 py-0.5 rounded bg-muted text-muted-foreground text-xs font-semibold hover:bg-muted/80"
-                      >No</button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(child.id); }}
-                      className="shrink-0 text-muted-foreground hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity p-1"
-                      title="Eliminar alumno"
-                      data-testid={`btn-delete-${child.id}`}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                  {!bulkDeleteMode && (
+                    <>
+                      <Badge variant={child.estAsist === "Regular" ? "secondary" : "outline"} className="text-[11px] shrink-0">{child.estAsist}</Badge>
+                      {confirmDeleteId === child.id ? (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className="text-xs text-red-600 font-medium">Eliminar?</span>
+                          <button onClick={() => handleDeleteChild(child.id)} disabled={deleteChild.isPending} className="px-2 py-0.5 rounded bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-50">Si</button>
+                          <button onClick={() => setConfirmDeleteId(null)} className="px-2 py-0.5 rounded bg-muted text-muted-foreground text-xs font-semibold hover:bg-muted/80">No</button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(child.id); }}
+                          className="shrink-0 text-muted-foreground hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                          title="Eliminar alumno"
+                          data-testid={`btn-delete-${child.id}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               ))}

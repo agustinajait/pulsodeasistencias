@@ -23,7 +23,7 @@ function ProtectedRoute({
   allowedRoles,
 }: {
   component: () => React.ReactElement;
-  allowedRoles: ("admin" | "sala")[];
+  allowedRoles: ("admin" | "sala" | "superadmin")[];
 }) {
   const { role } = useAuth();
 
@@ -31,10 +31,10 @@ function ProtectedRoute({
     return <Redirect to="/login" />;
   }
 
-  const roleType = role === "admin" ? "admin" : "sala";
+  const roleType = role === "superadmin" ? "superadmin" : role === "admin" ? "admin" : "sala";
 
   if (!allowedRoles.includes(roleType)) {
-    return <Redirect to={role === "admin" ? "/admin" : "/sala"} />;
+    return <Redirect to={role === "admin" || role === "superadmin" ? "/admin" : "/sala"} />;
   }
 
   return <Component />;
@@ -48,13 +48,13 @@ function Router() {
         {() => <ProtectedRoute component={Sala} allowedRoles={["sala"]} />}
       </Route>
       <Route path="/admin">
-        {() => <ProtectedRoute component={Admin} allowedRoles={["admin"]} />}
+        {() => <ProtectedRoute component={Admin} allowedRoles={["admin", "superadmin"]} />}
       </Route>
       <Route path="/">
         {() => {
           const { role } = useAuth();
           if (!role) return <Redirect to="/login" />;
-          return <Redirect to={role === "admin" ? "/admin" : "/sala"} />;
+          return <Redirect to={role === "admin" || role === "superadmin" ? "/admin" : "/sala"} />;
         }}
       </Route>
       <Route component={NotFound} />

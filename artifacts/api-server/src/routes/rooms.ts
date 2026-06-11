@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db, roomsTable, childrenTable, attendanceTable, centersTable } from "@workspace/db";
-import { eq, and, gte, inArray, count } from "drizzle-orm";
+import { eq, and, gte, inArray, count, isNull } from "drizzle-orm";
+import { randomBytes } from "crypto";
 
 const router = Router();
 
@@ -30,6 +31,21 @@ router.get("/rooms", async (req, res) => {
     } else {
       rooms = await db.select().from(roomsTable).orderBy(roomsTable.ecoNumber);
     }
+    // Auto-generate checkInToken for rooms that don't have one
+    const roomsWithoutToken = rooms.filter((r) => !r.checkInToken);
+    if (roomsWithoutToken.length > 0) {
+      await Promise.all(
+        roomsWithoutToken.map((r) =>
+          db.update(roomsTable).set({ checkInToken: randomBytes(24).toString("hex") }).where(eq(roomsTable.id, r.id))
+        )
+      );
+      // Re-fetch to return updated tokens
+      if (centerId) {
+        rooms = await db.select().from(roomsTable).where(eq(roomsTable.centerId, parseInt(centerId))).orderBy(roomsTable.ecoNumber);
+      } else {
+        rooms = await db.select().from(roomsTable).orderBy(roomsTable.ecoNumber);
+      }
+    }
     res.json(rooms);
   } catch (err) {
     req.log.error(err, "Error listing rooms");
@@ -49,7 +65,7 @@ router.post("/rooms", async (req, res) => {
     }
     const center = await db.select().from(centersTable).where(eq(centersTable.id, centerId));
     if (!center.length) { res.status(404).json({ error: "Center not found" }); return; }
-    const [created] = await db.insert(roomsTable).values({ centerId, ecoNumber, name: name.trim(), capacity }).returning();
+    const [created] = await db.insert(roomsTable).values({ centerId, ecoNumber, name: name.trim(), capacity, checkInToken: randomBytes(24).toString("hex") }).returning();
     res.status(201).json(created);
   } catch (err) {
     req.log.error(err, "Error creating room");

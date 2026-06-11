@@ -7,6 +7,7 @@ import childrenRouter from "./children";
 import attendanceRouter from "./attendance";
 import contactsRouter from "./contacts";
 import dashboardRouter from "./dashboard";
+import { checkInRouter } from "./check-in";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(childrenRouter);
 router.use(attendanceRouter);
 router.use(contactsRouter);
 router.use(dashboardRouter);
+router.use("/check-in", checkInRouter);
 
 export default router;

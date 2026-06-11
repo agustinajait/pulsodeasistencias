@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, varchar } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, varchar, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { centersTable } from "./centers";
@@ -9,6 +9,7 @@ export const roomsTable = pgTable("rooms", {
   ecoNumber: integer("eco_number").notNull(),
   name: varchar("name", { length: 100 }).notNull(),
   capacity: integer("capacity").notNull(),
+  checkInToken: varchar("check_in_token", { length: 64 }).unique(),
 });
 
 export const insertRoomSchema = createInsertSchema(roomsTable).omit({ id: true });

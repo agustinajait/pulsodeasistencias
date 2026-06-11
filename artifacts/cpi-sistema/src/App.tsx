@@ -8,6 +8,7 @@ import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
 import Sala from "@/pages/sala";
 import Admin from "@/pages/admin";
+import CheckIn from "@/pages/check-in";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,6 +44,7 @@ function ProtectedRoute({
 function Router() {
   return (
     <Switch>
+      <Route path="/check-in/:token" component={CheckIn} />
       <Route path="/login" component={Login} />
       <Route path="/sala">
         {() => <ProtectedRoute component={Sala} allowedRoles={["sala", "admin", "superadmin"]} />}

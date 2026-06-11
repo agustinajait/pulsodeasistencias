@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Search, LogOut, Phone, ExternalLink, AlertTriangle, Plus, Copy, Download, Pencil, Check, X, Upload, Trash2, ChevronLeft, ChevronRight, FileText, Lock, LockOpen, Users } from "lucide-react";
+import { Search, LogOut, Phone, ExternalLink, AlertTriangle, Plus, Copy, Download, Pencil, Check, X, Upload, Trash2, ChevronLeft, ChevronRight, FileText, Lock, LockOpen, Users, QrCode } from "lucide-react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import type { Child, Alert, RoomSummary, Contact, AttendanceRecord, Center, Room } from "@workspace/api-client-react";
@@ -592,6 +592,60 @@ function RoomAttendanceDialog({ room, onOpenChild }: { room: RoomSummary; onOpen
               </div>
             );
           })}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const QR_BASE = "https://pulsodeasistencias.vercel.app";
+
+function QrDialogButton({ room, allRooms }: { room: RoomSummary; allRooms: Room[] }) {
+  const [open, setOpen] = useState(false);
+  const { toast } = useToast();
+  const roomData = allRooms.find((r) => r.id === room.id) as (Room & { checkInToken?: string }) | undefined;
+  const token = roomData?.checkInToken;
+  const checkInUrl = token ? `${QR_BASE}/check-in/${token}` : null;
+  const qrSrc = checkInUrl
+    ? `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(checkInUrl)}&size=220x220&format=png`
+    : null;
+
+  function copyLink() {
+    if (!checkInUrl) return;
+    navigator.clipboard.writeText(checkInUrl);
+    toast({ title: "Enlace copiado", description: "El enlace de check-in fue copiado al portapapeles." });
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <button
+          className="text-violet-600 hover:text-violet-800 p-0.5 opacity-60 hover:opacity-100 transition-opacity"
+          title="Ver QR de check-in"
+        >
+          <QrCode className="w-4 h-4" />
+        </button>
+      </DialogTrigger>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>QR de check-in — {room.name}</DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col items-center gap-4 py-4">
+          {qrSrc ? (
+            <>
+              <img src={qrSrc} alt="QR code" className="rounded-xl border border-border shadow-sm" width={220} height={220} />
+              <p className="text-xs text-muted-foreground text-center break-all px-2">{checkInUrl}</p>
+              <Button size="sm" variant="outline" onClick={copyLink} className="w-full">
+                <Copy className="w-3.5 h-3.5 mr-1.5" />
+                Copiar enlace
+              </Button>
+              <p className="text-xs text-muted-foreground text-center px-2 leading-relaxed">
+                Imprimí este QR y pegalo en la entrada. Los padres lo escanean para marcar la llegada de sus hijos.
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">Esta sala aún no tiene token. Recargá la página para generarlo automáticamente.</p>
+          )}
         </div>
       </DialogContent>
     </Dialog>
@@ -1328,6 +1382,7 @@ export default function AdminPage() {
                             {r.name}
                           </button>
                           <RoomAttendanceDialog room={r} onOpenChild={(id) => setSelectedChild(id)} />
+                          <QrDialogButton room={r} allRooms={allRooms.data ?? []} />
                           <button
                             onClick={() => { setEditingRoomId(r.id); setEditRoomName(r.name); }}
                             className="text-muted-foreground hover:text-foreground p-0.5 opacity-50 hover:opacity-100 transition-opacity"

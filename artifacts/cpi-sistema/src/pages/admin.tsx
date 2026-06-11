@@ -520,7 +520,7 @@ export default function AdminPage() {
   const MES_HIST_INIT = TODAY.slice(0, 7);
   const ANO_HIST_INIT = TODAY.slice(0, 4);
 
-  const [histSubview, setHistSubview] = useState<"mensual" | "anual">("mensual");
+  const [histSubview, setHistSubview] = useState<"mensual" | "anual" | "ninos">("mensual");
   const [histRoomId, setHistRoomId] = useState<number | null>(null);
   const [histMonth, setHistMonth] = useState(MES_HIST_INIT);
   const [histYear, setHistYear] = useState(ANO_HIST_INIT);
@@ -551,7 +551,7 @@ export default function AdminPage() {
 
   const histMonthAtt = useListAttendance(
     histMonthParams,
-    { query: { queryKey: getListAttendanceQueryKey(histMonthParams), enabled: histSubview === "mensual" } }
+    { query: { queryKey: getListAttendanceQueryKey(histMonthParams), enabled: histSubview === "mensual" || histSubview === "ninos" } }
   );
 
   const histYearAtt = useListAttendance(
@@ -709,6 +709,35 @@ export default function AdminPage() {
     const vals = Object.values(histYearMonthlyStats).map((s) => s.p + s.a);
     return vals.length > 0 ? Math.max(...vals) : 1;
   }, [histYearMonthlyStats]);
+
+  const childMonthlyStats = useMemo(() => {
+    const byChild: Record<number, { p: number; a: number }> = {};
+    (histMonthAtt.data ?? []).forEach((r: AttendanceRecord) => {
+      if (!byChild[r.childId]) byChild[r.childId] = { p: 0, a: 0 };
+      if (r.estado === "P") byChild[r.childId].p++;
+      else if (r.estado === "A") byChild[r.childId].a++;
+    });
+    return byChild;
+  }, [histMonthAtt.data]);
+
+  const roomMonthlyStats = useMemo(() => {
+    const childRoomMap: Record<number, { roomId: number; ecoNumber: number; roomName: string }> = {};
+    (allChildren.data ?? []).forEach((c: Child) => {
+      if (c.roomId) childRoomMap[c.id] = { roomId: c.roomId, ecoNumber: c.ecoNumber ?? 0, roomName: "" };
+    });
+    (roomSummary.data ?? []).forEach((r: RoomSummary) => {
+      Object.values(childRoomMap).forEach((entry) => { if (entry.ecoNumber === r.ecoNumber) entry.roomName = r.name; });
+    });
+    const byRoom: Record<number, { name: string; ecoNumber: number; p: number; a: number }> = {};
+    Object.entries(childMonthlyStats).forEach(([cid, stats]) => {
+      const info = childRoomMap[Number(cid)];
+      if (!info) return;
+      if (!byRoom[info.roomId]) byRoom[info.roomId] = { name: info.roomName, ecoNumber: info.ecoNumber, p: 0, a: 0 };
+      byRoom[info.roomId].p += stats.p;
+      byRoom[info.roomId].a += stats.a;
+    });
+    return byRoom;
+  }, [childMonthlyStats, allChildren.data, roomSummary.data]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -1116,7 +1145,10 @@ export default function AdminPage() {
                           >
                             {r.name}
                           </button>
-                          <button
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="h-7 px-3 text-xs font-semibold"
                             onClick={() => {
                               if (isSuperAdmin) {
                                 localStorage.setItem("superadmin_sala_centerId", String(r.centerId ?? activeCenterId ?? ""));
@@ -1124,11 +1156,10 @@ export default function AdminPage() {
                               }
                               setLocation("/sala");
                             }}
-                            className="text-primary hover:text-primary/80 p-0.5 opacity-60 hover:opacity-100 transition-opacity text-xs font-medium"
-                            title="Ver lista"
+                            data-testid={`btn-ver-lista-${r.id}`}
                           >
                             Ver lista
-                          </button>
+                          </Button>
                           <button
                             onClick={() => { setEditingRoomId(r.id); setEditRoomName(r.name); }}
                             className="text-muted-foreground hover:text-foreground p-0.5 opacity-50 hover:opacity-100 transition-opacity"
@@ -1271,6 +1302,13 @@ export default function AdminPage() {
                 data-testid="btn-hist-subview-anual"
               >
                 Anual
+              </button>
+              <button
+                onClick={() => setHistSubview("ninos")}
+                className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-all ${histSubview === "ninos" ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-muted-foreground hover:border-primary/50"}`}
+                data-testid="btn-hist-subview-ninos"
+              >
+                Por niño/a
               </button>
             </div>
 
@@ -1445,6 +1483,103 @@ export default function AdminPage() {
                   </div>
                   </div>
                 )}
+              </div>
+            )}
+            {/* POR NIÑO/A VIEW */}
+            {histSubview === "ninos" && (
+              <div className="space-y-4">
+                {/* Month nav */}
+                <div className="flex items-center justify-between bg-card rounded-xl border border-border p-3">
+                  <Button variant="outline" size="icon" className="w-8 h-8" onClick={() => setHistMonth(prevMonthAdmin(histMonth))} data-testid="btn-ninos-prev-month">
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <span className="text-sm font-semibold capitalize">
+                    {new Date(histMonth + "-15").toLocaleDateString("es-AR", { month: "long", year: "numeric" })}
+                  </span>
+                  <Button variant="outline" size="icon" className="w-8 h-8" onClick={() => setHistMonth(nextMonthAdmin(histMonth))} disabled={histMonth >= TODAY.slice(0, 7)} data-testid="btn-ninos-next-month">
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                {/* Per-room summary */}
+                {Object.keys(roomMonthlyStats).length > 0 && (
+                  <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
+                    <div className="px-3 py-2 border-b border-border bg-muted/40 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Resumen por sala</div>
+                    <div className="divide-y divide-border">
+                      {Object.values(roomMonthlyStats)
+                        .sort((a, b) => a.ecoNumber - b.ecoNumber)
+                        .map((r) => {
+                          const total = r.p + r.a;
+                          const pct = total > 0 ? Math.round((r.p / total) * 100) : 0;
+                          const c = ECO_COLORS[r.ecoNumber] ?? ECO_COLORS[0];
+                          return (
+                            <div key={r.ecoNumber} className="grid grid-cols-[1fr_auto_auto_auto] items-center px-3 py-2 gap-2">
+                              <div className={`text-sm font-semibold ${c.text}`}>{r.name}</div>
+                              <div className="text-xs font-semibold text-green-700">{r.p} P</div>
+                              <div className="text-xs font-semibold text-red-700">{r.a} A</div>
+                              <div className="text-xs font-bold text-primary w-10 text-right">{pct}%</div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                    {(() => {
+                      const totP = Object.values(roomMonthlyStats).reduce((acc, r) => acc + r.p, 0);
+                      const totA = Object.values(roomMonthlyStats).reduce((acc, r) => acc + r.a, 0);
+                      const totT = totP + totA;
+                      const pct = totT > 0 ? Math.round((totP / totT) * 100) : 0;
+                      return (
+                        <div className="grid grid-cols-[1fr_auto_auto_auto] items-center px-3 py-2 bg-muted/60 border-t-2 border-border gap-2">
+                          <div className="text-[11px] font-bold text-muted-foreground uppercase">Total centro</div>
+                          <div className="text-sm font-bold text-green-700">{totP}</div>
+                          <div className="text-sm font-bold text-red-700">{totA}</div>
+                          <div className="text-sm font-bold text-primary w-10 text-right">{pct}%</div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {/* Per-child table */}
+                {histMonthAtt.isPending && <div className="text-center py-8 text-muted-foreground text-sm">Cargando...</div>}
+                {!histMonthAtt.isPending && (() => {
+                  const childMap: Record<number, Child> = {};
+                  (allChildren.data ?? []).forEach((c: Child) => { childMap[c.id] = c; });
+                  const rows = Object.entries(childMonthlyStats)
+                    .map(([cid, stats]) => ({ child: childMap[Number(cid)], ...stats }))
+                    .filter((r) => r.child)
+                    .sort((a, b) => a.child.apellido.localeCompare(b.child.apellido));
+                  if (!rows.length) return <div className="text-center py-8 text-muted-foreground text-sm">Sin datos para este mes</div>;
+                  return (
+                    <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
+                      <div className="grid grid-cols-[1fr_auto_auto_auto_auto] text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-3 py-2 border-b border-border bg-muted/40">
+                        <div>Niño/a</div>
+                        <div className="w-8 text-center">ECO</div>
+                        <div className="w-8 text-right text-green-700">P</div>
+                        <div className="w-8 text-right text-red-700">A</div>
+                        <div className="w-10 text-right">%</div>
+                      </div>
+                      <div className="divide-y divide-border max-h-[60vh] overflow-y-auto">
+                        {rows.map(({ child, p, a }) => {
+                          const total = p + a;
+                          const pct = total > 0 ? Math.round((p / total) * 100) : 0;
+                          return (
+                            <div
+                              key={child.id}
+                              className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center px-3 py-2 hover:bg-muted/30 transition-colors cursor-pointer"
+                              onClick={() => setSelectedChild(child.id)}
+                            >
+                              <div className="text-sm font-medium truncate">{child.apellido} {child.nombre}</div>
+                              <div className="w-8 text-center text-xs text-muted-foreground">{child.ecoNumber}</div>
+                              <div className="w-8 text-right text-xs font-semibold text-green-700">{p}</div>
+                              <div className="w-8 text-right text-xs font-semibold text-red-700">{a}</div>
+                              <div className={`w-10 text-right text-xs font-bold ${pct >= 80 ? "text-green-600" : pct >= 60 ? "text-amber-600" : "text-red-600"}`}>{pct}%</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </TabsContent>

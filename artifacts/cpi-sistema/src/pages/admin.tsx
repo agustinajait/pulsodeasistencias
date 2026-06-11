@@ -717,15 +717,27 @@ export default function AdminPage() {
             <span className="font-bold text-sm">Sistema CPI</span>
             <Badge variant="secondary" className="text-xs font-semibold">Coordinación</Badge>
           </div>
-          <Button
-            variant="ghost" size="sm"
-            className="text-xs text-muted-foreground"
-            onClick={() => { logout(); setLocation("/login"); }}
-            data-testid="button-logout-admin"
-          >
-            <LogOut className="w-3.5 h-3.5 mr-1" />
-            Salir
-          </Button>
+          <div className="flex items-center gap-1">
+            {isSuperAdmin && (
+              <Button
+                variant="ghost" size="sm"
+                className="text-xs text-muted-foreground"
+                onClick={() => setLocation("/sala")}
+                data-testid="button-go-sala"
+              >
+                Tomar asistencia
+              </Button>
+            )}
+            <Button
+              variant="ghost" size="sm"
+              className="text-xs text-muted-foreground"
+              onClick={() => { logout(); setLocation("/login"); }}
+              data-testid="button-logout-admin"
+            >
+              <LogOut className="w-3.5 h-3.5 mr-1" />
+              Salir
+            </Button>
+          </div>
         </div>
         {/* Centro selector bar — solo visible para superadmin */}
         {isSuperAdmin && (

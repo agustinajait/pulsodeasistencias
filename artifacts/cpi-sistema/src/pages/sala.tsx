@@ -1,9 +1,10 @@
 import { useState, useMemo } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { useListChildren, useListAttendance, useMarkAttendance, getListChildrenQueryKey, getListAttendanceQueryKey, useGetRoomsSummary, getGetRoomsSummaryQueryKey, useListRooms, useGetAlerts } from "@workspace/api-client-react";
+import { useListChildren, useListAttendance, useMarkAttendance, getListChildrenQueryKey, getListAttendanceQueryKey, useGetRoomsSummary, getGetRoomsSummaryQueryKey, useListRooms, useGetAlerts, useListCenters } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, ChevronLeft, ChevronRight, LogOut, AlertTriangle, MessageCircle, X } from "lucide-react";
@@ -61,10 +62,19 @@ export default function SalaPage() {
   const [closingDay, setClosingDay] = useState(false);
   const [notasDraft, setNotasDraft] = useState<Record<number, string>>({});
 
+  // Superadmin: selector de centro y sala
+  const [superCenterId, setSuperCenterId] = useState<number | null>(null);
+  const [superRoomId, setSuperRoomId] = useState<number | null>(null);
+  const centers = useListCenters({ query: { enabled: role === "superadmin" } });
+
   const rooms = useListRooms();
   // Resolve actual DB roomId by matching ecoNumber — robust against re-seeds
-  const roomInfo = rooms.data?.find((r: Room) => r.ecoNumber === ecoNumber);
-  const roomId = roomInfo?.id ?? null;
+  const roomInfo = role === "superadmin"
+    ? rooms.data?.find((r: Room) => r.id === superRoomId) ?? null
+    : rooms.data?.find((r: Room) => r.ecoNumber === ecoNumber);
+  const roomId = role === "superadmin" ? superRoomId : (roomInfo?.id ?? null);
+
+  const centerRoomsForSuper = (rooms.data ?? []).filter((r: Room) => r.centerId === superCenterId);
 
   const summary = useGetRoomsSummary();
   const roomSummary: RoomSummary | undefined = summary.data?.find((s: RoomSummary) => s.id === roomId);
@@ -208,25 +218,62 @@ export default function SalaPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Topbar */}
-      <header className="bg-card border-b border-border sticky top-0 z-50 h-14 flex items-center justify-between px-4">
-        <div className="flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_0_3px_rgba(28,110,68,0.2)]" />
-          <span className="font-bold text-sm">CPI Norte</span>
-          <Badge variant="secondary" className="text-xs font-semibold">{roomLabel}</Badge>
+      <header className="bg-card border-b border-border sticky top-0 z-50">
+        <div className="h-14 flex items-center justify-between px-4">
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_0_3px_rgba(28,110,68,0.2)]" />
+            <span className="font-bold text-sm">{role === "superadmin" ? "Super Admin" : "CPI Norte"}</span>
+            {role !== "superadmin" && <Badge variant="secondary" className="text-xs font-semibold">{roomLabel}</Badge>}
+            {role === "superadmin" && roomId && <Badge variant="secondary" className="text-xs font-semibold">{roomInfo?.name ?? ""}</Badge>}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground capitalize hidden sm:inline">{formatDateLabel(TODAY)}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs text-muted-foreground"
+              onClick={() => { setLocation("/admin"); }}
+              data-testid="button-back-admin"
+            >
+              <ChevronLeft className="w-3.5 h-3.5 mr-1" />
+              Admin
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs text-muted-foreground"
+              onClick={() => { logout(); setLocation("/login"); }}
+              data-testid="button-logout"
+            >
+              <LogOut className="w-3.5 h-3.5 mr-1" />
+              Salir
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground capitalize">{formatDateLabel(TODAY)}</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-xs text-muted-foreground"
-            onClick={() => { logout(); setLocation("/login"); }}
-            data-testid="button-logout"
-          >
-            <LogOut className="w-3.5 h-3.5 mr-1" />
-            Salir
-          </Button>
-        </div>
+        {role === "superadmin" && (
+          <div className="flex items-center gap-2 px-4 pb-3">
+            <Select value={superCenterId ? String(superCenterId) : ""} onValueChange={(v) => { setSuperCenterId(Number(v)); setSuperRoomId(null); }}>
+              <SelectTrigger className="h-8 text-sm w-40">
+                <SelectValue placeholder="Centro" />
+              </SelectTrigger>
+              <SelectContent>
+                {(centers.data ?? []).map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={superRoomId ? String(superRoomId) : ""} onValueChange={(v) => setSuperRoomId(Number(v))} disabled={!superCenterId}>
+              <SelectTrigger className="h-8 text-sm w-40">
+                <SelectValue placeholder="Sala" />
+              </SelectTrigger>
+              <SelectContent>
+                {centerRoomsForSuper.map((r: Room) => (
+                  <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </header>
 
       {/* Stats bar */}

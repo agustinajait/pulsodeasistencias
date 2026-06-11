@@ -293,7 +293,7 @@ export default function SalaPage() {
         {role === "superadmin" && (
           <div className="flex items-center gap-2 px-4 pb-3">
             <Select value={superCenterId ? String(superCenterId) : ""} onValueChange={(v) => { setSuperCenterId(Number(v)); setSuperRoomId(null); }}>
-              <SelectTrigger className="h-8 text-sm w-40">
+              <SelectTrigger className="h-8 text-sm flex-1 min-w-0">
                 <SelectValue placeholder="Centro" />
               </SelectTrigger>
               <SelectContent>
@@ -303,7 +303,7 @@ export default function SalaPage() {
               </SelectContent>
             </Select>
             <Select value={superRoomId ? String(superRoomId) : ""} onValueChange={(v) => setSuperRoomId(Number(v))} disabled={!superCenterId}>
-              <SelectTrigger className="h-8 text-sm w-40">
+              <SelectTrigger className="h-8 text-sm flex-1 min-w-0">
                 <SelectValue placeholder="Sala" />
               </SelectTrigger>
               <SelectContent>
@@ -318,7 +318,7 @@ export default function SalaPage() {
 
       {/* Stats bar */}
       {roomSummary && (
-        <div className="grid grid-cols-5 gap-2 px-4 py-3 bg-card border-b border-border" data-testid="stats-bar">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 px-4 py-3 bg-card border-b border-border" data-testid="stats-bar">
           <div className="text-center">
             <div className="text-xl font-bold text-foreground">{roomSummary.total}</div>
             <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Total</div>
@@ -446,14 +446,14 @@ export default function SalaPage() {
                         <div className="flex border border-border rounded-lg overflow-hidden shrink-0">
                           <button
                             onClick={() => handleToggle(child.id, "P")}
-                            className={`px-3 py-1.5 text-sm font-bold transition-colors ${estado === "P" ? "bg-green-600 text-white" : "bg-background text-muted-foreground hover:bg-muted"}`}
+                            className={`px-3 py-2 sm:py-1.5 text-sm font-bold transition-colors ${estado === "P" ? "bg-green-600 text-white" : "bg-background text-muted-foreground hover:bg-muted"}`}
                             data-testid={`btn-presente-${child.id}`}
                           >
                             P
                           </button>
                           <button
                             onClick={() => handleToggle(child.id, "A")}
-                            className={`px-3 py-1.5 text-sm font-bold transition-colors border-l border-border ${estado === "A" ? "bg-red-600 text-white" : "bg-background text-muted-foreground hover:bg-muted"}`}
+                            className={`px-3 py-2 sm:py-1.5 text-sm font-bold transition-colors border-l border-border ${estado === "A" ? "bg-red-600 text-white" : "bg-background text-muted-foreground hover:bg-muted"}`}
                             data-testid={`btn-ausente-${child.id}`}
                           >
                             A
@@ -468,7 +468,7 @@ export default function SalaPage() {
                               <button
                                 key={m}
                                 onClick={() => handleMotivo(child.id, m)}
-                                className={`px-2.5 py-1 rounded-md text-xs font-semibold border transition-all ${att?.motivo === m ? "bg-amber-100 text-amber-700 border-amber-300" : "bg-background text-muted-foreground border-border hover:border-amber-300 hover:bg-amber-50"}`}
+                                className={`px-2 py-1.5 rounded-md text-xs font-semibold border transition-all ${att?.motivo === m ? "bg-amber-100 text-amber-700 border-amber-300" : "bg-background text-muted-foreground border-border hover:border-amber-300 hover:bg-amber-50"}`}
                                 data-testid={`btn-motivo-${child.id}-${m}`}
                               >
                                 {m}
@@ -534,7 +534,7 @@ export default function SalaPage() {
               {/* Day headers */}
               <div className="grid grid-cols-7 gap-1 mb-1">
                 {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((d) => (
-                  <div key={d} className="text-center text-[10px] font-bold text-muted-foreground uppercase tracking-wider py-1">{d}</div>
+                  <div key={d} className="text-center text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider py-1">{d}</div>
                 ))}
               </div>
 

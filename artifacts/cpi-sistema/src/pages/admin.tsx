@@ -416,16 +416,16 @@ function NuevaAltaDialog({ onSuccess }: { onSuccess: () => void }) {
           Nueva alta
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Alta de nuevo niño/a</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 mt-2">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><Label className="text-xs">Apellido</Label><Input value={apellido} onChange={(e) => setApellido(e.target.value)} className="mt-1" placeholder="GARCÍA" data-testid="input-alta-apellido" /></div>
             <div><Label className="text-xs">Nombre</Label><Input value={nombre} onChange={(e) => setNombre(e.target.value)} className="mt-1" placeholder="JUAN" data-testid="input-alta-nombre" /></div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">Sala (ECO)</Label>
               <Select value={sala} onValueChange={setSala}>
@@ -437,7 +437,7 @@ function NuevaAltaDialog({ onSuccess }: { onSuccess: () => void }) {
             </div>
             <div><Label className="text-xs">DNI</Label><Input value={dni} onChange={(e) => setDni(e.target.value)} className="mt-1" placeholder="70000000" data-testid="input-alta-dni" /></div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><Label className="text-xs">Fecha de nacimiento</Label><Input type="date" value={fnac} onChange={(e) => setFnac(e.target.value)} className="mt-1" data-testid="input-alta-fnac" /></div>
             <div>
               <Label className="text-xs">Género</Label>
@@ -451,11 +451,11 @@ function NuevaAltaDialog({ onSuccess }: { onSuccess: () => void }) {
             </div>
           </div>
           <div><Label className="text-xs">Domicilio</Label><Input value={domicilio} onChange={(e) => setDomicilio(e.target.value)} className="mt-1" placeholder="Calle 123" data-testid="input-alta-domicilio" /></div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><Label className="text-xs">Apellido familiar</Label><Input value={famApellido} onChange={(e) => setFamApellido(e.target.value)} className="mt-1" data-testid="input-alta-fam-apellido" /></div>
             <div><Label className="text-xs">Nombre familiar</Label><Input value={famNombre} onChange={(e) => setFamNombre(e.target.value)} className="mt-1" data-testid="input-alta-fam-nombre" /></div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">Vínculo</Label>
               <Select value={vinculo} onValueChange={setVinculo}>
@@ -744,7 +744,7 @@ export default function AdminPage() {
         </div>
         {/* Centro selector bar — solo visible para superadmin */}
         {isSuperAdmin && (
-          <div className="flex items-center gap-1.5 px-4 pb-2 overflow-x-auto">
+          <div className="flex items-center gap-1.5 px-4 pb-1 overflow-x-auto">
             <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider shrink-0 mr-1">Centro:</span>
             <button
               onClick={() => setActiveCenterId(null)}
@@ -848,7 +848,7 @@ export default function AdminPage() {
           {/* Crear sala */}
           <div>
             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Nueva sala</p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <Select value={String(newRoomCenterId)} onValueChange={(v) => setNewRoomCenterId(Number(v))}>
                 <SelectTrigger className="h-8 text-sm" data-testid="select-new-room-center"><SelectValue placeholder="Centro" /></SelectTrigger>
                 <SelectContent>
@@ -889,7 +889,7 @@ export default function AdminPage() {
 
       <div className="flex-1 max-w-4xl mx-auto w-full px-4 pt-4 pb-10">
         <Tabs defaultValue="tablero">
-          <TabsList className="w-full mb-4 flex flex-wrap" data-testid="tabs-admin">
+          <TabsList className="w-full mb-4 overflow-x-auto flex-nowrap whitespace-nowrap" data-testid="tabs-admin">
             <TabsTrigger value="tablero" className="flex-1 text-xs" data-testid="tab-tablero">Tablero</TabsTrigger>
             <TabsTrigger value="alertas" className="flex-1 text-xs relative" data-testid="tab-alertas">
               Alertas
@@ -908,7 +908,7 @@ export default function AdminPage() {
           <TabsContent value="tablero">
             {dashboard.data && (
               <>
-                <div className="grid grid-cols-4 gap-2 mb-4" data-testid="dashboard-stats">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4" data-testid="dashboard-stats">
                   <StatCard value={dashboard.data.totalActive} label="Activos" />
                   <StatCard value={dashboard.data.totalPresent} label="Presentes" color="text-green-600" />
                   <StatCard value={dashboard.data.totalAbsent} label="Ausentes" color="text-red-600" />
@@ -1321,6 +1321,7 @@ export default function AdminPage() {
                   if (!hasData) return <div className="text-center py-8 text-muted-foreground text-sm">Sin datos registrados para este mes</div>;
                   const maxVal = Math.max(...days.map((d) => { const s = histMonthDailyStats[d.toISOString().slice(0, 10)]; return s ? s.p + s.a : 0; }), 1);
                   return (
+                    <div className="overflow-x-auto">
                     <div className="bg-card rounded-xl border border-border overflow-hidden">
                       <div className="grid grid-cols-[auto_1fr_auto_auto_auto] text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-3 py-2 border-b border-border bg-muted/40">
                         <div className="w-12">Fecha</div>
@@ -1371,6 +1372,7 @@ export default function AdminPage() {
                         );
                       })()}
                     </div>
+                    </div>
                   );
                 })()}
               </div>
@@ -1392,6 +1394,7 @@ export default function AdminPage() {
 
                 {histYearAtt.isPending && <div className="text-center py-8 text-muted-foreground text-sm">Cargando...</div>}
                 {!histYearAtt.isPending && (
+                  <div className="overflow-x-auto">
                   <div className="bg-card rounded-xl border border-border overflow-hidden">
                     <div className="grid grid-cols-[auto_1fr_auto_auto_auto] text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-3 py-2 border-b border-border bg-muted/40">
                       <div className="w-10">Mes</div>
@@ -1439,6 +1442,7 @@ export default function AdminPage() {
                         </div>
                       );
                     })()}
+                  </div>
                   </div>
                 )}
               </div>

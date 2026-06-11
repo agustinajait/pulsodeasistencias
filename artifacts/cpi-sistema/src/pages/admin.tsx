@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Search, LogOut, Phone, ExternalLink, AlertTriangle, Plus, Copy, Download, Pencil, Check, X, Upload, Trash2, ChevronLeft, ChevronRight, FileText, Lock, LockOpen } from "lucide-react";
+import { Search, LogOut, Phone, ExternalLink, AlertTriangle, Plus, Copy, Download, Pencil, Check, X, Upload, Trash2, ChevronLeft, ChevronRight, FileText, Lock, LockOpen, Users } from "lucide-react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import type { Child, Alert, RoomSummary, Contact, AttendanceRecord, Center, Room } from "@workspace/api-client-react";
@@ -488,6 +488,110 @@ function NuevaAltaDialog({ onSuccess }: { onSuccess: () => void }) {
           <Button className="w-full" onClick={handleSubmit} disabled={!apellido || !nombre || createChild.isPending || uploading} data-testid="btn-confirmar-alta">
             {uploading ? "Subiendo carnet..." : createChild.isPending ? "Registrando..." : "Registrar alta"}
           </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function RoomAttendanceDialog({ room, onOpenChild }: { room: RoomSummary; onOpenChild: (id: number) => void }) {
+  const [open, setOpen] = useState(false);
+
+  const children = useListChildren(
+    { roomId: room.id, active: true },
+    { query: { enabled: open, queryKey: getListChildrenQueryKey({ roomId: room.id, active: true }) } }
+  );
+  const att = useListAttendance(
+    { roomId: room.id, date: TODAY },
+    { query: { enabled: open, queryKey: getListAttendanceQueryKey({ roomId: room.id, date: TODAY }) } }
+  );
+
+  const attMap = useMemo(() => {
+    const m: Record<number, AttendanceRecord> = {};
+    (att.data ?? []).forEach((a) => { m[a.childId] = a; });
+    return m;
+  }, [att.data]);
+
+  const sorted = useMemo(() => {
+    return [...(children.data ?? [])].sort((a, b) => a.apellido.localeCompare(b.apellido));
+  }, [children.data]);
+
+  const stats = useMemo(() => {
+    let p = 0, a = 0, m = 0, sm = 0;
+    sorted.forEach((c) => {
+      const rec = attMap[c.id];
+      if (!rec) { sm++; return; }
+      if (rec.estado === "P") p++;
+      else if (rec.estado === "A") a++;
+      if (rec.mercaderia) m++;
+    });
+    return { p, a, m, sm };
+  }, [sorted, attMap]);
+
+  const c = ECO_COLORS[room.ecoNumber] ?? ECO_COLORS[0];
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="default" className="h-7 px-3 text-xs font-semibold" data-testid={`btn-ver-lista-${room.id}`}>
+          <Users className="w-3.5 h-3.5 mr-1" />
+          Ver lista
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <span className={`font-bold ${c.text}`}>{room.name}</span>
+            <span className="text-sm text-muted-foreground font-normal">— Asistencia de hoy</span>
+          </DialogTitle>
+        </DialogHeader>
+
+        {/* Summary chips */}
+        <div className="flex gap-2 flex-wrap py-1">
+          <span className="px-2.5 py-1 rounded-lg bg-green-100 text-green-700 text-xs font-bold">{stats.p} Presentes</span>
+          <span className="px-2.5 py-1 rounded-lg bg-red-100 text-red-700 text-xs font-bold">{stats.a} Ausentes</span>
+          {stats.m > 0 && <span className="px-2.5 py-1 rounded-lg bg-yellow-100 text-yellow-700 text-xs font-bold">{stats.m} Mercadería</span>}
+          {stats.sm > 0 && <span className="px-2.5 py-1 rounded-lg bg-muted text-muted-foreground text-xs font-bold">{stats.sm} Sin marcar</span>}
+        </div>
+
+        {/* List */}
+        <div className="flex-1 overflow-y-auto rounded-xl border border-border divide-y divide-border">
+          {(children.isPending || att.isPending) && (
+            <div className="text-center py-8 text-muted-foreground text-sm">Cargando...</div>
+          )}
+          {!(children.isPending || att.isPending) && sorted.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground text-sm">Sin alumnos en esta sala</div>
+          )}
+          {sorted.map((child, i) => {
+            const rec = attMap[child.id];
+            const estado = rec?.estado;
+            const merc = rec?.mercaderia;
+            return (
+              <div
+                key={child.id}
+                className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/40 cursor-pointer transition-colors"
+                onClick={() => { setOpen(false); onOpenChild(child.id); }}
+              >
+                <span className="text-xs text-muted-foreground font-mono w-5 text-right shrink-0">{i + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold truncate">{child.apellido} {child.nombre}</div>
+                  {child.famNombre && <div className="text-xs text-muted-foreground truncate">{child.famNombre} · {child.celular ?? "sin tel."}</div>}
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {merc && (
+                    <span className="w-5 h-5 rounded flex items-center justify-center bg-yellow-300 text-yellow-800 text-[10px] font-bold border border-yellow-400">M</span>
+                  )}
+                  <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold border ${
+                    estado === "P" ? "bg-green-100 text-green-700 border-green-300" :
+                    estado === "A" ? "bg-red-100 text-red-700 border-red-300" :
+                    "bg-muted text-muted-foreground border-border"
+                  }`}>
+                    {estado ?? "—"}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </DialogContent>
     </Dialog>
@@ -1145,21 +1249,7 @@ export default function AdminPage() {
                           >
                             {r.name}
                           </button>
-                          <Button
-                            size="sm"
-                            variant="default"
-                            className="h-7 px-3 text-xs font-semibold"
-                            onClick={() => {
-                              if (isSuperAdmin) {
-                                localStorage.setItem("superadmin_sala_centerId", String(r.centerId ?? activeCenterId ?? ""));
-                                localStorage.setItem("superadmin_sala_roomId", String(r.id));
-                              }
-                              setLocation("/sala");
-                            }}
-                            data-testid={`btn-ver-lista-${r.id}`}
-                          >
-                            Ver lista
-                          </Button>
+                          <RoomAttendanceDialog room={r} onOpenChild={(id) => setSelectedChild(id)} />
                           <button
                             onClick={() => { setEditingRoomId(r.id); setEditRoomName(r.name); }}
                             className="text-muted-foreground hover:text-foreground p-0.5 opacity-50 hover:opacity-100 transition-opacity"

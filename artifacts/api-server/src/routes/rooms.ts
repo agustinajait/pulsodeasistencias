@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, roomsTable, childrenTable, attendanceTable, centersTable } from "@workspace/db";
+import { db, roomsTable, childrenTable, attendanceTable, centersTable, pool } from "@workspace/db";
 import { eq, and, gte, inArray, count, isNull } from "drizzle-orm";
 import { randomBytes } from "crypto";
 
@@ -24,12 +24,23 @@ function getWorkdaysBefore(dateStr: string, n: number): string[] {
 router.get("/rooms", async (req, res) => {
   try {
     const { centerId } = req.query as { centerId?: string };
-    let rooms;
-    if (centerId) {
-      const cid = parseInt(centerId);
-      rooms = await db.select().from(roomsTable).where(eq(roomsTable.centerId, cid)).orderBy(roomsTable.ecoNumber);
-    } else {
-      rooms = await db.select().from(roomsTable).orderBy(roomsTable.ecoNumber);
+    // Use raw SQL to avoid failure if check_in_token column doesn't exist yet
+    let rooms: any[];
+    try {
+      if (centerId) {
+        const cid = parseInt(centerId);
+        rooms = await db.select().from(roomsTable).where(eq(roomsTable.centerId, cid)).orderBy(roomsTable.ecoNumber);
+      } else {
+        rooms = await db.select().from(roomsTable).orderBy(roomsTable.ecoNumber);
+      }
+    } catch {
+      // Fallback: select without check_in_token column (not yet migrated)
+      const sql = centerId
+        ? `SELECT id, center_id AS "centerId", eco_number AS "ecoNumber", name, capacity FROM rooms WHERE center_id = $1 ORDER BY eco_number`
+        : `SELECT id, center_id AS "centerId", eco_number AS "ecoNumber", name, capacity FROM rooms ORDER BY eco_number`;
+      const result = centerId ? await pool.query(sql, [parseInt(centerId)]) : await pool.query(sql);
+      rooms = result.rows;
+      return res.json(rooms);
     }
     // Auto-generate checkInToken for rooms that don't have one (no-op if column missing)
     try {
@@ -40,15 +51,10 @@ router.get("/rooms", async (req, res) => {
             db.update(roomsTable).set({ checkInToken: randomBytes(24).toString("hex") }).where(eq(roomsTable.id, r.id))
           )
         );
-        // Re-fetch to return updated tokens
-        if (centerId) {
-          rooms = await db.select().from(roomsTable).where(eq(roomsTable.centerId, parseInt(centerId))).orderBy(roomsTable.ecoNumber);
-        } else {
-          rooms = await db.select().from(roomsTable).orderBy(roomsTable.ecoNumber);
-        }
+        rooms = rooms.map((r) => ({ ...r, checkInToken: r.checkInToken ?? randomBytes(24).toString("hex") }));
       }
     } catch {
-      // column may not exist yet — continue without tokens
+      // column not yet migrated — return rooms without tokens
     }
     res.json(rooms);
   } catch (err) {

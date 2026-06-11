@@ -431,7 +431,7 @@ export default function SalaPage() {
                         {/* M button */}
                         <button
                           onClick={() => handleMercaderia(child.id)}
-                          className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold border transition-colors shrink-0 ${mercaderia ? "bg-purple-100 text-purple-700 border-purple-300" : "bg-muted text-muted-foreground border-border"}`}
+                          className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold border transition-colors shrink-0 ${mercaderia ? "bg-yellow-300 text-yellow-800 border-yellow-400 shadow-[0_0_6px_2px_rgba(250,204,21,0.6)]" : "bg-muted text-muted-foreground border-border"}`}
                           title="Mercadería"
                           data-testid={`btn-mercaderia-${child.id}`}
                         >

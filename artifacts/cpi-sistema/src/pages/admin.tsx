@@ -89,11 +89,14 @@ function RoomCard({ room }: { room: RoomSummary }) {
 function AlertCard({ alert }: { alert: Alert }) {
   function waLink() {
     if (!alert.celular) return null;
-    const phone = alert.celular.replace(/\D/g, "");
+    const firstNumber = alert.celular.split(/[\/,;\s]+/)[0];
+    const phone = firstNumber.replace(/\D/g, "").replace(/^0+/, "");
+    if (!phone) return null;
+    const fullPhone = phone.startsWith("54") ? phone : `549${phone}`;
     const msg = encodeURIComponent(
       `Hola ${alert.famNombre ?? "familia"}, le contactamos del CPI Norte, sala ECO ${alert.ecoNumber}. Notamos que ${alert.apellido} ${alert.nombre} lleva ${alert.consecutiveAbsences} día${alert.consecutiveAbsences !== 1 ? "s" : ""} sin asistir. ¿Podemos ponernos en contacto?`
     );
-    return `https://wa.me/54${phone}?text=${msg}`;
+    return `https://wa.me/${fullPhone}?text=${msg}`;
   }
   const urgency = alert.consecutiveAbsences >= 5 ? "border-red-500" : alert.consecutiveAbsences >= 3 ? "border-amber-500" : "border-yellow-400";
   return (

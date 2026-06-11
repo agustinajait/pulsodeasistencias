@@ -111,11 +111,14 @@ export default function SalaPage() {
     if (!alert.celular) return null;
     // Tomar solo el primer número (puede haber varios separados por / o espacio)
     const firstNumber = alert.celular.split(/[\/,;\s]+/)[0];
-    const phone = firstNumber.replace(/\D/g, "");
+    const phone = firstNumber.replace(/\D/g, "").replace(/^0+/, "");
+    if (!phone) return null;
+    // Argentina: prefijo 549 para celulares (54 + 9 + número sin 0 inicial)
+    const fullPhone = phone.startsWith("54") ? phone : `549${phone}`;
     const msg = encodeURIComponent(
       `Hola ${alert.famNombre ?? "familia"}, le contactamos del CPI Norte. Notamos que ${alert.apellido} ${alert.nombre} lleva ${alert.consecutiveAbsences} día${alert.consecutiveAbsences !== 1 ? "s" : ""} sin asistir. ¿Todo bien?`
     );
-    return `https://wa.me/54${phone}?text=${msg}`;
+    return `https://wa.me/${fullPhone}?text=${msg}`;
   }
 
   const attMap = useMemo(() => {

@@ -31,20 +31,24 @@ router.get("/rooms", async (req, res) => {
     } else {
       rooms = await db.select().from(roomsTable).orderBy(roomsTable.ecoNumber);
     }
-    // Auto-generate checkInToken for rooms that don't have one
-    const roomsWithoutToken = rooms.filter((r) => !r.checkInToken);
-    if (roomsWithoutToken.length > 0) {
-      await Promise.all(
-        roomsWithoutToken.map((r) =>
-          db.update(roomsTable).set({ checkInToken: randomBytes(24).toString("hex") }).where(eq(roomsTable.id, r.id))
-        )
-      );
-      // Re-fetch to return updated tokens
-      if (centerId) {
-        rooms = await db.select().from(roomsTable).where(eq(roomsTable.centerId, parseInt(centerId))).orderBy(roomsTable.ecoNumber);
-      } else {
-        rooms = await db.select().from(roomsTable).orderBy(roomsTable.ecoNumber);
+    // Auto-generate checkInToken for rooms that don't have one (no-op if column missing)
+    try {
+      const roomsWithoutToken = rooms.filter((r) => !r.checkInToken);
+      if (roomsWithoutToken.length > 0) {
+        await Promise.all(
+          roomsWithoutToken.map((r) =>
+            db.update(roomsTable).set({ checkInToken: randomBytes(24).toString("hex") }).where(eq(roomsTable.id, r.id))
+          )
+        );
+        // Re-fetch to return updated tokens
+        if (centerId) {
+          rooms = await db.select().from(roomsTable).where(eq(roomsTable.centerId, parseInt(centerId))).orderBy(roomsTable.ecoNumber);
+        } else {
+          rooms = await db.select().from(roomsTable).orderBy(roomsTable.ecoNumber);
+        }
       }
+    } catch {
+      // column may not exist yet — continue without tokens
     }
     res.json(rooms);
   } catch (err) {

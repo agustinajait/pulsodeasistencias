@@ -3,7 +3,7 @@ import { useAuth } from "@/lib/auth-context";
 import {
   useGetDashboardSummary, useGetAlerts, useGetRecentContacts, useGetRoomsSummary,
   useListChildren, useListAttendance, useCreateChild, useUpdateRoom, useDeleteChild,
-  useListCenters, useListRooms, useCreateCenter, useCreateRoom, useDeleteRoom,
+  useListCenters, useListRooms, useCreateCenter, useCreateRoom, useDeleteRoom, useUpdateCenter,
   getGetDashboardSummaryQueryKey, getGetAlertsQueryKey, getGetRecentContactsQueryKey,
   getGetRoomsSummaryQueryKey, getListChildrenQueryKey, getListRoomsQueryKey, getListAttendanceQueryKey,
   getListCentersQueryKey
@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Search, LogOut, Phone, ExternalLink, AlertTriangle, Plus, Copy, Download, Pencil, Check, X, Upload, Trash2, ChevronLeft, ChevronRight, FileText } from "lucide-react";
+import { Search, LogOut, Phone, ExternalLink, AlertTriangle, Plus, Copy, Download, Pencil, Check, X, Upload, Trash2, ChevronLeft, ChevronRight, FileText, Lock, LockOpen } from "lucide-react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import type { Child, Alert, RoomSummary, Contact, AttendanceRecord, Center, Room } from "@workspace/api-client-react";
@@ -526,8 +526,11 @@ export default function AdminPage() {
   const centers = useListCenters();
   const allRooms = useListRooms(centerParam);
   const createCenter = useCreateCenter();
+  const updateCenter = useUpdateCenter();
   const createRoom = useCreateRoom();
   const deleteRoom = useDeleteRoom();
+  const [editingPasscodeId, setEditingPasscodeId] = useState<number | null>(null);
+  const [passcodeInput, setPasscodeInput] = useState("");
 
   const dashboard = useGetDashboardSummary(centerParam);
   const alerts = useGetAlerts(centerParam);
@@ -772,11 +775,53 @@ export default function AdminPage() {
               <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Centros registrados</p>
               <div className="space-y-1.5">
                 {(centers.data ?? []).map((c: Center) => (
-                  <div key={c.id} className="flex items-center gap-2 bg-card rounded-lg px-3 py-2 border border-border">
-                    <span className="text-sm font-semibold flex-1">{c.name}</span>
-                    <span className="text-[11px] text-muted-foreground">
-                      {(allRooms.data ?? []).filter((r: Room) => r.centerId === c.id).length} sala(s)
-                    </span>
+                  <div key={c.id} className="bg-card rounded-lg border border-border">
+                    <div className="flex items-center gap-2 px-3 py-2">
+                      <span className="text-sm font-semibold flex-1">{c.name}</span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {(allRooms.data ?? []).filter((r: Room) => r.centerId === c.id).length} sala(s)
+                      </span>
+                      <button
+                        className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors px-1.5 py-0.5 rounded border border-border hover:border-foreground/30"
+                        onClick={() => { setEditingPasscodeId(editingPasscodeId === c.id ? null : c.id); setPasscodeInput(""); }}
+                      >
+                        {c.hasPasscode ? <Lock className="w-3 h-3" /> : <LockOpen className="w-3 h-3" />}
+                        {c.hasPasscode ? "Cambiar código" : "Agregar código"}
+                      </button>
+                    </div>
+                    {editingPasscodeId === c.id && (
+                      <div className="px-3 pb-2 flex gap-2">
+                        <Input
+                          className="h-7 text-sm"
+                          placeholder={c.hasPasscode ? "Nuevo código (vacío para quitar)" : "Código de acceso"}
+                          value={passcodeInput}
+                          onChange={(e) => setPasscodeInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              updateCenter.mutate(
+                                { centerId: c.id, data: { name: c.name, passcode: passcodeInput.trim() || null } },
+                                { onSuccess: () => { setEditingPasscodeId(null); centers.refetch(); } }
+                              );
+                            }
+                          }}
+                          autoFocus
+                        />
+                        <Button
+                          size="sm"
+                          className="h-7 px-2"
+                          onClick={() => updateCenter.mutate(
+                            { centerId: c.id, data: { name: c.name, passcode: passcodeInput.trim() || null } },
+                            { onSuccess: () => { setEditingPasscodeId(null); centers.refetch(); } }
+                          )}
+                          disabled={updateCenter.isPending}
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setEditingPasscodeId(null)}>
+                          <X className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

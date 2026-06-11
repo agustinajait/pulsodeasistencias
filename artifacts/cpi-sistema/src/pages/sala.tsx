@@ -61,6 +61,8 @@ export default function SalaPage() {
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [closingDay, setClosingDay] = useState(false);
   const [notasDraft, setNotasDraft] = useState<Record<number, string>>({});
+  // Estado optimista para el modal de día del calendario
+  const [calDayOptimistic, setCalDayOptimistic] = useState<Record<number, Partial<AttendanceRecord>>>({});
 
   // Superadmin: selector de centro y sala
   const savedCenterId = role === "superadmin" ? parseInt(localStorage.getItem("superadmin_sala_centerId") ?? "0") || null : null;
@@ -541,15 +543,16 @@ export default function SalaPage() {
                 {calDays.map((day) => {
                   const dateStr = day.toISOString().slice(0, 10);
                   const isToday = dateStr === TODAY;
+                  const isFuture = dateStr > TODAY;
                   const weekend = isWeekend(day);
                   const dayAtt = calAttMap[dateStr] ?? [];
-                  const color = weekend ? "opacity-0 pointer-events-none" : dayAtt.length > 0 ? dayColor(dayAtt, totalKids) : "bg-muted text-muted-foreground";
+                  const color = weekend || isFuture ? "opacity-30 pointer-events-none" : dayAtt.length > 0 ? dayColor(dayAtt, totalKids) : "bg-muted text-muted-foreground hover:bg-muted/70";
                   return (
                     <div
                       key={dateStr}
-                      className={`aspect-square rounded-lg flex items-center justify-center text-xs font-semibold border transition-all ${color} ${isToday ? "ring-2 ring-primary" : "border-transparent"} ${weekend ? "" : "cursor-pointer hover:opacity-80"}`}
+                      className={`aspect-square rounded-lg flex items-center justify-center text-xs font-semibold border transition-all ${color} ${isToday ? "ring-2 ring-primary" : "border-transparent"} ${!weekend && !isFuture ? "cursor-pointer hover:opacity-80" : ""}`}
                       data-testid={`cal-day-${dateStr}`}
-                      onClick={() => !weekend && dayAtt.length > 0 && setSelectedDay(dateStr)}
+                      onClick={() => !weekend && !isFuture && setSelectedDay(dateStr)}
                     >
                       {!weekend && day.getDate()}
                     </div>
@@ -558,9 +561,9 @@ export default function SalaPage() {
               </div>
             </div>
 
-            {/* Modal detalle del día */}
+            {/* Modal detalle/edición del día */}
             {selectedDay && (
-              <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center backdrop-blur-sm" onClick={() => setSelectedDay(null)}>
+              <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center backdrop-blur-sm" onClick={() => { setSelectedDay(null); setCalDayOptimistic({}); }}>
                 <div
                   className="bg-card rounded-t-2xl w-full max-w-xl max-h-[80vh] overflow-y-auto shadow-2xl"
                   onClick={(e) => e.stopPropagation()}
@@ -571,16 +574,51 @@ export default function SalaPage() {
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {(calAttMap[selectedDay] ?? []).filter(a => a.estado === "P").length} presentes ·{" "}
                         {(calAttMap[selectedDay] ?? []).filter(a => a.estado === "A").length} ausentes
+                        {selectedDay !== TODAY && <span className="ml-1 text-amber-600 font-medium">· Día anterior</span>}
                       </p>
                     </div>
-                    <button onClick={() => setSelectedDay(null)} className="text-muted-foreground hover:text-foreground p-1">
+                    <button onClick={() => { setSelectedDay(null); setCalDayOptimistic({}); }} className="text-muted-foreground hover:text-foreground p-1">
                       <X className="w-5 h-5" />
                     </button>
                   </div>
                   <div className="divide-y divide-border px-2 py-2">
                     {(children.data ?? []).map((child: Child) => {
-                      const att = (calAttMap[selectedDay] ?? []).find(a => a.childId === child.id);
+                      const serverAtt = (calAttMap[selectedDay] ?? []).find(a => a.childId === child.id);
+                      const optimistic = calDayOptimistic[child.id];
+                      const att = optimistic ? { ...serverAtt, ...optimistic } as AttendanceRecord : serverAtt;
                       const estado = att?.estado ?? null;
+                      const mercaderia = att?.mercaderia ?? false;
+
+                      function markCalDay(newEstado: "P" | "A") {
+                        setCalDayOptimistic((prev) => ({ ...prev, [child.id]: { ...att, estado: newEstado, motivo: newEstado === "P" ? undefined : att?.motivo } }));
+                        markAttendance.mutate(
+                          { data: { childId: child.id, fecha: selectedDay!, estado: newEstado } },
+                          {
+                            onSuccess: () => {
+                              queryClient.invalidateQueries({ queryKey: getListAttendanceQueryKey({ roomId: roomId ?? undefined, month: calMonth }) });
+                              queryClient.invalidateQueries({ queryKey: getGetRoomsSummaryQueryKey() });
+                              setCalDayOptimistic((prev) => { const next = { ...prev }; delete next[child.id]; return next; });
+                            },
+                            onError: () => setCalDayOptimistic((prev) => { const next = { ...prev }; delete next[child.id]; return next; }),
+                          }
+                        );
+                      }
+
+                      function markCalMerc() {
+                        const newMerc = !mercaderia;
+                        setCalDayOptimistic((prev) => ({ ...prev, [child.id]: { ...att, mercaderia: newMerc } }));
+                        markAttendance.mutate(
+                          { data: { childId: child.id, fecha: selectedDay!, estado: att?.estado ?? undefined, mercaderia: newMerc } },
+                          {
+                            onSuccess: () => {
+                              queryClient.invalidateQueries({ queryKey: getListAttendanceQueryKey({ roomId: roomId ?? undefined, month: calMonth }) });
+                              setCalDayOptimistic((prev) => { const next = { ...prev }; delete next[child.id]; return next; });
+                            },
+                            onError: () => setCalDayOptimistic((prev) => { const next = { ...prev }; delete next[child.id]; return next; }),
+                          }
+                        );
+                      }
+
                       return (
                         <div key={child.id} className="flex items-center gap-3 px-3 py-2.5">
                           <div
@@ -592,14 +630,27 @@ export default function SalaPage() {
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-semibold truncate">{child.apellido} {child.nombre}</div>
                             {att?.motivo && <div className="text-xs text-muted-foreground">{att.motivo}</div>}
-                            {att?.nota && <div className="text-xs text-muted-foreground italic">{att.nota}</div>}
                           </div>
-                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${estado === "P" ? "bg-green-100 text-green-700" : estado === "A" ? "bg-red-100 text-red-700" : "bg-muted text-muted-foreground"}`}>
-                            {estado ?? "—"}
+                          <button
+                            onClick={markCalMerc}
+                            className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold border transition-colors shrink-0 ${mercaderia ? "bg-yellow-300 text-yellow-800 border-yellow-400 shadow-[0_0_6px_2px_rgba(250,204,21,0.6)]" : "bg-muted text-muted-foreground border-border"}`}
+                          >
+                            M
+                          </button>
+                          <div className="flex border border-border rounded-lg overflow-hidden shrink-0">
+                            <button
+                              onClick={() => markCalDay("P")}
+                              className={`px-3 py-1.5 text-sm font-bold transition-colors ${estado === "P" ? "bg-green-600 text-white" : "bg-background text-muted-foreground hover:bg-muted"}`}
+                            >
+                              P
+                            </button>
+                            <button
+                              onClick={() => markCalDay("A")}
+                              className={`px-3 py-1.5 text-sm font-bold transition-colors border-l border-border ${estado === "A" ? "bg-red-600 text-white" : "bg-background text-muted-foreground hover:bg-muted"}`}
+                            >
+                              A
+                            </button>
                           </div>
-                          {att?.mercaderia && (
-                            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold bg-purple-100 text-purple-700 shrink-0">M</div>
-                          )}
                         </div>
                       );
                     })}

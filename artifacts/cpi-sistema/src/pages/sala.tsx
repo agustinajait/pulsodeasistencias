@@ -63,8 +63,10 @@ export default function SalaPage() {
   const [notasDraft, setNotasDraft] = useState<Record<number, string>>({});
 
   // Superadmin: selector de centro y sala
-  const [superCenterId, setSuperCenterId] = useState<number | null>(null);
-  const [superRoomId, setSuperRoomId] = useState<number | null>(null);
+  const savedCenterId = role === "superadmin" ? parseInt(localStorage.getItem("superadmin_sala_centerId") ?? "0") || null : null;
+  const savedRoomId = role === "superadmin" ? parseInt(localStorage.getItem("superadmin_sala_roomId") ?? "0") || null : null;
+  const [superCenterId, setSuperCenterId] = useState<number | null>(savedCenterId);
+  const [superRoomId, setSuperRoomId] = useState<number | null>(savedRoomId);
   const centers = useListCenters({ query: { enabled: role === "superadmin" } });
 
   const rooms = useListRooms();

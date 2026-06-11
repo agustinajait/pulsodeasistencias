@@ -1101,7 +1101,31 @@ export default function AdminPage() {
                         </div>
                       ) : (
                         <>
-                          <span className="font-semibold text-sm flex-1">{r.name}</span>
+                          <button
+                            className="font-semibold text-sm flex-1 text-left hover:text-primary transition-colors"
+                            onClick={() => {
+                              if (isSuperAdmin) {
+                                localStorage.setItem("superadmin_sala_centerId", String(r.centerId ?? activeCenterId ?? ""));
+                                localStorage.setItem("superadmin_sala_roomId", String(r.id));
+                              }
+                              setLocation("/sala");
+                            }}
+                          >
+                            {r.name}
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (isSuperAdmin) {
+                                localStorage.setItem("superadmin_sala_centerId", String(r.centerId ?? activeCenterId ?? ""));
+                                localStorage.setItem("superadmin_sala_roomId", String(r.id));
+                              }
+                              setLocation("/sala");
+                            }}
+                            className="text-primary hover:text-primary/80 p-0.5 opacity-60 hover:opacity-100 transition-opacity text-xs font-medium"
+                            title="Ver lista"
+                          >
+                            Ver lista
+                          </button>
                           <button
                             onClick={() => { setEditingRoomId(r.id); setEditRoomName(r.name); }}
                             className="text-muted-foreground hover:text-foreground p-0.5 opacity-50 hover:opacity-100 transition-opacity"

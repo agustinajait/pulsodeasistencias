@@ -122,6 +122,19 @@ export default function SalaPage() {
     return m;
   }, [attendance.data]);
 
+  // Estado optimista local: se actualiza inmediatamente al hacer clic
+  const [optimisticAtt, setOptimisticAtt] = useState<Record<number, Partial<AttendanceRecord>>>({});
+
+  // Merge: optimistic tiene prioridad sobre server
+  const mergedAttMap = useMemo(() => {
+    const m: Record<number, AttendanceRecord> = { ...attMap };
+    Object.entries(optimisticAtt).forEach(([id, patch]) => {
+      const numId = Number(id);
+      m[numId] = { ...(m[numId] ?? { childId: numId, fecha: TODAY }), ...patch } as AttendanceRecord;
+    });
+    return m;
+  }, [attMap, optimisticAtt]);
+
   const calAttMap = useMemo(() => {
     const m: Record<string, AttendanceRecord[]> = {};
     (calAtt.data ?? []).forEach((a: AttendanceRecord) => {
@@ -140,31 +153,46 @@ export default function SalaPage() {
   }, [children.data, search]);
 
   function handleToggle(childId: number, estado: "P" | "A") {
+    const curr = mergedAttMap[childId];
+    // Actualización optimista inmediata
+    setOptimisticAtt((prev) => ({
+      ...prev,
+      [childId]: { ...curr, estado, motivo: estado === "P" ? undefined : curr?.motivo },
+    }));
     markAttendance.mutate(
       { data: { childId, fecha: TODAY, estado } },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListAttendanceQueryKey({ roomId: roomId ?? undefined, date: TODAY }) });
           queryClient.invalidateQueries({ queryKey: getGetRoomsSummaryQueryKey() });
+          setOptimisticAtt((prev) => { const next = { ...prev }; delete next[childId]; return next; });
+        },
+        onError: () => {
+          setOptimisticAtt((prev) => { const next = { ...prev }; delete next[childId]; return next; });
         },
       }
     );
   }
 
   function handleMotivo(childId: number, motivo: string) {
-    const curr = attMap[childId];
+    const curr = mergedAttMap[childId];
+    setOptimisticAtt((prev) => ({ ...prev, [childId]: { ...curr, estado: "A", motivo } }));
     markAttendance.mutate(
       { data: { childId, fecha: TODAY, estado: "A", motivo, nota: curr?.nota ?? undefined, mercaderia: curr?.mercaderia ?? false } },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListAttendanceQueryKey({ roomId: roomId ?? undefined, date: TODAY }) });
+          setOptimisticAtt((prev) => { const next = { ...prev }; delete next[childId]; return next; });
+        },
+        onError: () => {
+          setOptimisticAtt((prev) => { const next = { ...prev }; delete next[childId]; return next; });
         },
       }
     );
   }
 
   function handleNota(childId: number) {
-    const curr = attMap[childId];
+    const curr = mergedAttMap[childId];
     const nota = notasDraft[childId] ?? curr?.nota ?? "";
     markAttendance.mutate(
       { data: { childId, fecha: TODAY, estado: curr?.estado ?? "A", motivo: curr?.motivo ?? undefined, nota: nota || undefined, mercaderia: curr?.mercaderia ?? false } },
@@ -177,13 +205,18 @@ export default function SalaPage() {
   }
 
   function handleMercaderia(childId: number) {
-    const curr = attMap[childId];
+    const curr = mergedAttMap[childId];
     const newMerc = !(curr?.mercaderia ?? false);
+    setOptimisticAtt((prev) => ({ ...prev, [childId]: { ...curr, mercaderia: newMerc } }));
     markAttendance.mutate(
       { data: { childId, fecha: TODAY, estado: curr?.estado ?? undefined, mercaderia: newMerc } },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListAttendanceQueryKey({ roomId: roomId ?? undefined, date: TODAY }) });
+          setOptimisticAtt((prev) => { const next = { ...prev }; delete next[childId]; return next; });
+        },
+        onError: () => {
+          setOptimisticAtt((prev) => { const next = { ...prev }; delete next[childId]; return next; });
         },
       }
     );
@@ -370,7 +403,7 @@ export default function SalaPage() {
             ) : (
               <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
                 {filtered.map((child: Child, idx: number) => {
-                  const att = attMap[child.id];
+                  const att = mergedAttMap[child.id];
                   const estado = att?.estado ?? null;
                   const mercaderia = att?.mercaderia ?? false;
                   return (

@@ -45,7 +45,7 @@ function Router() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/sala">
-        {() => <ProtectedRoute component={Sala} allowedRoles={["sala", "superadmin"]} />}
+        {() => <ProtectedRoute component={Sala} allowedRoles={["sala", "admin", "superadmin"]} />}
       </Route>
       <Route path="/admin">
         {() => <ProtectedRoute component={Admin} allowedRoles={["admin", "superadmin"]} />}

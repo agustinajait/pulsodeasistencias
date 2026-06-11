@@ -268,16 +268,18 @@ export default function SalaPage() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground capitalize hidden sm:inline">{formatDateLabel(TODAY)}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs text-muted-foreground"
-              onClick={() => { setLocation("/admin"); }}
-              data-testid="button-back-admin"
-            >
-              <ChevronLeft className="w-3.5 h-3.5 mr-1" />
-              Admin
-            </Button>
+            {(role === "admin" || role === "superadmin") && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground"
+                onClick={() => { setLocation("/admin"); }}
+                data-testid="button-back-admin"
+              >
+                <ChevronLeft className="w-3.5 h-3.5 mr-1" />
+                Admin
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"

@@ -344,12 +344,13 @@ async function uploadVacunas(childId: number, file: File): Promise<string | null
   return `${SUPABASE_URL}/storage/v1/object/vacunas/${path}`;
 }
 
-function NuevaAltaDialog({ onSuccess }: { onSuccess: () => void }) {
+function NuevaAltaDialog({ onSuccess, onOpenDocs }: { onSuccess: () => void; onOpenDocs: (childId: number) => void }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [apellido, setApellido] = useState("");
   const [nombre, setNombre] = useState("");
   const [sala, setSala] = useState("1");
+  const [legajo, setLegajo] = useState("");
   const [dni, setDni] = useState("");
   const [fnac, setFnac] = useState("");
   const [genero, setGenero] = useState("FEMENINO");
@@ -362,7 +363,14 @@ function NuevaAltaDialog({ onSuccess }: { onSuccess: () => void }) {
   const [obs, setObs] = useState("");
   const [vacunasFile, setVacunasFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [createdChild, setCreatedChild] = useState<{ id: number; nombre: string; apellido: string } | null>(null);
   const createChild = useCreateChild();
+
+  function resetForm() {
+    setApellido(""); setNombre(""); setLegajo(""); setDni(""); setFnac(""); setDomicilio("");
+    setFamApellido(""); setFamNombre(""); setCelular(""); setEmail(""); setObs("");
+    setVacunasFile(null); setCreatedChild(null);
+  }
 
   async function handleSubmit() {
     if (!apellido || !nombre) return;
@@ -376,15 +384,14 @@ function NuevaAltaDialog({ onSuccess }: { onSuccess: () => void }) {
           famApellido: famApellido || undefined, famNombre: famNombre || undefined,
           vinculo: vinculo || undefined, celular: celular || undefined,
           email: email || undefined, obs: obs || undefined,
+          registro: legajo || undefined,
         }
       },
       {
         onSuccess: async (child) => {
-          // Si hay carnet, subirlo a Supabase Storage
           if (vacunasFile && child?.id) {
             const url = await uploadVacunas(child.id, vacunasFile);
             if (url) {
-              // Guardar URL en la DB via PATCH
               await fetch(`/api/children/${child.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
@@ -393,11 +400,7 @@ function NuevaAltaDialog({ onSuccess }: { onSuccess: () => void }) {
             }
           }
           setUploading(false);
-          toast({ title: "Alta registrada", description: `${apellido}, ${nombre}` });
-          setOpen(false);
-          setApellido(""); setNombre(""); setDni(""); setFnac(""); setDomicilio("");
-          setFamApellido(""); setFamNombre(""); setCelular(""); setEmail(""); setObs("");
-          setVacunasFile(null);
+          setCreatedChild({ id: child.id, nombre: child.nombre, apellido: child.apellido });
           onSuccess();
         },
         onError: () => {
@@ -409,7 +412,7 @@ function NuevaAltaDialog({ onSuccess }: { onSuccess: () => void }) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
       <DialogTrigger asChild>
         <Button size="sm" className="flex items-center gap-1.5" data-testid="btn-nueva-alta">
           <Plus className="w-4 h-4" />
@@ -420,8 +423,36 @@ function NuevaAltaDialog({ onSuccess }: { onSuccess: () => void }) {
         <DialogHeader>
           <DialogTitle>Alta de nuevo niño/a</DialogTitle>
         </DialogHeader>
+
+        {/* SUCCESS STATE */}
+        {createdChild ? (
+          <div className="space-y-4 mt-2">
+            <div className="flex flex-col items-center gap-2 py-4">
+              <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                <Check className="w-6 h-6 text-green-600" />
+              </div>
+              <p className="font-bold text-base">{createdChild.apellido}, {createdChild.nombre}</p>
+              <p className="text-sm text-muted-foreground">Alta registrada correctamente</p>
+            </div>
+            <div className="bg-muted/50 rounded-xl p-4 space-y-3">
+              <p className="text-sm font-semibold">¿Qué querés hacer ahora?</p>
+              <Button className="w-full" onClick={() => { setOpen(false); onOpenDocs(createdChild.id); resetForm(); }}>
+                Cargar documentos del legajo
+              </Button>
+              <Button variant="outline" className="w-full" onClick={() => resetForm()}>
+                Agregar otro niño/a
+              </Button>
+              <button className="w-full text-xs text-muted-foreground hover:text-foreground" onClick={() => { setOpen(false); resetForm(); }}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        ) : (
+
         <div className="space-y-3 mt-2">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Legajo + Apellido + Nombre */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div><Label className="text-xs">Nro. Legajo</Label><Input value={legajo} onChange={(e) => setLegajo(e.target.value)} className="mt-1" placeholder="001" data-testid="input-alta-legajo" /></div>
             <div><Label className="text-xs">Apellido</Label><Input value={apellido} onChange={(e) => setApellido(e.target.value)} className="mt-1" placeholder="GARCÍA" data-testid="input-alta-apellido" /></div>
             <div><Label className="text-xs">Nombre</Label><Input value={nombre} onChange={(e) => setNombre(e.target.value)} className="mt-1" placeholder="JUAN" data-testid="input-alta-nombre" /></div>
           </div>
@@ -489,6 +520,7 @@ function NuevaAltaDialog({ onSuccess }: { onSuccess: () => void }) {
             {uploading ? "Subiendo carnet..." : createChild.isPending ? "Registrando..." : "Registrar alta"}
           </Button>
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -1231,7 +1263,7 @@ export default function AdminPage() {
                       Exportar CSV
                     </button>
                     <ImportarCSVDialog rooms={roomSummary.data ?? []} onSuccess={invalidateAll} />
-                    <NuevaAltaDialog onSuccess={invalidateAll} />
+                    <NuevaAltaDialog onSuccess={invalidateAll} onOpenDocs={(id) => setSelectedChild(id)} />
                     <button
                       onClick={() => { setBulkDeleteMode(true); setSelectedIds(new Set()); setConfirmBulkDelete(false); }}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-xs font-semibold text-red-600 hover:bg-red-100 transition-colors"
@@ -1312,7 +1344,10 @@ export default function AdminPage() {
                   )}
                   <div className={`flex-1 min-w-0 ${!bulkDeleteMode ? "cursor-pointer" : ""}`} onClick={!bulkDeleteMode ? () => setSelectedChild(child.id) : undefined}>
                     <div className="text-sm font-semibold truncate">{child.apellido} {child.nombre}</div>
-                    <div className="text-xs text-muted-foreground">ECO {child.ecoNumber} · {child.famNombre} · {child.celular ?? "sin tel."}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {child.registro && <span className="font-mono mr-1.5">#{child.registro}</span>}
+                      ECO {child.ecoNumber} · {child.famNombre} · {child.celular ?? "sin tel."}
+                    </div>
                   </div>
                   {!bulkDeleteMode && (
                     <>

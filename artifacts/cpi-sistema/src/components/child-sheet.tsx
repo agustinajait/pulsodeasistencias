@@ -224,6 +224,7 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                 <div className="bg-muted/50 rounded-lg px-4 py-3 space-y-2">
                   <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Datos personales</h4>
                   {[
+                    { label: "Legajo", value: c.registro },
                     { label: "DNI", value: c.dni },
                     { label: "Nacimiento", value: c.fnac },
                     { label: "Género", value: c.genero },

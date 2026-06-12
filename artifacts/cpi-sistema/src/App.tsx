@@ -9,6 +9,7 @@ import Login from "@/pages/login";
 import Sala from "@/pages/sala";
 import Admin from "@/pages/admin";
 import CheckIn from "@/pages/check-in";
+import ChildDocs from "@/pages/child-docs";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,6 +46,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/check-in/:token" component={CheckIn} />
+      <Route path="/docs/:token" component={ChildDocs} />
       <Route path="/login" component={Login} />
       <Route path="/sala">
         {() => <ProtectedRoute component={Sala} allowedRoles={["sala", "admin", "superadmin"]} />}

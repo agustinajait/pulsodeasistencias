@@ -28,6 +28,8 @@ export const childrenTable = pgTable("children", {
   fechaBaja: date("fecha_baja"),
   motivoBaja: varchar("motivo_baja", { length: 200 }),
   tipoBaja: varchar("tipo_baja", { length: 50 }),
+  docsToken: varchar("docs_token", { length: 64 }).unique(),
+  panialesAuth: boolean("paniales_auth").default(false),
 });
 
 export const insertChildSchema = createInsertSchema(childrenTable).omit({ id: true });

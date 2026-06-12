@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { db, childrenTable, roomsTable, attendanceTable, contactsTable } from "@workspace/db";
+import { db, childrenTable, roomsTable, attendanceTable, contactsTable, childDocumentsTable } from "@workspace/db";
+import { randomBytes } from "crypto";
 import { eq, and, ilike, or, sql, desc, inArray } from "drizzle-orm";
 import { CreateChildBody, UpdateChildBody, DischargeChildBody } from "@workspace/api-zod";
 
@@ -403,6 +404,32 @@ router.post("/children/:id/reinstate", async (req, res) => {
   } catch (err) {
     req.log.error(err, "Error reinstating child");
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /children/:id/docs — admin: get child's documents and generate token if needed
+router.get("/children/:id/docs", async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  try {
+    let child = await db.query.childrenTable.findFirst({ where: eq(childrenTable.id, id) });
+    if (!child) { res.status(404).json({ error: "Not found" }); return; }
+    // Generate token if missing
+    if (!child.docsToken) {
+      const token = randomBytes(24).toString("hex");
+      const rows = await db.update(childrenTable).set({ docsToken: token }).where(eq(childrenTable.id, id)).returning();
+      child = rows[0];
+    }
+    const docs = await db.select().from(childDocumentsTable).where(eq(childDocumentsTable.childId, id));
+    res.json({
+      docsToken: child!.docsToken,
+      panialesAuth: child!.panialesAuth ?? false,
+      docs: docs.map(d => ({ tipo: d.tipo, url: d.url, uploadedAt: d.uploadedAt })),
+    });
+  } catch (err) {
+    req.log.error(err, "Error getting child docs");
+    // Return empty response if columns don't exist yet (pre-migration)
+    res.json({ docsToken: null, panialesAuth: false, docs: [] });
   }
 });
 

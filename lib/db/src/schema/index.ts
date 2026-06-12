@@ -3,3 +3,4 @@ export * from "./rooms";
 export * from "./children";
 export * from "./attendance";
 export * from "./contacts";
+export * from "./child-documents";

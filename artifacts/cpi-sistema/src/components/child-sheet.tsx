@@ -8,8 +8,18 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { X, Phone, ExternalLink, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Phone, ExternalLink, AlertTriangle, ChevronLeft, ChevronRight, Copy, CheckCircle2, Circle, FileText, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+const DOC_TYPES = [
+  { key: "dni_nino",    label: "DNI / Fotocopia niño/a" },
+  { key: "acta_nac",   label: "Acta de nacimiento" },
+  { key: "dni_padres", label: "DNI padres (con foto)" },
+  { key: "apto_fisico",label: "Apto físico" },
+  { key: "aut_retiro", label: "Autorización de retiro" },
+  { key: "aut_llamada",label: "Autorización de llamada" },
+  { key: "aut_fotos",  label: "Autorización de fotos" },
+] as const;
 
 const MES_ACTUAL = new Date().toISOString().slice(0, 7);
 
@@ -49,8 +59,12 @@ const TIPO_BAJA_OPTIONS = [
 export default function ChildSheet({ childId, onClose, roomId }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [view, setView] = useState<"ficha" | "llamado" | "baja" | "historial">("ficha");
+  const [view, setView] = useState<"ficha" | "llamado" | "baja" | "historial" | "documentos">("ficha");
   const [histMonth, setHistMonth] = useState(MES_ACTUAL);
+
+  // Docs state
+  const [docsData, setDocsData] = useState<{ docsToken: string; panialesAuth: boolean; docs: {tipo:string;url:string;uploadedAt?:string}[] } | null>(null);
+  const [docsLoading, setDocsLoading] = useState(false);
 
   // Llamado form
   const [llFecha, setLlFecha] = useState(TODAY);
@@ -124,6 +138,16 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
         },
       }
     );
+  }
+
+  async function loadDocs() {
+    setDocsLoading(true);
+    try {
+      const res = await fetch(`/api/children/${childId}/docs`);
+      if (res.ok) setDocsData(await res.json());
+    } finally {
+      setDocsLoading(false);
+    }
   }
 
   function handleReinstate() {
@@ -269,6 +293,15 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                     data-testid="btn-ver-historial"
                   >
                     Ver historial de asistencia
+                  </Button>
+                  <Button
+                    onClick={() => { setView("documentos"); loadDocs(); }}
+                    variant="outline"
+                    className="w-full"
+                    data-testid="btn-ver-documentos"
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Documentos
                   </Button>
                   {c.activo && (
                     <>
@@ -477,6 +510,106 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                     {dischargeChild.isPending ? "Registrando..." : "Confirmar egreso"}
                   </Button>
                 </div>
+              </div>
+            )}
+
+            {/* DOCUMENTOS VIEW */}
+            {view === "documentos" && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm" className="px-2 py-1 h-auto" onClick={() => setView("ficha")} data-testid="btn-docs-back">
+                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    Ficha
+                  </Button>
+                  <h3 className="font-semibold text-base flex-1">Documentos</h3>
+                  <Button variant="ghost" size="sm" className="px-2 py-1 h-auto" onClick={loadDocs} disabled={docsLoading} data-testid="btn-docs-reload">
+                    <RefreshCw className={`w-4 h-4 ${docsLoading ? "animate-spin" : ""}`} />
+                  </Button>
+                </div>
+
+                {docsLoading && !docsData && (
+                  <div className="text-center py-8 text-muted-foreground text-sm">Cargando documentos...</div>
+                )}
+
+                {docsData && (
+                  <>
+                    {/* Parent link card */}
+                    <div className="bg-violet-50 border border-violet-200 rounded-lg px-4 py-3 space-y-2">
+                      <p className="text-[11px] font-bold text-violet-700 uppercase tracking-wider">Enlace para padres</p>
+                      <div className="flex items-center gap-2">
+                        <code className="text-xs text-violet-800 flex-1 truncate bg-white rounded px-2 py-1 border border-violet-200">
+                          {window.location.origin}/docs/{docsData.docsToken}
+                        </code>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="shrink-0 border-violet-300 text-violet-700 hover:bg-violet-100"
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${window.location.origin}/docs/${docsData.docsToken}`);
+                            toast({ title: "Enlace copiado" });
+                          }}
+                        >
+                          <Copy className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Document list */}
+                    <div className="space-y-2">
+                      {DOC_TYPES.map(({ key, label }) => {
+                        const doc = docsData.docs.find(d => d.tipo === key);
+                        return (
+                          <div key={key} className="flex items-center gap-3 bg-muted/40 rounded-lg px-3 py-2.5">
+                            {doc ? (
+                              <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+                            ) : (
+                              <Circle className="w-5 h-5 text-gray-400 shrink-0" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium">{label}</p>
+                              {doc && doc.uploadedAt && (
+                                <p className="text-[10px] text-muted-foreground">
+                                  {new Date(doc.uploadedAt).toLocaleDateString("es-AR")}
+                                </p>
+                              )}
+                              {!doc && (
+                                <p className="text-[10px] text-muted-foreground">Pendiente</p>
+                              )}
+                            </div>
+                            {doc && (
+                              <a
+                                href={doc.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-xs text-violet-700 hover:underline flex items-center gap-1 shrink-0"
+                              >
+                                Ver <ExternalLink className="w-3 h-3" />
+                              </a>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {/* Pañales row */}
+                      <div className="flex items-center gap-3 bg-muted/40 rounded-lg px-3 py-2.5">
+                        {docsData.panialesAuth ? (
+                          <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+                        ) : (
+                          <Circle className="w-5 h-5 text-gray-400 shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">Autorización uso de pañales</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {docsData.panialesAuth ? "Autorizado por familia" : "No autorizado"}
+                          </p>
+                        </div>
+                        <Badge variant={docsData.panialesAuth ? "default" : "outline"} className="shrink-0 text-[10px]">
+                          {docsData.panialesAuth ? "Sí" : "No"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>

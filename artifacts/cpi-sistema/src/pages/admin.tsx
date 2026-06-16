@@ -1324,7 +1324,7 @@ export default function AdminPage() {
                 className={`px-2.5 py-1 rounded-md text-xs font-semibold border shrink-0 transition-all ${nominaRoomId === null ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-muted-foreground hover:border-primary/50"}`}
                 data-testid="btn-nomina-room-all"
               >
-                Todas las salas
+                Todas las salas ({(roomSummary.data ?? []).reduce((sum: number, r: RoomSummary) => sum + r.total, 0)})
               </button>
               {(roomSummary.data ?? []).map((r: RoomSummary) => (
                 <button
@@ -1333,7 +1333,7 @@ export default function AdminPage() {
                   className={`px-2.5 py-1 rounded-md text-xs font-semibold border shrink-0 transition-all ${nominaRoomId === r.id ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-muted-foreground hover:border-primary/50"}`}
                   data-testid={`btn-nomina-room-${r.id}`}
                 >
-                  {r.name}
+                  {r.name} ({r.total})
                 </button>
               ))}
             </div>

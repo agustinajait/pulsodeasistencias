@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, childrenTable, roomsTable, attendanceTable, contactsTable, childDocumentsTable } from "@workspace/db";
+import { db, childrenTable, roomsTable, attendanceTable, contactsTable, childDocumentsTable, centersTable } from "@workspace/db";
 import { randomBytes } from "crypto";
 import { eq, and, ilike, or, sql, desc, inArray } from "drizzle-orm";
 import { CreateChildBody, UpdateChildBody, DischargeChildBody } from "@workspace/api-zod";
@@ -36,6 +36,64 @@ function calcConsecAbsences(
   }
   return consec;
 }
+
+// GET /children/duplicates?centerId=X — find children with matching nombre+apellido within a center
+router.get("/children/duplicates", async (req, res) => {
+  try {
+    const { centerId, centerName } = req.query as { centerId?: string; centerName?: string };
+    let cid: number;
+    if (centerId && !isNaN(parseInt(centerId))) {
+      cid = parseInt(centerId);
+    } else if (centerName) {
+      const [center] = await db
+        .select()
+        .from(centersTable)
+        .where(ilike(centersTable.name, `%${centerName}%`));
+      if (!center) { res.status(404).json({ error: "Center not found" }); return; }
+      cid = center.id;
+    } else {
+      res.status(400).json({ error: "centerId or centerName is required" });
+      return;
+    }
+    const rooms = await db.select().from(roomsTable).where(eq(roomsTable.centerId, cid));
+    const roomIds = rooms.map((r) => r.id);
+    if (roomIds.length === 0) {
+      res.json({ centerId: cid, groups: [] });
+      return;
+    }
+    const kids = await db.select().from(childrenTable).where(inArray(childrenTable.roomId, roomIds));
+    const roomNameById = new Map(rooms.map((r) => [r.id, r.name]));
+
+    const groups = new Map<string, typeof kids>();
+    for (const k of kids) {
+      const key = `${k.nombre.trim().toLowerCase()}|${k.apellido.trim().toLowerCase()}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(k);
+    }
+
+    const dupGroups = [...groups.values()]
+      .filter((g) => g.length > 1)
+      .map((g) => ({
+        nombre: g[0].nombre,
+        apellido: g[0].apellido,
+        count: g.length,
+        children: g.map((c) => ({
+          id: c.id,
+          registro: c.registro,
+          dni: c.dni,
+          roomId: c.roomId,
+          roomName: roomNameById.get(c.roomId) ?? null,
+          activo: c.activo,
+          estado: c.estado,
+        })),
+      }));
+
+    res.json({ centerId: cid, totalChildren: kids.length, duplicateGroups: dupGroups });
+  } catch (err) {
+    req.log.error(err, "Error finding duplicate children");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 // GET /children
 router.get("/children", async (req, res) => {

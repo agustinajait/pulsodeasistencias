@@ -509,4 +509,52 @@ router.get("/children/:id/docs", async (req, res) => {
   }
 });
 
+const DOC_TYPES = ["dni_nino", "acta_nac", "dni_padres", "apto_fisico", "aut_retiro", "aut_llamada", "aut_fotos"];
+const SUPABASE_URL = process.env.SUPABASE_URL ?? "https://idsqnnyyoybknwqugspv.supabase.co";
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_ANON_KEY ?? "";
+
+// POST /children/:id/upload-doc — admin: upload a document for a child
+// Body: { tipo: string, fileBase64: string, mimeType: string, ext: string }
+router.post("/children/:id/upload-doc", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+    const { tipo, fileBase64, mimeType, ext } = req.body as { tipo: string; fileBase64: string; mimeType: string; ext: string };
+    if (!tipo || !fileBase64 || !DOC_TYPES.includes(tipo)) { res.status(400).json({ error: "Datos inválidos" }); return; }
+    const [child] = await db.select().from(childrenTable).where(eq(childrenTable.id, id)).limit(1);
+    if (!child) { res.status(404).json({ error: "Not found" }); return; }
+
+    const buffer = Buffer.from(fileBase64, "base64");
+    const path = `${child.id}/${tipo}.${ext ?? "jpg"}`;
+
+    const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/documentos/${path}`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${SUPABASE_SERVICE_KEY}`,
+        "Content-Type": mimeType ?? "image/jpeg",
+        "x-upsert": "true",
+      },
+      body: buffer,
+    });
+    if (!uploadRes.ok) {
+      const errText = await uploadRes.text();
+      res.status(500).json({ error: "Error al subir archivo", detail: errText }); return;
+    }
+
+    const url = `${SUPABASE_URL}/storage/v1/object/public/documentos/${path}`;
+
+    await db.insert(childDocumentsTable)
+      .values({ childId: child.id, tipo, url })
+      .onConflictDoUpdate({
+        target: [childDocumentsTable.childId, childDocumentsTable.tipo],
+        set: { url, uploadedAt: new Date() },
+      });
+
+    res.json({ ok: true, url });
+  } catch (err) {
+    req.log.error(err, "Error uploading child doc");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

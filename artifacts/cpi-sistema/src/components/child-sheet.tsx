@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { X, Phone, ExternalLink, AlertTriangle, ChevronLeft, ChevronRight, Copy, CheckCircle2, Circle, FileText, RefreshCw } from "lucide-react";
+import { X, Phone, ExternalLink, AlertTriangle, ChevronLeft, ChevronRight, Copy, CheckCircle2, Circle, FileText, RefreshCw, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const DOC_TYPES = [
@@ -65,6 +65,7 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
   // Docs state
   const [docsData, setDocsData] = useState<{ docsToken: string; panialesAuth: boolean; aptoFisico: boolean; autRetiro: boolean; autLlamada: boolean; autFotos: boolean; docs: {tipo:string;url:string;uploadedAt?:string}[] } | null>(null);
   const [docsLoading, setDocsLoading] = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
 
   // Llamado form
   const [llFecha, setLlFecha] = useState(TODAY);
@@ -147,6 +148,32 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
       if (res.ok) setDocsData(await res.json());
     } finally {
       setDocsLoading(false);
+    }
+  }
+
+  async function handleUploadDoc(tipo: string, file: File) {
+    setUploadingDoc(tipo);
+    try {
+      const ext = file.name.split(".").pop() ?? "jpg";
+      const fileBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const res = await fetch(`/api/children/${childId}/upload-doc`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo, fileBase64, mimeType: file.type, ext }),
+      });
+      if (res.ok) {
+        toast({ title: "Documento subido" });
+        await loadDocs();
+      } else {
+        toast({ title: "Error al subir el documento", variant: "destructive" });
+      }
+    } finally {
+      setUploadingDoc(null);
     }
   }
 
@@ -587,6 +614,22 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                                 Ver <ExternalLink className="w-3 h-3" />
                               </a>
                             )}
+                            <label className={`text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 shrink-0 cursor-pointer px-2 py-1 rounded border border-dashed border-border hover:border-foreground/30 transition-colors ${uploadingDoc === key ? "opacity-50" : ""}`}>
+                              <Upload className="w-3 h-3" />
+                              {uploadingDoc === key ? "Subiendo..." : doc ? "Reemplazar" : "Adjuntar"}
+                              <input
+                                type="file"
+                                accept="image/*,application/pdf"
+                                className="hidden"
+                                disabled={uploadingDoc === key}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleUploadDoc(key, file);
+                                  e.target.value = "";
+                                }}
+                                data-testid={`input-upload-doc-${key}`}
+                              />
+                            </label>
                           </div>
                         );
                       })}

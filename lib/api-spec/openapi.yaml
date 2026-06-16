@@ -735,6 +735,8 @@ components:
       properties:
         roomId:
           type: integer
+        registro:
+          type: string
         apellido:
           type: string
         nombre:
@@ -763,6 +765,16 @@ components:
           type: string
         obs:
           type: string
+        panialesAuth:
+          type: boolean
+        aptoFisico:
+          type: boolean
+        autRetiro:
+          type: boolean
+        autLlamada:
+          type: boolean
+        autFotos:
+          type: boolean
       required: [roomId, apellido, nombre]
 
     ChildUpdate:

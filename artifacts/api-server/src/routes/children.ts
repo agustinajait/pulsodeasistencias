@@ -171,30 +171,44 @@ router.post("/children", async (req, res) => {
       return;
     }
 
-    const [child] = await db
-      .insert(childrenTable)
-      .values({
-        roomId: parsed.data.roomId,
-        apellido: parsed.data.apellido.toUpperCase(),
-        nombre: parsed.data.nombre.toUpperCase(),
-        dni: parsed.data.dni ?? null,
-        fnac: parsed.data.fnac ?? null,
-        genero: parsed.data.genero ?? null,
-        domicilio: parsed.data.domicilio ?? null,
-        barrio: parsed.data.barrio ?? null,
-        localidad: parsed.data.localidad ?? null,
-        famApellido: parsed.data.famApellido?.toUpperCase() ?? null,
-        famNombre: parsed.data.famNombre?.toUpperCase() ?? null,
-        vinculo: parsed.data.vinculo ?? null,
-        celular: parsed.data.celular ?? null,
-        email: parsed.data.email ?? null,
-        obs: parsed.data.obs ?? null,
-        estado: "INSCRIPTX",
-        estAsist: "Regular",
-        activo: true,
-        inscripto: TODAY(),
-      })
-      .returning();
+    const baseValues = {
+      roomId: parsed.data.roomId,
+      apellido: parsed.data.apellido.toUpperCase(),
+      nombre: parsed.data.nombre.toUpperCase(),
+      dni: parsed.data.dni ?? null,
+      fnac: parsed.data.fnac ?? null,
+      genero: parsed.data.genero ?? null,
+      domicilio: parsed.data.domicilio ?? null,
+      barrio: parsed.data.barrio ?? null,
+      localidad: parsed.data.localidad ?? null,
+      famApellido: parsed.data.famApellido?.toUpperCase() ?? null,
+      famNombre: parsed.data.famNombre?.toUpperCase() ?? null,
+      vinculo: parsed.data.vinculo ?? null,
+      celular: parsed.data.celular ?? null,
+      email: parsed.data.email ?? null,
+      obs: parsed.data.obs ?? null,
+      estado: "INSCRIPTX",
+      estAsist: "Regular",
+      activo: true,
+      inscripto: TODAY(),
+    };
+    const extendedValues = {
+      ...baseValues,
+      registro: parsed.data.registro?.trim() || null,
+      panialesAuth: parsed.data.panialesAuth ?? false,
+      aptoFisico: parsed.data.aptoFisico ?? false,
+      autRetiro: parsed.data.autRetiro ?? false,
+      autLlamada: parsed.data.autLlamada ?? false,
+      autFotos: parsed.data.autFotos ?? false,
+    };
+
+    let child;
+    try {
+      [child] = await db.insert(childrenTable).values(extendedValues).returning();
+    } catch {
+      // columnas nuevas (registro/autorizaciones) no migradas aún en producción
+      [child] = await db.insert(childrenTable).values(baseValues).returning();
+    }
 
     res.status(201).json({ ...child, ecoNumber: room[0].ecoNumber });
   } catch (err) {
@@ -482,12 +496,16 @@ router.get("/children/:id/docs", async (req, res) => {
     res.json({
       docsToken: child!.docsToken,
       panialesAuth: child!.panialesAuth ?? false,
+      aptoFisico: child!.aptoFisico ?? false,
+      autRetiro: child!.autRetiro ?? false,
+      autLlamada: child!.autLlamada ?? false,
+      autFotos: child!.autFotos ?? false,
       docs: docs.map(d => ({ tipo: d.tipo, url: d.url, uploadedAt: d.uploadedAt })),
     });
   } catch (err) {
     req.log.error(err, "Error getting child docs");
     // Return empty response if columns don't exist yet (pre-migration)
-    res.json({ docsToken: null, panialesAuth: false, docs: [] });
+    res.json({ docsToken: null, panialesAuth: false, aptoFisico: false, autRetiro: false, autLlamada: false, autFotos: false, docs: [] });
   }
 });
 

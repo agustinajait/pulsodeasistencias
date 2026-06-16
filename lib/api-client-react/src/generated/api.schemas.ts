@@ -144,6 +144,7 @@ export type ChildDetail = Child & {
 
 export interface ChildInput {
   roomId: number;
+  registro?: string;
   apellido: string;
   nombre: string;
   dni?: string;
@@ -158,6 +159,11 @@ export interface ChildInput {
   celular?: string;
   email?: string;
   obs?: string;
+  panialesAuth?: boolean;
+  aptoFisico?: boolean;
+  autRetiro?: boolean;
+  autLlamada?: boolean;
+  autFotos?: boolean;
 }
 
 export interface ChildUpdate {

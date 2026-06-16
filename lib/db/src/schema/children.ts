@@ -30,6 +30,10 @@ export const childrenTable = pgTable("children", {
   tipoBaja: varchar("tipo_baja", { length: 50 }),
   docsToken: varchar("docs_token", { length: 64 }).unique(),
   panialesAuth: boolean("paniales_auth").default(false),
+  aptoFisico: boolean("apto_fisico").default(false),
+  autRetiro: boolean("aut_retiro").default(false),
+  autLlamada: boolean("aut_llamada").default(false),
+  autFotos: boolean("aut_fotos").default(false),
 });
 
 export const insertChildSchema = createInsertSchema(childrenTable).omit({ id: true });

@@ -63,7 +63,7 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
   const [histMonth, setHistMonth] = useState(MES_ACTUAL);
 
   // Docs state
-  const [docsData, setDocsData] = useState<{ docsToken: string; panialesAuth: boolean; docs: {tipo:string;url:string;uploadedAt?:string}[] } | null>(null);
+  const [docsData, setDocsData] = useState<{ docsToken: string; panialesAuth: boolean; aptoFisico: boolean; autRetiro: boolean; autLlamada: boolean; autFotos: boolean; docs: {tipo:string;url:string;uploadedAt?:string}[] } | null>(null);
   const [docsLoading, setDocsLoading] = useState(false);
 
   // Llamado form
@@ -591,23 +591,31 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                         );
                       })}
 
-                      {/* Pañales row */}
-                      <div className="flex items-center gap-3 bg-muted/40 rounded-lg px-3 py-2.5">
-                        {docsData.panialesAuth ? (
-                          <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
-                        ) : (
-                          <Circle className="w-5 h-5 text-gray-400 shrink-0" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium">Autorización uso de pañales</p>
-                          <p className="text-[10px] text-muted-foreground">
-                            {docsData.panialesAuth ? "Autorizado por familia" : "No autorizado"}
-                          </p>
+                      {/* Autorizaciones firmadas en la inscripción */}
+                      {[
+                        { label: "Apto físico", value: docsData.aptoFisico },
+                        { label: "Autorización de retiro", value: docsData.autRetiro },
+                        { label: "Autorización de llamada", value: docsData.autLlamada },
+                        { label: "Autorización de toma de fotos", value: docsData.autFotos },
+                        { label: "Autorización uso de pañales", value: docsData.panialesAuth },
+                      ].map(({ label, value }) => (
+                        <div key={label} className="flex items-center gap-3 bg-muted/40 rounded-lg px-3 py-2.5">
+                          {value ? (
+                            <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+                          ) : (
+                            <Circle className="w-5 h-5 text-gray-400 shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium">{label}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {value ? "Autorizado por familia" : "No autorizado"}
+                            </p>
+                          </div>
+                          <Badge variant={value ? "default" : "outline"} className="shrink-0 text-[10px]">
+                            {value ? "Sí" : "No"}
+                          </Badge>
                         </div>
-                        <Badge variant={docsData.panialesAuth ? "default" : "outline"} className="shrink-0 text-[10px]">
-                          {docsData.panialesAuth ? "Sí" : "No"}
-                        </Badge>
-                      </div>
+                      ))}
                     </div>
                   </>
                 )}

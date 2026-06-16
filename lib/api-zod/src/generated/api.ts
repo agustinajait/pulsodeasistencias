@@ -200,6 +200,7 @@ export const ListChildrenResponse = zod.array(ListChildrenResponseItem);
  */
 export const CreateChildBody = zod.object({
   roomId: zod.number(),
+  registro: zod.string().optional(),
   apellido: zod.string(),
   nombre: zod.string(),
   dni: zod.string().optional(),
@@ -214,6 +215,11 @@ export const CreateChildBody = zod.object({
   celular: zod.string().optional(),
   email: zod.string().optional(),
   obs: zod.string().optional(),
+  panialesAuth: zod.boolean().optional(),
+  aptoFisico: zod.boolean().optional(),
+  autRetiro: zod.boolean().optional(),
+  autLlamada: zod.boolean().optional(),
+  autFotos: zod.boolean().optional(),
 });
 
 /**

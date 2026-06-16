@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Search, LogOut, Phone, ExternalLink, AlertTriangle, Plus, Copy, Download, Pencil, Check, X, Upload, Trash2, ChevronLeft, ChevronRight, FileText, Lock, LockOpen, Users, QrCode } from "lucide-react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -364,12 +365,18 @@ function NuevaAltaDialog({ onSuccess, onOpenDocs }: { onSuccess: () => void; onO
   const [vacunasFile, setVacunasFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [createdChild, setCreatedChild] = useState<{ id: number; nombre: string; apellido: string } | null>(null);
+  const [panialesAuth, setPanialesAuth] = useState(false);
+  const [aptoFisico, setAptoFisico] = useState(false);
+  const [autRetiro, setAutRetiro] = useState(false);
+  const [autLlamada, setAutLlamada] = useState(false);
+  const [autFotos, setAutFotos] = useState(false);
   const createChild = useCreateChild();
 
   function resetForm() {
     setApellido(""); setNombre(""); setLegajo(""); setDni(""); setFnac(""); setDomicilio("");
     setFamApellido(""); setFamNombre(""); setCelular(""); setEmail(""); setObs("");
     setVacunasFile(null); setCreatedChild(null);
+    setPanialesAuth(false); setAptoFisico(false); setAutRetiro(false); setAutLlamada(false); setAutFotos(false);
   }
 
   async function handleSubmit() {
@@ -385,6 +392,7 @@ function NuevaAltaDialog({ onSuccess, onOpenDocs }: { onSuccess: () => void; onO
           vinculo: vinculo || undefined, celular: celular || undefined,
           email: email || undefined, obs: obs || undefined,
           registro: legajo || undefined,
+          panialesAuth, aptoFisico, autRetiro, autLlamada, autFotos,
         }
       },
       {
@@ -500,6 +508,23 @@ function NuevaAltaDialog({ onSuccess, onOpenDocs }: { onSuccess: () => void; onO
           </div>
           <div><Label className="text-xs">Email</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1" data-testid="input-alta-email" /></div>
           <div><Label className="text-xs">Observaciones</Label><Textarea value={obs} onChange={(e) => setObs(e.target.value)} rows={2} className="mt-1" data-testid="textarea-alta-obs" /></div>
+          <div>
+            <Label className="text-xs">Autorizaciones firmadas en la inscripción</Label>
+            <div className="mt-1.5 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {[
+                { key: "apto", label: "Apto físico", checked: aptoFisico, set: setAptoFisico },
+                { key: "retiro", label: "Autorización de retiro", checked: autRetiro, set: setAutRetiro },
+                { key: "llamada", label: "Autorización de llamada", checked: autLlamada, set: setAutLlamada },
+                { key: "fotos", label: "Autorización de toma de fotos", checked: autFotos, set: setAutFotos },
+                { key: "paniales", label: "Pañales (autorización)", checked: panialesAuth, set: setPanialesAuth },
+              ].map(({ key, label, checked, set }) => (
+                <label key={key} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-border bg-muted/30 text-sm cursor-pointer hover:bg-muted/60 transition-colors" data-testid={`check-alta-${key}`}>
+                  <Checkbox checked={checked} onCheckedChange={(v) => set(!!v)} />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </div>
           <div>
             <Label className="text-xs">Carnet de vacunas (imagen o PDF)</Label>
             <div className="mt-1 flex items-center gap-2">

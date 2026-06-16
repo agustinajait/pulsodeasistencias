@@ -1318,6 +1318,25 @@ export default function AdminPage() {
                 )}
               </div>
             </div>
+            <div className="flex gap-1.5 mb-3 overflow-x-auto flex-nowrap">
+              <button
+                onClick={() => setNominaRoomId(null)}
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold border shrink-0 transition-all ${nominaRoomId === null ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-muted-foreground hover:border-primary/50"}`}
+                data-testid="btn-nomina-room-all"
+              >
+                Todas las salas
+              </button>
+              {(roomSummary.data ?? []).map((r: RoomSummary) => (
+                <button
+                  key={r.id}
+                  onClick={() => setNominaRoomId(r.id)}
+                  className={`px-2.5 py-1 rounded-md text-xs font-semibold border shrink-0 transition-all ${nominaRoomId === r.id ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-muted-foreground hover:border-primary/50"}`}
+                  data-testid={`btn-nomina-room-${r.id}`}
+                >
+                  {r.name}
+                </button>
+              ))}
+            </div>
             <div className="relative mb-3">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" data-testid="input-nomina-search" />

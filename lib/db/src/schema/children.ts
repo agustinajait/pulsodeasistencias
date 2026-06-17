@@ -34,7 +34,6 @@ export const childrenTable = pgTable("children", {
   autRetiro: boolean("aut_retiro").default(false),
   autLlamada: boolean("aut_llamada").default(false),
   autFotos: boolean("aut_fotos").default(false),
-  carnetVacunas: boolean("carnet_vacunas").default(false),
 });
 
 export const insertChildSchema = createInsertSchema(childrenTable).omit({ id: true });

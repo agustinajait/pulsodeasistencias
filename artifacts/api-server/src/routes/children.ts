@@ -502,7 +502,7 @@ router.get("/children/:id/docs", async (req, res) => {
       autRetiro: child!.autRetiro ?? false,
       autLlamada: child!.autLlamada ?? false,
       autFotos: child!.autFotos ?? false,
-      carnetVacunas: (child as any).carnetVacunas ?? false,
+      carnetVacunas: await db.execute(sql`SELECT carnet_vacunas FROM children WHERE id = ${id}`).then((r: any) => r.rows?.[0]?.carnet_vacunas ?? false).catch(() => false),
       docs: docs.map(d => ({ tipo: d.tipo, url: d.url, uploadedAt: d.uploadedAt })),
     });
   } catch (err) {
@@ -518,7 +518,7 @@ router.patch("/children/:id/carnet-vacunas", async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
     const { value } = req.body as { value: boolean };
-    await db.update(childrenTable).set({ carnetVacunas: value } as any).where(eq(childrenTable.id, id));
+    await db.execute(sql`UPDATE children SET carnet_vacunas = ${value} WHERE id = ${id}`);
     res.json({ ok: true });
   } catch (err) {
     req.log.error(err, "Error updating carnet vacunas");

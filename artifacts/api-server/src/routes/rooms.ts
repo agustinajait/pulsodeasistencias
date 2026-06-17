@@ -155,10 +155,12 @@ router.get("/rooms/summary", async (req, res) => {
       kidAttMap[a.childId][a.fecha] = a.estado ?? null;
     });
 
+    const SPECIAL_ESTADOS = ["EN REVISION", "ALERTA"];
     const summary = rooms.map((room) => {
       const kids = allChildren.filter((c) => c.roomId === room.id);
-      const total = kids.length;
-      const att = todayAtt.filter((a) => kids.some((k) => k.id === a.childId));
+      const activeKids = kids.filter((c) => !SPECIAL_ESTADOS.includes((c as any).estado ?? ""));
+      const total = activeKids.length;
+      const att = todayAtt.filter((a) => activeKids.some((k) => k.id === a.childId));
 
       const present = att.filter((a) => a.estado === "P").length;
       const absent = att.filter((a) => a.estado === "A").length;
@@ -167,7 +169,7 @@ router.get("/rooms/summary", async (req, res) => {
       const pct = total > 0 ? Math.round((present / total) * 100) : 0;
 
       let alerts = 0;
-      kids.forEach((kid) => {
+      activeKids.forEach((kid) => {
         const dayMap = kidAttMap[kid.id] ?? {};
         let consec = 0;
         for (const d of allDays) {

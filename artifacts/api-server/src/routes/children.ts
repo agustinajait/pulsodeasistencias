@@ -166,7 +166,9 @@ router.get("/children", async (req, res) => {
 // POST /children
 router.post("/children", async (req, res) => {
   try {
-    const parsed = CreateChildBody.safeParse(req.body);
+    // Allow nombre to be absent — can be filled in later via edit
+    const body = { ...req.body, nombre: req.body.nombre || "" };
+    const parsed = CreateChildBody.safeParse(body);
     if (!parsed.success) {
       res.status(400).json({ error: "Invalid body", details: parsed.error.issues });
       return;

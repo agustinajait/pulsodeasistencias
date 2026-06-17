@@ -759,7 +759,7 @@ export default function AdminPage() {
   const alerts = useGetAlerts(centerParam);
   const recentContacts = useGetRecentContacts();
   const roomSummary = useGetRoomsSummary(centerParam);
-  const allChildren = useListChildren({ ...centerParam, active: true });
+  const allChildren = useListChildren({ ...centerParam, active: true, includeSpecial: true } as any);
   const dischargedChildren = useListChildren({ ...centerParam, active: false });
   const todayAttendance = useListAttendance({ date: TODAY });
   const updateRoom = useUpdateRoom();

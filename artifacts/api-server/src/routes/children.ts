@@ -98,11 +98,12 @@ router.get("/children/duplicates", async (req, res) => {
 // GET /children
 router.get("/children", async (req, res) => {
   try {
-    const { roomId, centerId, active, search } = req.query as {
+    const { roomId, centerId, active, search, includeSpecial } = req.query as {
       roomId?: string;
       centerId?: string;
       active?: string;
       search?: string;
+      includeSpecial?: string;
     };
 
     const rooms = await db.select().from(roomsTable);
@@ -123,7 +124,13 @@ router.get("/children", async (req, res) => {
         return;
       }
     }
-    if (active !== undefined) conditions.push(eq(childrenTable.activo, active === "true"));
+    if (active !== undefined) {
+      conditions.push(eq(childrenTable.activo, active === "true"));
+      // Exclude special states unless explicitly requested (nómina needs them for its own tabs)
+      if (active === "true" && includeSpecial !== "true") {
+        conditions.push(sql`(${childrenTable.estado} NOT IN ('EN REVISION', 'ALERTA') OR ${childrenTable.estado} IS NULL)`);
+      }
+    }
     if (search) {
       conditions.push(
         or(

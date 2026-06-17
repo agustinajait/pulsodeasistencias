@@ -169,15 +169,16 @@ router.post("/children", async (req, res) => {
     const b = req.body as Record<string, any>;
     // Only apellido + roomId are strictly required
     if (!b.apellido || !b.roomId) {
-      res.status(400).json({ error: "apellido y roomId son requeridos" });
+      res.status(400).json({ error: "apellido y roomId son requeridos", received: { apellido: b.apellido, roomId: b.roomId } });
       return;
     }
 
-    const room = await db.select().from(roomsTable).where(eq(roomsTable.id, parseInt(b.roomId))).limit(1);
-    if (!room.length) { res.status(400).json({ error: "Room not found" }); return; }
+    const roomId = typeof b.roomId === "number" ? b.roomId : parseInt(b.roomId);
+    const room = await db.select().from(roomsTable).where(eq(roomsTable.id, roomId)).limit(1);
+    if (!room.length) { res.status(400).json({ error: "Room not found", roomId }); return; }
 
     const baseValues = {
-      roomId: parseInt(b.roomId),
+      roomId,
       apellido: String(b.apellido).toUpperCase(),
       nombre: b.nombre ? String(b.nombre).toUpperCase() : "",
       dni: b.dni || null,

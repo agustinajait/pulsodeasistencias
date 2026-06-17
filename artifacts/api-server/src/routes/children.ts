@@ -126,10 +126,6 @@ router.get("/children", async (req, res) => {
     }
     if (active !== undefined) {
       conditions.push(eq(childrenTable.activo, active === "true"));
-      // Exclude special states unless explicitly requested (nómina needs them for its own tabs)
-      if (active === "true" && includeSpecial !== "true") {
-        conditions.push(sql`(estado IS NULL OR (estado <> 'EN REVISION' AND estado <> 'ALERTA'))`);
-      }
     }
     if (search) {
       conditions.push(

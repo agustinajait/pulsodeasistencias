@@ -151,9 +151,11 @@ export default function SalaPage() {
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
+    const SPECIAL = ["EN REVISION", "ALERTA"];
     return (children.data ?? []).filter(
       (c: Child) =>
-        c.apellido.toLowerCase().includes(q) || c.nombre.toLowerCase().includes(q)
+        !SPECIAL.includes((c as any).estado ?? "") &&
+        (c.apellido.toLowerCase().includes(q) || c.nombre.toLowerCase().includes(q))
     );
   }, [children.data, search]);
 

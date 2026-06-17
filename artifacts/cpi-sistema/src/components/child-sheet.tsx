@@ -108,34 +108,42 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
 
   // Edit form state (populated when entering edit view)
   const [editRoomId, setEditRoomId] = useState("");
+  const [editRegistro, setEditRegistro] = useState("");
   const [editApellido, setEditApellido] = useState("");
   const [editNombre, setEditNombre] = useState("");
   const [editDni, setEditDni] = useState("");
   const [editFnac, setEditFnac] = useState("");
   const [editGenero, setEditGenero] = useState("");
   const [editDomicilio, setEditDomicilio] = useState("");
+  const [editBarrio, setEditBarrio] = useState("");
+  const [editLocalidad, setEditLocalidad] = useState("");
   const [editFamApellido, setEditFamApellido] = useState("");
   const [editFamNombre, setEditFamNombre] = useState("");
   const [editVinculo, setEditVinculo] = useState("");
   const [editCelular, setEditCelular] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [editEstAsist, setEditEstAsist] = useState("");
   const [editObs, setEditObs] = useState("");
 
   function enterEditView() {
     const c = child.data;
     if (!c) return;
     setEditRoomId(String(c.roomId));
+    setEditRegistro((c as any).registro ?? "");
     setEditApellido(c.apellido ?? "");
     setEditNombre(c.nombre ?? "");
     setEditDni(c.dni ?? "");
     setEditFnac(c.fnac ?? "");
     setEditGenero(c.genero ?? "");
     setEditDomicilio(c.domicilio ?? "");
+    setEditBarrio((c as any).barrio ?? "");
+    setEditLocalidad((c as any).localidad ?? "");
     setEditFamApellido(c.famApellido ?? "");
     setEditFamNombre(c.famNombre ?? "");
     setEditVinculo(c.vinculo ?? "");
     setEditCelular(c.celular ?? "");
     setEditEmail(c.email ?? "");
+    setEditEstAsist(c.estAsist ?? "");
     setEditObs(c.obs ?? "");
     setView("editar");
   }
@@ -146,17 +154,21 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
         id: childId,
         data: {
           roomId: parseInt(editRoomId),
+          registro: editRegistro || undefined,
           apellido: editApellido || undefined,
           nombre: editNombre || undefined,
           dni: editDni || undefined,
           fnac: editFnac || undefined,
           genero: editGenero || undefined,
           domicilio: editDomicilio || undefined,
+          barrio: editBarrio || undefined,
+          localidad: editLocalidad || undefined,
           famApellido: editFamApellido || undefined,
           famNombre: editFamNombre || undefined,
           vinculo: editVinculo || undefined,
           celular: editCelular || undefined,
           email: editEmail || undefined,
+          estAsist: editEstAsist || undefined,
           obs: editObs || undefined,
         },
       },
@@ -609,6 +621,8 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                       </SelectContent>
                     </Select>
                   </div>
+                  <div><Label className="text-xs">Nro. Legajo</Label><Input value={editRegistro} onChange={(e) => setEditRegistro(e.target.value)} className="mt-1" placeholder="001" /></div>
+                  <div></div>
                   <div><Label className="text-xs">Apellido</Label><Input value={editApellido} onChange={(e) => setEditApellido(e.target.value)} className="mt-1" /></div>
                   <div><Label className="text-xs">Nombre</Label><Input value={editNombre} onChange={(e) => setEditNombre(e.target.value)} className="mt-1" /></div>
                   <div><Label className="text-xs">DNI</Label><Input value={editDni} onChange={(e) => setEditDni(e.target.value)} className="mt-1" /></div>
@@ -625,6 +639,8 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                   </div>
                   <div><Label className="text-xs">Teléfono</Label><Input value={editCelular} onChange={(e) => setEditCelular(e.target.value)} className="mt-1" /></div>
                   <div className="sm:col-span-2"><Label className="text-xs">Domicilio</Label><Input value={editDomicilio} onChange={(e) => setEditDomicilio(e.target.value)} className="mt-1" /></div>
+                  <div><Label className="text-xs">Barrio</Label><Input value={editBarrio} onChange={(e) => setEditBarrio(e.target.value)} className="mt-1" /></div>
+                  <div><Label className="text-xs">Localidad</Label><Input value={editLocalidad} onChange={(e) => setEditLocalidad(e.target.value)} className="mt-1" /></div>
                   <div><Label className="text-xs">Apellido familiar</Label><Input value={editFamApellido} onChange={(e) => setEditFamApellido(e.target.value)} className="mt-1" /></div>
                   <div><Label className="text-xs">Nombre familiar</Label><Input value={editFamNombre} onChange={(e) => setEditFamNombre(e.target.value)} className="mt-1" /></div>
                   <div>
@@ -639,6 +655,17 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                     </Select>
                   </div>
                   <div><Label className="text-xs">Email</Label><Input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} className="mt-1" /></div>
+                  <div>
+                    <Label className="text-xs">Est. asistencia</Label>
+                    <Select value={editEstAsist} onValueChange={setEditEstAsist}>
+                      <SelectTrigger className="mt-1"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                      <SelectContent>
+                        {["Regular","Irregular","No regular"].map(v => (
+                          <SelectItem key={v} value={v}>{v}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="sm:col-span-2"><Label className="text-xs">Observaciones</Label><Textarea value={editObs} onChange={(e) => setEditObs(e.target.value)} rows={2} className="mt-1" /></div>
                 </div>
 

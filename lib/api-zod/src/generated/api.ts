@@ -296,6 +296,7 @@ export const UpdateChildParams = zod.object({
 
 export const UpdateChildBody = zod.object({
   roomId: zod.number().optional(),
+  registro: zod.string().optional(),
   apellido: zod.string().optional(),
   nombre: zod.string().optional(),
   dni: zod.string().optional(),

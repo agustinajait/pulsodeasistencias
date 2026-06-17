@@ -309,6 +309,7 @@ router.patch("/children/:id", async (req, res) => {
     const d = parsed.data;
 
     if (d.roomId !== undefined) updates.roomId = d.roomId;
+    if (d.registro !== undefined) updates.registro = d.registro;
     if (d.apellido !== undefined) updates.apellido = d.apellido.toUpperCase();
     if (d.nombre !== undefined) updates.nombre = d.nombre.toUpperCase();
     if (d.dni !== undefined) updates.dni = d.dni;

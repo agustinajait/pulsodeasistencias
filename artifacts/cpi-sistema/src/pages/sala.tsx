@@ -64,6 +64,9 @@ export default function SalaPage() {
   // Estado optimista para el modal de día del calendario
   const [calDayOptimistic, setCalDayOptimistic] = useState<Record<number, Partial<AttendanceRecord>>>({});
 
+  // Si viene con ?roomId=X desde el admin (click en tarjeta de sala), usarlo directamente
+  const urlRoomId = parseInt(new URLSearchParams(window.location.search).get("roomId") ?? "") || null;
+
   // Superadmin: selector de centro y sala
   const savedCenterId = role === "superadmin" ? parseInt(localStorage.getItem("superadmin_sala_centerId") ?? "0") || null : null;
   const savedRoomId = role === "superadmin" ? parseInt(localStorage.getItem("superadmin_sala_roomId") ?? "0") || null : null;
@@ -76,7 +79,8 @@ export default function SalaPage() {
   const roomInfo = role === "superadmin"
     ? rooms.data?.find((r: Room) => r.id === superRoomId) ?? null
     : rooms.data?.find((r: Room) => r.ecoNumber === ecoNumber);
-  const roomId = role === "superadmin" ? superRoomId : (roomInfo?.id ?? null);
+  // urlRoomId tiene prioridad (viene del admin al hacer click en tarjeta de sala)
+  const roomId = urlRoomId ?? (role === "superadmin" ? superRoomId : (roomInfo?.id ?? null));
 
   const centerRoomsForSuper = (rooms.data ?? []).filter((r: Room) => r.centerId === superCenterId);
 

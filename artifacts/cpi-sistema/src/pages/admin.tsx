@@ -1219,7 +1219,7 @@ export default function AdminPage() {
               {(roomSummary.data ?? []).map((r: RoomSummary) => (
                 <RoomCard key={r.id} room={r} onNavigate={(roomId) => {
                   localStorage.setItem("superadmin_sala_roomId", String(roomId));
-                  setLocation("/sala");
+                  setLocation(`/sala?roomId=${roomId}`);
                 }} />
               ))}
             </div>

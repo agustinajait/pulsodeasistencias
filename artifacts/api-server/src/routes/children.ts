@@ -166,40 +166,32 @@ router.get("/children", async (req, res) => {
 // POST /children
 router.post("/children", async (req, res) => {
   try {
-    // Allow nombre to be absent — can be filled in later via edit
-    const body = { ...req.body, nombre: req.body.nombre || "" };
-    const parsed = CreateChildBody.safeParse(body);
-    if (!parsed.success) {
-      res.status(400).json({ error: "Invalid body", details: parsed.error.issues });
+    const b = req.body as Record<string, any>;
+    // Only apellido + roomId are strictly required
+    if (!b.apellido || !b.roomId) {
+      res.status(400).json({ error: "apellido y roomId son requeridos" });
       return;
     }
 
-    const room = await db
-      .select()
-      .from(roomsTable)
-      .where(eq(roomsTable.id, parsed.data.roomId))
-      .limit(1);
-    if (!room.length) {
-      res.status(400).json({ error: "Room not found" });
-      return;
-    }
+    const room = await db.select().from(roomsTable).where(eq(roomsTable.id, parseInt(b.roomId))).limit(1);
+    if (!room.length) { res.status(400).json({ error: "Room not found" }); return; }
 
     const baseValues = {
-      roomId: parsed.data.roomId,
-      apellido: parsed.data.apellido.toUpperCase(),
-      nombre: parsed.data.nombre.toUpperCase(),
-      dni: parsed.data.dni ?? null,
-      fnac: parsed.data.fnac ?? null,
-      genero: parsed.data.genero ?? null,
-      domicilio: parsed.data.domicilio ?? null,
-      barrio: parsed.data.barrio ?? null,
-      localidad: parsed.data.localidad ?? null,
-      famApellido: parsed.data.famApellido?.toUpperCase() ?? null,
-      famNombre: parsed.data.famNombre?.toUpperCase() ?? null,
-      vinculo: parsed.data.vinculo ?? null,
-      celular: parsed.data.celular ?? null,
-      email: parsed.data.email ?? null,
-      obs: parsed.data.obs ?? null,
+      roomId: parseInt(b.roomId),
+      apellido: String(b.apellido).toUpperCase(),
+      nombre: b.nombre ? String(b.nombre).toUpperCase() : "",
+      dni: b.dni || null,
+      fnac: b.fnac || null,
+      genero: b.genero || null,
+      domicilio: b.domicilio || null,
+      barrio: b.barrio || null,
+      localidad: b.localidad || null,
+      famApellido: b.famApellido ? String(b.famApellido).toUpperCase() : null,
+      famNombre: b.famNombre ? String(b.famNombre).toUpperCase() : null,
+      vinculo: b.vinculo || null,
+      celular: b.celular || null,
+      email: b.email || null,
+      obs: b.obs || null,
       estado: "INSCRIPTX",
       estAsist: "Regular",
       activo: true,
@@ -207,12 +199,12 @@ router.post("/children", async (req, res) => {
     };
     const extendedValues = {
       ...baseValues,
-      registro: parsed.data.registro?.trim() || null,
-      panialesAuth: parsed.data.panialesAuth ?? false,
-      aptoFisico: parsed.data.aptoFisico ?? false,
-      autRetiro: parsed.data.autRetiro ?? false,
-      autLlamada: parsed.data.autLlamada ?? false,
-      autFotos: parsed.data.autFotos ?? false,
+      registro: b.registro?.trim() || null,
+      panialesAuth: b.panialesAuth ?? false,
+      aptoFisico: b.aptoFisico ?? false,
+      autRetiro: b.autRetiro ?? false,
+      autLlamada: b.autLlamada ?? false,
+      autFotos: b.autFotos ?? false,
     };
 
     let child;

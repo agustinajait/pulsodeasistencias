@@ -717,7 +717,7 @@ export default function AdminPage() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [selectedChild, setSelectedChild] = useState<number | null>(null);
-  const [nominaTab, setNominaTab] = useState<"activos" | "bajas">("activos");
+  const [nominaTab, setNominaTab] = useState<"activos" | "revision" | "bajas">("activos");
   const [nominaRoomId, setNominaRoomId] = useState<number | null>(null);
   const [editingRoomId, setEditingRoomId] = useState<number | null>(null);
   const [editRoomName, setEditRoomName] = useState("");
@@ -903,7 +903,15 @@ export default function AdminPage() {
   const filteredActive = useMemo(() => {
     const q = search.toLowerCase();
     const base = (allChildren.data ?? []).filter(
-      (c: Child) => c.apellido.toLowerCase().includes(q) || c.nombre.toLowerCase().includes(q)
+      (c: Child) => (c as any).estado !== "EN REVISION" && (c.apellido.toLowerCase().includes(q) || c.nombre.toLowerCase().includes(q))
+    );
+    return nominaRoomId != null ? base.filter((c: Child) => c.roomId === nominaRoomId) : base;
+  }, [allChildren.data, search, nominaRoomId]);
+
+  const filteredRevision = useMemo(() => {
+    const q = search.toLowerCase();
+    const base = (allChildren.data ?? []).filter(
+      (c: Child) => (c as any).estado === "EN REVISION" && (c.apellido.toLowerCase().includes(q) || c.nombre.toLowerCase().includes(q))
     );
     return nominaRoomId != null ? base.filter((c: Child) => c.roomId === nominaRoomId) : base;
   }, [allChildren.data, search, nominaRoomId]);
@@ -1269,6 +1277,13 @@ export default function AdminPage() {
                   Activos ({allChildren.data?.length ?? 0})
                 </button>
                 <button
+                  onClick={() => { setNominaTab("revision"); setBulkDeleteMode(false); setSelectedIds(new Set()); }}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${nominaTab === "revision" ? "bg-amber-500 text-white" : "bg-muted text-muted-foreground"}`}
+                  data-testid="btn-nomina-revision"
+                >
+                  En revisión ({filteredRevision.length})
+                </button>
+                <button
                   onClick={() => { setNominaTab("bajas"); setBulkDeleteMode(false); setSelectedIds(new Set()); }}
                   className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${nominaTab === "bajas" ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}
                   data-testid="btn-nomina-bajas"
@@ -1304,12 +1319,13 @@ export default function AdminPage() {
                     <span className="text-xs text-muted-foreground font-medium">{selectedIds.size} seleccionado{selectedIds.size !== 1 ? "s" : ""}</span>
                     <button
                       onClick={() => {
-                        const allIds = new Set((nominaTab === "activos" ? filteredActive : filteredBajas).map((c: Child) => c.id));
+                        const currentList = nominaTab === "activos" ? filteredActive : nominaTab === "revision" ? filteredRevision : filteredBajas;
+                        const allIds = new Set<number>(currentList.map((c: Child) => c.id));
                         setSelectedIds(selectedIds.size === allIds.size ? new Set() : allIds);
                       }}
                       className="px-2.5 py-1.5 rounded-lg border border-border bg-background text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors"
                     >
-                      {selectedIds.size === (nominaTab === "activos" ? filteredActive : filteredBajas).length ? "Deseleccionar todo" : "Seleccionar todo"}
+                      {selectedIds.size === (nominaTab === "activos" ? filteredActive : nominaTab === "revision" ? filteredRevision : filteredBajas).length ? "Deseleccionar todo" : "Seleccionar todo"}
                     </button>
                     {selectedIds.size > 0 && !confirmBulkDelete && (
                       <button
@@ -1368,7 +1384,7 @@ export default function AdminPage() {
               <Input placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" data-testid="input-nomina-search" />
             </div>
             <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
-              {(nominaTab === "activos" ? filteredActive : filteredBajas).map((child: Child) => (
+              {(nominaTab === "activos" ? filteredActive : nominaTab === "revision" ? filteredRevision : filteredBajas).map((child: Child) => (
                 <div
                   key={child.id}
                   className={`flex items-center gap-3 px-4 py-3 border-b border-border last:border-0 hover:bg-muted/50 transition-colors ${bulkDeleteMode && selectedIds.has(child.id) ? "bg-red-50" : ""}`}
@@ -1457,6 +1473,9 @@ export default function AdminPage() {
               ))}
               {filteredActive.length === 0 && nominaTab === "activos" && (
                 <div className="text-center py-10 text-muted-foreground text-sm">Sin resultados</div>
+              )}
+              {filteredRevision.length === 0 && nominaTab === "revision" && (
+                <div className="text-center py-10 text-muted-foreground text-sm">No hay niños en revisión</div>
               )}
             </div>
           </TabsContent>

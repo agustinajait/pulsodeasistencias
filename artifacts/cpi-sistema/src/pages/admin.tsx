@@ -902,8 +902,9 @@ export default function AdminPage() {
 
   const filteredActive = useMemo(() => {
     const q = search.toLowerCase();
+    const SPECIAL = ["EN REVISION", "ALERTA"];
     const base = (allChildren.data ?? []).filter(
-      (c: Child) => (c as any).estado !== "EN REVISION" && (c as any).estado !== "ALERTA" && (c.apellido.toLowerCase().includes(q) || c.nombre.toLowerCase().includes(q))
+      (c: Child) => !SPECIAL.includes((c as any).estado ?? "") && (c.apellido.toLowerCase().includes(q) || c.nombre.toLowerCase().includes(q))
     );
     return nominaRoomId != null ? base.filter((c: Child) => c.roomId === nominaRoomId) : base;
   }, [allChildren.data, search, nominaRoomId]);

@@ -19,6 +19,7 @@ const DOC_TYPES = [
   { key: "aut_retiro", label: "Autorización de retiro" },
   { key: "aut_llamada",label: "Autorización de llamada" },
   { key: "aut_fotos",  label: "Autorización de fotos" },
+  { key: "carnet_vac", label: "Carnet de vacunas" },
 ] as const;
 
 const MES_ACTUAL = new Date().toISOString().slice(0, 7);

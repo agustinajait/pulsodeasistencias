@@ -1395,6 +1395,9 @@ export default function AdminPage() {
                   </div>
                   {!bulkDeleteMode && (
                     <>
+                      {(child as any).estado === "EN REVISION" && (
+                        <Badge className="text-[11px] shrink-0 bg-amber-100 text-amber-700 border-amber-300">En revisión</Badge>
+                      )}
                       <Badge variant={child.estAsist === "Regular" ? "secondary" : "outline"} className="text-[11px] shrink-0">{child.estAsist}</Badge>
                       {confirmDeleteId === child.id ? (
                         <div className="flex items-center gap-1 shrink-0">

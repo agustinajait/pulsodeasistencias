@@ -325,6 +325,7 @@ router.patch("/children/:id", async (req, res) => {
     if (d.email !== undefined) updates.email = d.email;
     if (d.obs !== undefined) updates.obs = d.obs;
     if (d.estAsist !== undefined) updates.estAsist = d.estAsist;
+    if (d.estado !== undefined) updates.estado = d.estado;
     // vacunasUrl no está en el schema zod pero lo aceptamos directamente
     const vacunasUrl = (req.body as Record<string, unknown>).vacunasUrl;
     if (typeof vacunasUrl === "string") (updates as Record<string, unknown>).vacunasUrl = vacunasUrl;

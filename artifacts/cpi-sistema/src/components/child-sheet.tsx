@@ -323,6 +323,20 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
               </div>
             )}
 
+            {/* En revisión badge */}
+            {(c as any).estado === "EN REVISION" && (
+              <div className="flex items-center gap-2 bg-amber-50 text-amber-700 border border-amber-300 rounded-lg px-3 py-2 text-sm font-semibold">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span className="flex-1">Niño/a en revisión</span>
+                <button
+                  className="text-xs underline"
+                  onClick={() => updateChild.mutate({ id: childId, data: { estado: "INSCRIPTX" } as any }, { onSuccess: () => { toast({ title: "Estado actualizado" }); invalidateAll(); } })}
+                >
+                  Quitar revisión
+                </button>
+              </div>
+            )}
+
             {/* View tabs */}
             {view === "ficha" && (
               <>
@@ -427,6 +441,20 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                         data-testid="btn-editar"
                       >
                         Editar datos
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          const nuevoEstado = (c as any).estado === "EN REVISION" ? "INSCRIPTX" : "EN REVISION";
+                          updateChild.mutate(
+                            { id: childId, data: { estado: nuevoEstado } as any },
+                            { onSuccess: () => { toast({ title: nuevoEstado === "EN REVISION" ? "Pasado a En revisión" : "Quitado de revisión" }); invalidateAll(); } }
+                          );
+                        }}
+                        variant="outline"
+                        className={`w-full ${(c as any).estado === "EN REVISION" ? "border-amber-400 text-amber-700 bg-amber-50 hover:bg-amber-100" : "border-amber-300 text-amber-700 hover:bg-amber-50"}`}
+                        data-testid="btn-toggle-revision"
+                      >
+                        {(c as any).estado === "EN REVISION" ? "Quitar de revisión" : "Poner en revisión"}
                       </Button>
                       <Button
                         onClick={() => setView("baja")}

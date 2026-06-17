@@ -312,6 +312,7 @@ export const UpdateChildBody = zod.object({
   email: zod.string().optional(),
   obs: zod.string().optional(),
   estAsist: zod.string().optional(),
+  estado: zod.string().optional(),
 });
 
 export const UpdateChildResponse = zod.object({

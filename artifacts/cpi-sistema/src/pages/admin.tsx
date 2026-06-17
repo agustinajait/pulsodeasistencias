@@ -1466,9 +1466,14 @@ export default function AdminPage() {
                           className={`text-[11px] border rounded px-1.5 py-0.5 focus:outline-none ${(child as any).estado === "EN REVISION" ? "border-amber-400 bg-amber-50 text-amber-700" : (child as any).estado === "ALERTA" ? "border-red-400 bg-red-50 text-red-700" : "border-border bg-background text-foreground"}`}
                           data-testid={`select-estado-${child.id}`}
                           onChange={(e) => {
+                            const nuevoEstado = e.target.value;
+                            const labels: Record<string, string> = { "INSCRIPTX": "Activo", "EN REVISION": "En revisión", "ALERTA": "Alerta" };
                             updateChild.mutate(
-                              { id: child.id, data: { estado: e.target.value } as any },
-                              { onSuccess: invalidateAll }
+                              { id: child.id, data: { estado: nuevoEstado } as any },
+                              { onSuccess: () => {
+                                toast({ title: `${child.apellido} ${child.nombre} → ${labels[nuevoEstado] ?? nuevoEstado}`, duration: 3000 });
+                                setTimeout(invalidateAll, 1500);
+                              }}
                             );
                           }}
                         >

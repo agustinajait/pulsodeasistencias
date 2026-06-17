@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, childrenTable, roomsTable, attendanceTable, contactsTable, childDocumentsTable, centersTable } from "@workspace/db";
 import { randomBytes } from "crypto";
-import { eq, and, ilike, or, sql, desc, inArray } from "drizzle-orm";
+import { eq, and, ilike, or, sql, desc, inArray, ne } from "drizzle-orm";
 import { CreateChildBody, UpdateChildBody, DischargeChildBody } from "@workspace/api-zod";
 
 const router = Router();
@@ -128,7 +128,7 @@ router.get("/children", async (req, res) => {
       conditions.push(eq(childrenTable.activo, active === "true"));
       // Exclude special states unless explicitly requested (nómina needs them for its own tabs)
       if (active === "true" && includeSpecial !== "true") {
-        conditions.push(sql`(${childrenTable.estado} NOT IN ('EN REVISION', 'ALERTA') OR ${childrenTable.estado} IS NULL)`);
+        conditions.push(and(ne(childrenTable.estado, "EN REVISION"), ne(childrenTable.estado, "ALERTA"))!);
       }
     }
     if (search) {

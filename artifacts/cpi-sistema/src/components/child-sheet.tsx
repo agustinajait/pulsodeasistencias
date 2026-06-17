@@ -326,7 +326,7 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
               </div>
             )}
 
-            {/* En revisión badge */}
+            {/* Estado badge */}
             {(c as any).estado === "EN REVISION" && (
               <div className="flex items-center gap-2 bg-amber-50 text-amber-700 border border-amber-300 rounded-lg px-3 py-2 text-sm font-semibold">
                 <AlertTriangle className="w-4 h-4 shrink-0" />
@@ -336,6 +336,18 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                   onClick={() => updateChild.mutate({ id: childId, data: { estado: "INSCRIPTX" } as any }, { onSuccess: () => { toast({ title: "Estado actualizado" }); invalidateAll(); } })}
                 >
                   Quitar revisión
+                </button>
+              </div>
+            )}
+            {(c as any).estado === "ALERTA" && (
+              <div className="flex items-center gap-2 bg-red-50 text-red-700 border border-red-300 rounded-lg px-3 py-2 text-sm font-semibold">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span className="flex-1">Niño/a en alerta</span>
+                <button
+                  className="text-xs underline"
+                  onClick={() => updateChild.mutate({ id: childId, data: { estado: "INSCRIPTX" } as any }, { onSuccess: () => { toast({ title: "Estado actualizado" }); invalidateAll(); } })}
+                >
+                  Quitar alerta
                 </button>
               </div>
             )}
@@ -841,6 +853,21 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                       data-testid="btn-toggle-revision"
                     >
                       {(c as any).estado === "EN REVISION" ? "Quitar revisión" : "En revisión"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const nuevoEstado = (c as any).estado === "ALERTA" ? "INSCRIPTX" : "ALERTA";
+                        updateChild.mutate(
+                          { id: childId, data: { estado: nuevoEstado } as any },
+                          { onSuccess: () => { toast({ title: nuevoEstado === "ALERTA" ? "Pasado a Alerta" : "Quitado de alerta" }); invalidateAll(); } }
+                        );
+                      }}
+                      className={`col-span-1 ${(c as any).estado === "ALERTA" ? "border-red-400 text-red-700 bg-red-50" : "border-red-300 text-red-700"}`}
+                      data-testid="btn-toggle-alerta"
+                    >
+                      {(c as any).estado === "ALERTA" ? "Quitar alerta" : "Alerta"}
                     </Button>
                     <Button size="sm" variant="destructive" onClick={() => setView("baja")} data-testid="btn-registrar-baja">Registrar egreso</Button>
                   </>

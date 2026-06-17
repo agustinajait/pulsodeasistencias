@@ -53,22 +53,33 @@ function StatCard({ value, label, color }: { value: number | string; label: stri
   );
 }
 
-function RoomCard({ room }: { room: RoomSummary }) {
+function RoomCard({ room, onNavigate }: { room: RoomSummary; onNavigate?: (roomId: number) => void }) {
   const c = ECO_COLORS[room.ecoNumber] ?? ECO_COLORS[0];
   const vacantes = room.capacity - room.total;
   const pctBar = room.total > 0 ? Math.round((room.present / room.total) * 100) : 0;
   return (
-    <div className={`rounded-xl border border-border p-4 shadow-sm ${c.bg}`} data-testid={`room-card-${room.ecoNumber}`}>
+    <div
+      className={`rounded-xl border border-border p-4 shadow-sm ${c.bg} ${onNavigate ? "cursor-pointer hover:shadow-md transition-shadow active:scale-[0.99]" : ""}`}
+      data-testid={`room-card-${room.ecoNumber}`}
+      onClick={() => onNavigate?.(room.id)}
+    >
       <div className="flex justify-between items-start mb-3">
         <div>
           <div className={`text-sm font-bold ${c.text}`}>{room.name}</div>
           <div className="text-xs text-muted-foreground mt-0.5">Capacidad: {room.capacity}</div>
         </div>
-        {room.alerts > 0 && (
-          <Badge variant="destructive" className="text-[11px]" data-testid={`badge-alerts-${room.ecoNumber}`}>
-            {room.alerts} alertas
-          </Badge>
-        )}
+        <div className="flex items-center gap-1.5">
+          {room.alerts > 0 && (
+            <Badge variant="destructive" className="text-[11px]" data-testid={`badge-alerts-${room.ecoNumber}`}>
+              {room.alerts} alertas
+            </Badge>
+          )}
+          {onNavigate && (
+            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${c.text} border-current opacity-70`}>
+              Ver sala →
+            </span>
+          )}
+        </div>
       </div>
       <div className="flex gap-4 text-sm mb-3">
         <div><span className="font-bold text-green-600">{room.present}</span> <span className="text-muted-foreground text-xs">pres.</span></div>
@@ -1206,7 +1217,10 @@ export default function AdminPage() {
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">Por sala — hoy</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {(roomSummary.data ?? []).map((r: RoomSummary) => (
-                <RoomCard key={r.id} room={r} />
+                <RoomCard key={r.id} room={r} onNavigate={(roomId) => {
+                  localStorage.setItem("superadmin_sala_roomId", String(roomId));
+                  setLocation("/sala");
+                }} />
               ))}
             </div>
             {/* Ausentes hoy */}

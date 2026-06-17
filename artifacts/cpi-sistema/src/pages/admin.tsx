@@ -730,6 +730,7 @@ export default function AdminPage() {
   const [selectedChild, setSelectedChild] = useState<number | null>(null);
   const [nominaTab, setNominaTab] = useState<"activos" | "revision" | "alerta" | "bajas">("activos");
   const [nominaRoomId, setNominaRoomId] = useState<number | null>(null);
+  const [nominaVacunas, setNominaVacunas] = useState<"todos" | "con" | "sin">("todos");
   const [editingRoomId, setEditingRoomId] = useState<number | null>(null);
   const [editRoomName, setEditRoomName] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
@@ -911,30 +912,39 @@ export default function AdminPage() {
     return grouped;
   }, [todayAttendance.data, allChildren.data]);
 
+  function applyVacunasFilter(list: Child[]) {
+    if (nominaVacunas === "con") return list.filter((c) => !!(c as any).carnetVacunas);
+    if (nominaVacunas === "sin") return list.filter((c) => !(c as any).carnetVacunas);
+    return list;
+  }
+
   const filteredActive = useMemo(() => {
     const q = search.toLowerCase();
     const SPECIAL = ["EN REVISION", "ALERTA"];
     const base = (allChildren.data ?? []).filter(
       (c: Child) => !SPECIAL.includes((c as any).estado ?? "") && (c.apellido.toLowerCase().includes(q) || c.nombre.toLowerCase().includes(q))
     );
-    return nominaRoomId != null ? base.filter((c: Child) => c.roomId === nominaRoomId) : base;
-  }, [allChildren.data, search, nominaRoomId]);
+    const byRoom = nominaRoomId != null ? base.filter((c: Child) => c.roomId === nominaRoomId) : base;
+    return applyVacunasFilter(byRoom);
+  }, [allChildren.data, search, nominaRoomId, nominaVacunas]);
 
   const filteredRevision = useMemo(() => {
     const q = search.toLowerCase();
     const base = (allChildren.data ?? []).filter(
       (c: Child) => (c as any).estado === "EN REVISION" && (c.apellido.toLowerCase().includes(q) || c.nombre.toLowerCase().includes(q))
     );
-    return nominaRoomId != null ? base.filter((c: Child) => c.roomId === nominaRoomId) : base;
-  }, [allChildren.data, search, nominaRoomId]);
+    const byRoom = nominaRoomId != null ? base.filter((c: Child) => c.roomId === nominaRoomId) : base;
+    return applyVacunasFilter(byRoom);
+  }, [allChildren.data, search, nominaRoomId, nominaVacunas]);
 
   const filteredAlerta = useMemo(() => {
     const q = search.toLowerCase();
     const base = (allChildren.data ?? []).filter(
       (c: Child) => (c as any).estado === "ALERTA" && (c.apellido.toLowerCase().includes(q) || c.nombre.toLowerCase().includes(q))
     );
-    return nominaRoomId != null ? base.filter((c: Child) => c.roomId === nominaRoomId) : base;
-  }, [allChildren.data, search, nominaRoomId]);
+    const byRoom = nominaRoomId != null ? base.filter((c: Child) => c.roomId === nominaRoomId) : base;
+    return applyVacunasFilter(byRoom);
+  }, [allChildren.data, search, nominaRoomId, nominaVacunas]);
 
   const filteredBajas = useMemo(() => {
     const q = search.toLowerCase();
@@ -1406,6 +1416,17 @@ export default function AdminPage() {
                   data-testid={`btn-nomina-room-${r.id}`}
                 >
                   {r.name} ({r.total})
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-1.5 mb-3 overflow-x-auto flex-nowrap">
+              {([["todos", "Todos"], ["con", "Con carnet vacunas"], ["sin", "Sin carnet vacunas"]] as const).map(([val, label]) => (
+                <button
+                  key={val}
+                  onClick={() => setNominaVacunas(val)}
+                  className={`px-2.5 py-1 rounded-md text-xs font-semibold border shrink-0 transition-all ${nominaVacunas === val ? "bg-green-600 text-white border-green-600" : "bg-background border-border text-muted-foreground hover:border-green-500/50"}`}
+                >
+                  {label}
                 </button>
               ))}
             </div>

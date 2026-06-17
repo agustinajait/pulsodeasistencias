@@ -140,12 +140,20 @@ router.get("/children", async (req, res) => {
 
     const children = await query.orderBy(childrenTable.apellido, childrenTable.nombre);
 
+    // Try to fetch carnet_vacunas — column may not exist yet (pre-migration)
+    let carnetMap: Record<number, boolean> = {};
+    try {
+      const rows = await db.execute(sql`SELECT id, carnet_vacunas FROM children WHERE activo = true`);
+      (rows.rows as any[]).forEach((r) => { carnetMap[r.id] = r.carnet_vacunas ?? false; });
+    } catch { /* column doesn't exist yet */ }
+
     const result = children.map((c) => ({
       ...c,
       ecoNumber: roomMap[c.roomId] ?? 0,
       fnac: c.fnac ?? null,
       inscripto: c.inscripto ?? null,
       fechaBaja: c.fechaBaja ?? null,
+      carnetVacunas: carnetMap[c.id] ?? false,
     }));
 
     res.json(result);

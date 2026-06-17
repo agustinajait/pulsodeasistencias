@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
-import { useGetChild, useCreateContact, useUpdateChild, useDischargeChild, useReinstateChild, useListAttendance, getGetChildQueryKey, getListChildrenQueryKey, getGetRoomsSummaryQueryKey, getGetDashboardSummaryQueryKey, getGetAlertsQueryKey, getListAttendanceQueryKey } from "@workspace/api-client-react";
-import type { AttendanceRecord } from "@workspace/api-client-react";
+import { useGetChild, useCreateContact, useUpdateChild, useDischargeChild, useReinstateChild, useListAttendance, useListRooms, getGetChildQueryKey, getListChildrenQueryKey, getGetRoomsSummaryQueryKey, getGetDashboardSummaryQueryKey, getGetAlertsQueryKey, getListAttendanceQueryKey } from "@workspace/api-client-react";
+import type { AttendanceRecord, Room } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,7 +59,7 @@ const TIPO_BAJA_OPTIONS = [
 export default function ChildSheet({ childId, onClose, roomId }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [view, setView] = useState<"ficha" | "llamado" | "baja" | "historial" | "documentos">("ficha");
+  const [view, setView] = useState<"ficha" | "llamado" | "baja" | "historial" | "documentos" | "editar">("ficha");
   const [histMonth, setHistMonth] = useState(MES_ACTUAL);
 
   // Docs state
@@ -103,6 +103,73 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
   const createContact = useCreateContact();
   const dischargeChild = useDischargeChild();
   const reinstateChild = useReinstateChild();
+  const updateChild = useUpdateChild();
+  const allRooms = useListRooms({});
+
+  // Edit form state (populated when entering edit view)
+  const [editRoomId, setEditRoomId] = useState("");
+  const [editApellido, setEditApellido] = useState("");
+  const [editNombre, setEditNombre] = useState("");
+  const [editDni, setEditDni] = useState("");
+  const [editFnac, setEditFnac] = useState("");
+  const [editGenero, setEditGenero] = useState("");
+  const [editDomicilio, setEditDomicilio] = useState("");
+  const [editFamApellido, setEditFamApellido] = useState("");
+  const [editFamNombre, setEditFamNombre] = useState("");
+  const [editVinculo, setEditVinculo] = useState("");
+  const [editCelular, setEditCelular] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editObs, setEditObs] = useState("");
+
+  function enterEditView() {
+    const c = child.data;
+    if (!c) return;
+    setEditRoomId(String(c.roomId));
+    setEditApellido(c.apellido ?? "");
+    setEditNombre(c.nombre ?? "");
+    setEditDni(c.dni ?? "");
+    setEditFnac(c.fnac ?? "");
+    setEditGenero(c.genero ?? "");
+    setEditDomicilio(c.domicilio ?? "");
+    setEditFamApellido(c.famApellido ?? "");
+    setEditFamNombre(c.famNombre ?? "");
+    setEditVinculo(c.vinculo ?? "");
+    setEditCelular(c.celular ?? "");
+    setEditEmail(c.email ?? "");
+    setEditObs(c.obs ?? "");
+    setView("editar");
+  }
+
+  function handleSaveEdit() {
+    updateChild.mutate(
+      {
+        id: childId,
+        data: {
+          roomId: parseInt(editRoomId),
+          apellido: editApellido || undefined,
+          nombre: editNombre || undefined,
+          dni: editDni || undefined,
+          fnac: editFnac || undefined,
+          genero: editGenero || undefined,
+          domicilio: editDomicilio || undefined,
+          famApellido: editFamApellido || undefined,
+          famNombre: editFamNombre || undefined,
+          vinculo: editVinculo || undefined,
+          celular: editCelular || undefined,
+          email: editEmail || undefined,
+          obs: editObs || undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast({ title: "Datos actualizados" });
+          invalidateAll();
+          setView("ficha");
+        },
+        onError: () => toast({ title: "Error al guardar", variant: "destructive" }),
+      }
+    );
+  }
 
   function invalidateAll() {
     queryClient.invalidateQueries({ queryKey: getGetChildQueryKey(childId) });
@@ -342,6 +409,14 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                         Registrar contacto
                       </Button>
                       <Button
+                        onClick={enterEditView}
+                        variant="outline"
+                        className="w-full"
+                        data-testid="btn-editar"
+                      >
+                        Editar datos
+                      </Button>
+                      <Button
                         onClick={() => setView("baja")}
                         variant="destructive"
                         className="w-full"
@@ -509,6 +584,70 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                     </div>
                   );
                 })()}
+              </div>
+            )}
+
+            {/* EDIT FORM */}
+            {view === "editar" && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <Button variant="ghost" size="sm" className="px-2 py-1 h-auto" onClick={() => setView("ficha")}>
+                    <ChevronLeft className="w-4 h-4 mr-1" />Volver
+                  </Button>
+                  <h3 className="font-semibold text-base">Editar datos</h3>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="sm:col-span-2">
+                    <Label className="text-xs">Sala</Label>
+                    <Select value={editRoomId} onValueChange={setEditRoomId}>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {(allRooms.data ?? []).map((r: Room) => (
+                          <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div><Label className="text-xs">Apellido</Label><Input value={editApellido} onChange={(e) => setEditApellido(e.target.value)} className="mt-1" /></div>
+                  <div><Label className="text-xs">Nombre</Label><Input value={editNombre} onChange={(e) => setEditNombre(e.target.value)} className="mt-1" /></div>
+                  <div><Label className="text-xs">DNI</Label><Input value={editDni} onChange={(e) => setEditDni(e.target.value)} className="mt-1" /></div>
+                  <div><Label className="text-xs">Fecha de nac.</Label><Input type="date" value={editFnac} onChange={(e) => setEditFnac(e.target.value)} className="mt-1" /></div>
+                  <div>
+                    <Label className="text-xs">Género</Label>
+                    <Select value={editGenero} onValueChange={setEditGenero}>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="FEMENINO">FEMENINO</SelectItem>
+                        <SelectItem value="MASCULINO">MASCULINO</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div><Label className="text-xs">Teléfono</Label><Input value={editCelular} onChange={(e) => setEditCelular(e.target.value)} className="mt-1" /></div>
+                  <div className="sm:col-span-2"><Label className="text-xs">Domicilio</Label><Input value={editDomicilio} onChange={(e) => setEditDomicilio(e.target.value)} className="mt-1" /></div>
+                  <div><Label className="text-xs">Apellido familiar</Label><Input value={editFamApellido} onChange={(e) => setEditFamApellido(e.target.value)} className="mt-1" /></div>
+                  <div><Label className="text-xs">Nombre familiar</Label><Input value={editFamNombre} onChange={(e) => setEditFamNombre(e.target.value)} className="mt-1" /></div>
+                  <div>
+                    <Label className="text-xs">Vínculo</Label>
+                    <Select value={editVinculo} onValueChange={setEditVinculo}>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {["MADRE/PADRE","ABUELA/O","TÍA/O","HERMANA/O MAYOR","OTRO"].map(v => (
+                          <SelectItem key={v} value={v}>{v}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div><Label className="text-xs">Email</Label><Input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} className="mt-1" /></div>
+                  <div className="sm:col-span-2"><Label className="text-xs">Observaciones</Label><Textarea value={editObs} onChange={(e) => setEditObs(e.target.value)} rows={2} className="mt-1" /></div>
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <Button className="flex-1" onClick={handleSaveEdit} disabled={updateChild.isPending} data-testid="btn-save-edit">
+                    {updateChild.isPending ? "Guardando..." : "Guardar cambios"}
+                  </Button>
+                  <Button variant="outline" className="flex-1" onClick={() => setView("ficha")}>Cancelar</Button>
+                </div>
               </div>
             )}
 

@@ -202,7 +202,7 @@ export const CreateChildBody = zod.object({
   roomId: zod.number(),
   registro: zod.string().optional(),
   apellido: zod.string(),
-  nombre: zod.string(),
+  nombre: zod.string().optional().default(""),
   dni: zod.string().optional(),
   fnac: zod.string().optional(),
   genero: zod.string().optional(),

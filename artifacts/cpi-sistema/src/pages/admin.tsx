@@ -391,7 +391,7 @@ function NuevaAltaDialog({ onSuccess, onOpenDocs }: { onSuccess: () => void; onO
   }
 
   async function handleSubmit() {
-    if (!apellido || !nombre) return;
+    if (!apellido) return;
     setUploading(true);
     createChild.mutate(
       {
@@ -552,7 +552,7 @@ function NuevaAltaDialog({ onSuccess, onOpenDocs }: { onSuccess: () => void; onO
             </div>
             <p className="text-[10px] text-muted-foreground mt-1">Opcional — se puede cargar después desde la ficha del niño/a</p>
           </div>
-          <Button className="w-full" onClick={handleSubmit} disabled={!apellido || !nombre || createChild.isPending || uploading} data-testid="btn-confirmar-alta">
+          <Button className="w-full" onClick={handleSubmit} disabled={!apellido || createChild.isPending || uploading} data-testid="btn-confirmar-alta">
             {uploading ? "Subiendo carnet..." : createChild.isPending ? "Registrando..." : "Registrar alta"}
           </Button>
         </div>

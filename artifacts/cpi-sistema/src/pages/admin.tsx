@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useAuth } from "@/lib/auth-context";
 import {
   useGetDashboardSummary, useGetAlerts, useGetRecentContacts, useGetRoomsSummary,
-  useListChildren, useListAttendance, useCreateChild, useUpdateRoom, useDeleteChild,
+  useListChildren, useListAttendance, useCreateChild, useUpdateRoom, useDeleteChild, useUpdateChild,
   useListCenters, useListRooms, useCreateCenter, useCreateRoom, useDeleteRoom, useUpdateCenter,
   getGetDashboardSummaryQueryKey, getGetAlertsQueryKey, getGetRecentContactsQueryKey,
   getGetRoomsSummaryQueryKey, getListChildrenQueryKey, getListRoomsQueryKey, getListAttendanceQueryKey,
@@ -764,6 +764,7 @@ export default function AdminPage() {
   const todayAttendance = useListAttendance({ date: TODAY });
   const updateRoom = useUpdateRoom();
   const deleteChild = useDeleteChild();
+  const updateChild = useUpdateChild();
 
   const histMonthParams = histRoomId != null ? { roomId: histRoomId, month: histMonth } : { month: histMonth };
   const histYearParams = histRoomId != null ? { roomId: histRoomId, year: histYear } : { year: histYear };
@@ -1386,19 +1387,54 @@ export default function AdminPage() {
                       {child.apellido.slice(0, 1)}{child.nombre.slice(0, 1)}
                     </div>
                   )}
-                  <div className={`flex-1 min-w-0 ${!bulkDeleteMode ? "cursor-pointer" : ""}`} onClick={!bulkDeleteMode ? () => setSelectedChild(child.id) : undefined}>
-                    <div className="text-sm font-semibold truncate">{child.apellido} {child.nombre}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {child.registro && <span className="font-mono mr-1.5">#{child.registro}</span>}
-                      ECO {child.ecoNumber} · {child.famNombre} · {child.celular ?? "sin tel."}
+                  <div className="flex-1 min-w-0">
+                    <div
+                      className={`text-sm font-semibold truncate ${!bulkDeleteMode ? "cursor-pointer" : ""}`}
+                      onClick={!bulkDeleteMode ? () => setSelectedChild(child.id) : undefined}
+                    >
+                      {child.apellido} {child.nombre}
                     </div>
+                    <div className="text-xs text-muted-foreground mb-1">
+                      {child.registro && <span className="font-mono mr-1.5">#{child.registro}</span>}
+                      {child.famNombre} · {child.celular ?? "sin tel."}
+                    </div>
+                    {!bulkDeleteMode && (
+                      <div className="flex gap-1.5 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                        <select
+                          value={String(child.roomId)}
+                          className="text-[11px] border border-border rounded px-1.5 py-0.5 bg-background text-foreground focus:outline-none"
+                          data-testid={`select-sala-${child.id}`}
+                          onChange={(e) => {
+                            updateChild.mutate(
+                              { id: child.id, data: { roomId: parseInt(e.target.value) } },
+                              { onSuccess: invalidateAll }
+                            );
+                          }}
+                        >
+                          {(allRooms.data ?? []).map((r: Room) => (
+                            <option key={r.id} value={r.id}>{r.name}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={(child as any).estado ?? "INSCRIPTX"}
+                          className={`text-[11px] border rounded px-1.5 py-0.5 focus:outline-none ${(child as any).estado === "EN REVISION" ? "border-amber-400 bg-amber-50 text-amber-700" : "border-border bg-background text-foreground"}`}
+                          data-testid={`select-estado-${child.id}`}
+                          onChange={(e) => {
+                            updateChild.mutate(
+                              { id: child.id, data: { estado: e.target.value } as any },
+                              { onSuccess: invalidateAll }
+                            );
+                          }}
+                        >
+                          <option value="INSCRIPTX">Inscriptx</option>
+                          <option value="EN REVISION">En revisión</option>
+                        </select>
+                      </div>
+                    )}
                   </div>
                   {!bulkDeleteMode && (
                     <>
-                      {(child as any).estado === "EN REVISION" && (
-                        <Badge className="text-[11px] shrink-0 bg-amber-100 text-amber-700 border-amber-300">En revisión</Badge>
-                      )}
-                      <Badge variant={child.estAsist === "Regular" ? "secondary" : "outline"} className="text-[11px] shrink-0">{child.estAsist}</Badge>
+                      <Badge variant={child.estAsist === "Regular" ? "secondary" : "outline"} className="text-[11px] shrink-0 hidden sm:flex">{child.estAsist}</Badge>
                       {confirmDeleteId === child.id ? (
                         <div className="flex items-center gap-1 shrink-0">
                           <span className="text-xs text-red-600 font-medium">Eliminar?</span>

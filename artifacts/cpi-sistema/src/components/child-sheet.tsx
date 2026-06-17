@@ -64,7 +64,7 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
   const [histMonth, setHistMonth] = useState(MES_ACTUAL);
 
   // Docs state
-  const [docsData, setDocsData] = useState<{ docsToken: string; panialesAuth: boolean; aptoFisico: boolean; autRetiro: boolean; autLlamada: boolean; autFotos: boolean; docs: {tipo:string;url:string;uploadedAt?:string}[] } | null>(null);
+  const [docsData, setDocsData] = useState<{ docsToken: string; panialesAuth: boolean; aptoFisico: boolean; autRetiro: boolean; autLlamada: boolean; autFotos: boolean; carnetVacunas: boolean; docs: {tipo:string;url:string;uploadedAt?:string}[] } | null>(null);
   const [docsLoading, setDocsLoading] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
 
@@ -753,6 +753,34 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                           </div>
                         );
                       })}
+
+                      {/* Carnet de vacunas — toggleable */}
+                      <div className="flex items-center gap-3 bg-muted/40 rounded-lg px-3 py-2.5 cursor-pointer"
+                        onClick={async () => {
+                          const newVal = !docsData.carnetVacunas;
+                          setDocsData({ ...docsData, carnetVacunas: newVal });
+                          await fetch(`/api/children/${childId}/carnet-vacunas`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ value: newVal }),
+                          });
+                        }}
+                      >
+                        {docsData.carnetVacunas ? (
+                          <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+                        ) : (
+                          <Circle className="w-5 h-5 text-gray-400 shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">Carnet de vacunas</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {docsData.carnetVacunas ? "Presentado" : "Tap para marcar como presentado"}
+                          </p>
+                        </div>
+                        <Badge variant={docsData.carnetVacunas ? "default" : "outline"} className="shrink-0 text-[10px]">
+                          {docsData.carnetVacunas ? "Sí" : "No"}
+                        </Badge>
+                      </div>
 
                       {/* Autorizaciones firmadas en la inscripción */}
                       {[

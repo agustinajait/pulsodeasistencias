@@ -502,12 +502,27 @@ router.get("/children/:id/docs", async (req, res) => {
       autRetiro: child!.autRetiro ?? false,
       autLlamada: child!.autLlamada ?? false,
       autFotos: child!.autFotos ?? false,
+      carnetVacunas: (child as any).carnetVacunas ?? false,
       docs: docs.map(d => ({ tipo: d.tipo, url: d.url, uploadedAt: d.uploadedAt })),
     });
   } catch (err) {
     req.log.error(err, "Error getting child docs");
     // Return empty response if columns don't exist yet (pre-migration)
-    res.json({ docsToken: null, panialesAuth: false, aptoFisico: false, autRetiro: false, autLlamada: false, autFotos: false, docs: [] });
+    res.json({ docsToken: null, panialesAuth: false, aptoFisico: false, autRetiro: false, autLlamada: false, autFotos: false, carnetVacunas: false, docs: [] });
+  }
+});
+
+// PATCH /children/:id/carnet-vacunas — toggle carnet de vacunas check
+router.patch("/children/:id/carnet-vacunas", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+    const { value } = req.body as { value: boolean };
+    await db.update(childrenTable).set({ carnetVacunas: value } as any).where(eq(childrenTable.id, id));
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error(err, "Error updating carnet vacunas");
+    res.status(500).json({ error: "Error interno" });
   }
 });
 

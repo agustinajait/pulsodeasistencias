@@ -385,16 +385,28 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
   }
 
   async function handleShareReport(r: any, childName: string, ecoNumber: number, roomName: string, template: { eje: string; hitos: string[]; inf: string[] }[]) {
-    const html = buildReportHtml(r, childName, ecoNumber, roomName, template);
-    const blob = new Blob([html], { type: "text/html" });
-    const file = new File([blob], `informe-${childName.replace(/\s+/g, "-")}-${r.period}.html`, { type: "text/html" });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: `Informe ${childName} - ${r.period}` });
-    } else {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = file.name; a.click();
-      URL.revokeObjectURL(url);
+    const fecha = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" });
+    let text = `📋 Informe de desarrollo - ${childName}\n`;
+    text += `Sala: ${roomName} (ECO ${ecoNumber}) | Período: ${r.period}\n`;
+    text += `Fecha: ${fecha}\n`;
+    if (r.lider) text += `Líder pedagógica: ${r.lider}\n`;
+    if (r.facilitadora) text += `Facilitadora: ${r.facilitadora}\n`;
+    text += `\n`;
+    for (const { eje } of template) {
+      const txt = (r.textos ?? {})[eje];
+      if (txt) text += `*${eje}*\n${txt}\n\n`;
+    }
+    if (r.observaciones) text += `Observaciones: ${r.observaciones}\n`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: `Informe ${childName} - ${r.period}`, text });
+      } else {
+        await navigator.clipboard.writeText(text);
+        alert("Texto del informe copiado al portapapeles");
+      }
+    } catch {
+      // user cancelled or not supported — fallback to download
+      handlePrintReport(r, childName, ecoNumber, roomName, template);
     }
   }
 

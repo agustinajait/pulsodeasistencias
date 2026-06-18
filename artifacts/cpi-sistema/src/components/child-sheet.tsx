@@ -130,7 +130,8 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
   const [infHitos, setInfHitos] = useState<Record<string, HitoVal>>({});
   const [infObs, setInfObs] = useState("");
   const [infSaving, setInfSaving] = useState(false);
-  const [infMode, setInfMode] = useState<"list" | "edit">("list");
+  const [infMode, setInfMode] = useState<"list" | "edit" | "view">("list");
+  const [viewingReport, setViewingReport] = useState<any>(null);
 
   const child = useGetChild(childId, {
     query: { queryKey: getGetChildQueryKey(childId) },
@@ -448,12 +449,20 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
             return (
               <>
                 <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
-                  <button onClick={() => { if (infMode === "edit") setInfMode("list"); else setView("ficha"); }} className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
-                    <ChevronLeft className="w-4 h-4" />{infMode === "edit" ? "Volver a lista" : "Volver"}
+                  <button
+                    onClick={() => { if (infMode === "edit" || infMode === "view") setInfMode("list"); else setView("ficha"); }}
+                    className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+                  >
+                    <ChevronLeft className="w-4 h-4" />{infMode === "list" ? "Volver" : "Lista"}
                   </button>
-                  <span className="text-sm font-semibold flex-1 text-center">Informe ECO {ecoNumber}</span>
+                  <span className="text-sm font-semibold flex-1 text-center">
+                    {infMode === "view" && viewingReport ? viewingReport.period : `Informe ECO ${ecoNumber}`}
+                  </span>
                   {infMode === "list" && (
                     <button onClick={enterNewReport} className="text-xs text-primary font-semibold">+ Nuevo</button>
+                  )}
+                  {infMode === "view" && viewingReport && (
+                    <button onClick={() => enterEditReport(viewingReport)} className="text-xs text-primary font-semibold">Editar</button>
                   )}
                 </div>
 
@@ -472,18 +481,22 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                           const total = Object.keys(r.hitos ?? {}).length;
                           const logra = Object.values(r.hitos ?? {}).filter((v) => v === "L").length;
                           return (
-                            <div key={r.id} className="border rounded-xl p-3 space-y-1">
+                            <div
+                              key={r.id}
+                              className="border rounded-xl p-3 space-y-1 cursor-pointer hover:bg-muted/40 active:bg-muted/60 transition-colors"
+                              onClick={() => { setViewingReport(r); setInfMode("view"); }}
+                            >
                               <div className="flex items-center justify-between">
                                 <span className="font-semibold text-sm">{r.period}</span>
-                                <div className="flex gap-2">
+                                <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                                   <button onClick={() => enterEditReport(r)} className="text-xs text-primary underline">Editar</button>
                                   <button onClick={() => deleteReport(r.id)} className="text-xs text-destructive underline">Eliminar</button>
                                 </div>
                               </div>
-                              {r.lider && <p className="text-xs text-muted-foreground">Líder: {r.lider}</p>}
-                              <div className="flex gap-3 text-xs text-muted-foreground">
+                              {r.lider && <p className="text-xs text-muted-foreground">Líder: {r.lider}{r.facilitadora ? ` · ${r.facilitadora}` : ""}</p>}
+                              <div className="flex gap-3 text-xs">
                                 <span className="text-green-700 font-medium">{logra} logrados</span>
-                                <span>{total} completados de {template.reduce((a, e) => a + e.hitos.length, 0)} hitos</span>
+                                <span className="text-muted-foreground">{total} completados de {template.reduce((a, e) => a + e.hitos.length, 0)} hitos</span>
                               </div>
                               {r.observaciones && <p className="text-xs italic text-muted-foreground line-clamp-2">{r.observaciones}</p>}
                             </div>
@@ -491,6 +504,44 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                         })}
                       </div>
                     )
+                  ) : infMode === "view" && viewingReport ? (
+                    <div className="space-y-4">
+                      <div className="bg-muted/40 rounded-xl p-3 space-y-1 text-sm">
+                        {viewingReport.lider && <p><span className="text-muted-foreground text-xs">Líder pedagógica:</span> <span className="font-medium">{viewingReport.lider}</span></p>}
+                        {viewingReport.facilitadora && <p><span className="text-muted-foreground text-xs">Facilitadora:</span> <span className="font-medium">{viewingReport.facilitadora}</span></p>}
+                      </div>
+                      {template.map(({ eje, hitos }) => (
+                        <div key={eje}>
+                          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1">{eje}</p>
+                          <div className="border rounded-lg overflow-hidden divide-y divide-border">
+                            {hitos.map((hito) => {
+                              const val = (viewingReport.hitos ?? {})[hito] ?? null;
+                              const badge =
+                                val === "L" ? { label: "Logra", cls: "bg-green-100 text-green-700" } :
+                                val === "P" ? { label: "En proceso", cls: "bg-amber-100 text-amber-700" } :
+                                val === "N" ? { label: "Aún no", cls: "bg-red-100 text-red-700" } :
+                                null;
+                              return (
+                                <div key={hito} className="flex items-center gap-2 px-3 py-2">
+                                  <span className="flex-1 text-xs leading-snug">{hito}</span>
+                                  {badge ? (
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${badge.cls}`}>{badge.label}</span>
+                                  ) : (
+                                    <span className="text-[10px] text-muted-foreground shrink-0">—</span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                      {viewingReport.observaciones && (
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1">Observaciones</p>
+                          <p className="text-sm leading-relaxed">{viewingReport.observaciones}</p>
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-3">

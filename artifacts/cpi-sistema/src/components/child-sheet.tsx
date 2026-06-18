@@ -26,38 +26,86 @@ const MES_ACTUAL = new Date().toISOString().slice(0, 7);
 
 type HitoVal = "L" | "P" | "N" | null;
 
-const ECO_TEMPLATES: Record<number, { eje: string; hitos: string[] }[]> = {
+const ECO_TEMPLATES: Record<number, { eje: string; hitos: string[]; inf: string[] }[]> = {
   1: [
-    { eje: "MOTRICIDAD GRUESA", hitos: ["Camina y corre solo", "Se sube a su silla", "Patea y lanza la pelota", "Levanta objetos del suelo en cuclillas", "Se agacha y se levanta sin apoyo", "Empuja y arrastra objetos"] },
-    { eje: "MOTRICIDAD FINA", hitos: ["Manipula objetos pequeños (como cubos por ejemplo)", "Come con cuchara", "Pasa las páginas del libro", "Apila 2 a 4 cubos", "Usa ambas manos para jugar"] },
-    { eje: "COGNITIVO", hitos: ["Busca juguetes escondidos", "Trasvasado"] },
-    { eje: "SOCIAL", hitos: ["Muestra curiosidad", "Coopera en los momentos de guardado", "Se interesa por sus compañeros/as", "Puede expresar necesidades básicas con llanto o gestos", "Logra almorzar sentado en la mesa"] },
-    { eje: "LENGUAJE", hitos: ["Dice su propio nombre", "Expresa lo quiere alcanzar o pedir", "Señala personas conocidas", 'Usa gestos como "chau" "no" "mano"'] },
+    { eje: "MOTRICIDAD GRUESA",
+      hitos: ["Camina y corre solo", "Se sube a su silla", "Patea y lanza la pelota", "Levanta objetos del suelo en cuclillas", "Se agacha y se levanta sin apoyo", "Empuja y arrastra objetos"],
+      inf:   ["caminar y correr solo", "subirse a la silla", "patear y lanzar la pelota", "levantar objetos del suelo en cuclillas", "agacharse y levantarse sin apoyo", "empujar y arrastrar objetos"] },
+    { eje: "MOTRICIDAD FINA",
+      hitos: ["Manipula objetos pequeños (como cubos por ejemplo)", "Come con cuchara", "Pasa las páginas del libro", "Apila 2 a 4 cubos", "Usa ambas manos para jugar"],
+      inf:   ["manipular objetos pequeños", "comer con cuchara", "pasar las páginas del libro", "apilar 2 a 4 cubos", "usar ambas manos para jugar"] },
+    { eje: "COGNITIVO",
+      hitos: ["Busca juguetes escondidos", "Trasvasado"],
+      inf:   ["buscar juguetes escondidos", "realizar trasvasado"] },
+    { eje: "SOCIAL",
+      hitos: ["Muestra curiosidad", "Coopera en los momentos de guardado", "Se interesa por sus compañeros/as", "Puede expresar necesidades básicas con llanto o gestos", "Logra almorzar sentado en la mesa"],
+      inf:   ["mostrar curiosidad", "cooperar en los momentos de guardado", "interesarse por sus compañeros/as", "expresar necesidades básicas con llanto o gestos", "almorzar sentado en la mesa"] },
+    { eje: "LENGUAJE",
+      hitos: ["Dice su propio nombre", "Expresa lo quiere alcanzar o pedir", "Señala personas conocidas", 'Usa gestos como "chau" "no" "mano"'],
+      inf:   ["decir su propio nombre", "expresar lo que quiere alcanzar o pedir", "señalar personas conocidas", 'usar gestos como "chau", "no", "mano"'] },
   ],
   2: [
-    { eje: "MOTRICIDAD GRUESA", hitos: ["Camina, corre y escala sin dificultad", "Patea pelotas", "Sube y baja escaleras sin ayuda", "Salta con ambos pies", "Se agacha sin dificultad", "Camina para atrás"] },
-    { eje: "MOTRICIDAD FINA", hitos: ["Pasa páginas del libro", "Realiza trazos o garabatos", "Puede comer usando cubiertos y vaso"] },
-    { eje: "COGNITIVO", hitos: ["Reconoce objetos", "Cuenta hasta 5", "Sigue instrucciones dobles", "Hace preguntas", "Imita animales", "Juega de manera simbólica", "Reconoce colores"] },
-    { eje: "AUTONOMÍA", hitos: ["Avisa si quiere ir al baño", "Colabora con el guardado de los juguetes", "Se saca algunas prendas"] },
-    { eje: "SOCIAL", hitos: ["Acepta las propuestas de la líder", "Muestra interés por compartir con sus pares", "Respeta la rutina", "Imita comportamientos de adultos", "Busca aprobación del adulto"] },
-    { eje: "EMOCIONAL", hitos: ["Expresa emociones como enojo, alegría o frustración"] },
-    { eje: "LENGUAJE", hitos: ["Nombra objetos o personas conocidas", "Forma frases de 2 palabras o más"] },
+    { eje: "MOTRICIDAD GRUESA",
+      hitos: ["Camina, corre y escala sin dificultad", "Patea pelotas", "Sube y baja escaleras sin ayuda", "Salta con ambos pies", "Se agacha sin dificultad", "Camina para atrás"],
+      inf:   ["caminar, correr y escalar sin dificultad", "patear pelotas", "subir y bajar escaleras sin ayuda", "saltar con ambos pies", "agacharse sin dificultad", "caminar para atrás"] },
+    { eje: "MOTRICIDAD FINA",
+      hitos: ["Pasa páginas del libro", "Realiza trazos o garabatos", "Puede comer usando cubiertos y vaso"],
+      inf:   ["pasar páginas del libro", "realizar trazos o garabatos", "comer usando cubiertos y vaso"] },
+    { eje: "COGNITIVO",
+      hitos: ["Reconoce objetos", "Cuenta hasta 5", "Sigue instrucciones dobles", "Hace preguntas", "Imita animales", "Juega de manera simbólica", "Reconoce colores"],
+      inf:   ["reconocer objetos", "contar hasta 5", "seguir instrucciones dobles", "hacer preguntas", "imitar animales", "jugar de manera simbólica", "reconocer colores"] },
+    { eje: "AUTONOMÍA",
+      hitos: ["Avisa si quiere ir al baño", "Colabora con el guardado de los juguetes", "Se saca algunas prendas"],
+      inf:   ["avisar cuando quiere ir al baño", "colaborar con el guardado de los juguetes", "sacarse algunas prendas"] },
+    { eje: "SOCIAL",
+      hitos: ["Acepta las propuestas de la líder", "Muestra interés por compartir con sus pares", "Respeta la rutina", "Imita comportamientos de adultos", "Busca aprobación del adulto"],
+      inf:   ["aceptar las propuestas de la líder", "mostrar interés por compartir con sus pares", "respetar la rutina", "imitar comportamientos de adultos", "buscar aprobación del adulto"] },
+    { eje: "EMOCIONAL",
+      hitos: ["Expresa emociones como enojo, alegría o frustración"],
+      inf:   ["expresar emociones como enojo, alegría o frustración"] },
+    { eje: "LENGUAJE",
+      hitos: ["Nombra objetos o personas conocidas", "Forma frases de 2 palabras o más"],
+      inf:   ["nombrar objetos o personas conocidas", "formar frases de 2 palabras o más"] },
   ],
   3: [
-    { eje: "MOTRICIDAD GRUESA", hitos: ["Corre con mayor coordinación", "Salta con ambos pies", "Lanza, atrapa y patea pelotas", "Evita obstáculos", "Se viste con ayuda"] },
-    { eje: "MOTRICIDAD FINA", hitos: ["Sostiene el lápiz con más control", "Dibuja líneas, círculos", "Empieza a pintar dentro de los límites", "Come de manera independiente usando cuchara, tenedor y vaso sin pico"] },
-    { eje: "COGNITIVO", hitos: ["Reconoce colores, formas y algunos números", "Resuelve problemas simples (ej: alcanzar objetos)", "Arma torres con 8 o más bloques", "Reconoce su nombre", "Entiende cuentos simples y sigue la conversación"] },
-    { eje: "SOCIAL", hitos: ["Juega con sus compañeros", "Juego simbólico", "Entiende reglas de juego y de convivencia", "Participa de las actividades grupales propuestas por la líder"] },
-    { eje: "EMOCIONAL", hitos: ["Expresa emociones con palabras"] },
-    { eje: "LENGUAJE", hitos: ["Forma oraciones sencillas", "Usa pronombres (yo, tu, él)"] },
+    { eje: "MOTRICIDAD GRUESA",
+      hitos: ["Corre con mayor coordinación", "Salta con ambos pies", "Lanza, atrapa y patea pelotas", "Evita obstáculos", "Se viste con ayuda"],
+      inf:   ["correr con mayor coordinación", "saltar con ambos pies", "lanzar, atrapar y patear pelotas", "evitar obstáculos", "vestirse con ayuda"] },
+    { eje: "MOTRICIDAD FINA",
+      hitos: ["Sostiene el lápiz con más control", "Dibuja líneas, círculos", "Empieza a pintar dentro de los límites", "Come de manera independiente usando cuchara, tenedor y vaso sin pico"],
+      inf:   ["sostener el lápiz con más control", "dibujar líneas y círculos", "pintar dentro de los límites", "comer de manera independiente usando cuchara, tenedor y vaso sin pico"] },
+    { eje: "COGNITIVO",
+      hitos: ["Reconoce colores, formas y algunos números", "Resuelve problemas simples (ej: alcanzar objetos)", "Arma torres con 8 o más bloques", "Reconoce su nombre", "Entiende cuentos simples y sigue la conversación"],
+      inf:   ["reconocer colores, formas y algunos números", "resolver problemas simples", "armar torres con 8 o más bloques", "reconocer su nombre", "entender cuentos simples y seguir la conversación"] },
+    { eje: "SOCIAL",
+      hitos: ["Juega con sus compañeros", "Juego simbólico", "Entiende reglas de juego y de convivencia", "Participa de las actividades grupales propuestas por la líder"],
+      inf:   ["jugar con sus compañeros", "realizar juego simbólico", "entender reglas de juego y de convivencia", "participar de las actividades grupales propuestas por la líder"] },
+    { eje: "EMOCIONAL",
+      hitos: ["Expresa emociones con palabras"],
+      inf:   ["expresar emociones con palabras"] },
+    { eje: "LENGUAJE",
+      hitos: ["Forma oraciones sencillas", "Usa pronombres (yo, tu, él)"],
+      inf:   ["formar oraciones sencillas", "usar pronombres (yo, tú, él)"] },
   ],
   4: [
-    { eje: "MOTRICIDAD GRUESA", hitos: ["Corre con mayor coordinación", "Salta con ambos pies", "Lanza, atrapa y patea pelotas", "Evita obstáculos", "Se viste con ayuda"] },
-    { eje: "MOTRICIDAD FINA", hitos: ["Sostiene el lápiz con más control", "Dibuja líneas, círculos", "Empieza a pintar dentro de los límites", "Come de manera independiente usando cuchara, tenedor y vaso sin pico"] },
-    { eje: "COGNITIVO", hitos: ["Reconoce colores, formas y algunos números", "Resuelve problemas simples", "Arma torres con 8 o más bloques", "Reconoce su nombre", "Entiende cuentos simples y sigue la conversación"] },
-    { eje: "SOCIAL", hitos: ["Juega con sus compañeros", "Juego simbólico", "Entiende reglas de juego y de convivencia", "Participa de las actividades grupales propuestas por la líder"] },
-    { eje: "EMOCIONAL", hitos: ["Expresa emociones con palabras"] },
-    { eje: "LENGUAJE", hitos: ["Forma oraciones sencillas", "Usa pronombres (yo, tu, él)"] },
+    { eje: "MOTRICIDAD GRUESA",
+      hitos: ["Corre con mayor coordinación", "Salta con ambos pies", "Lanza, atrapa y patea pelotas", "Evita obstáculos", "Se viste con ayuda"],
+      inf:   ["correr con mayor coordinación", "saltar con ambos pies", "lanzar, atrapar y patear pelotas", "evitar obstáculos", "vestirse con ayuda"] },
+    { eje: "MOTRICIDAD FINA",
+      hitos: ["Sostiene el lápiz con más control", "Dibuja líneas, círculos", "Empieza a pintar dentro de los límites", "Come de manera independiente usando cuchara, tenedor y vaso sin pico"],
+      inf:   ["sostener el lápiz con más control", "dibujar líneas y círculos", "pintar dentro de los límites", "comer de manera independiente usando cuchara, tenedor y vaso sin pico"] },
+    { eje: "COGNITIVO",
+      hitos: ["Reconoce colores, formas y algunos números", "Resuelve problemas simples", "Arma torres con 8 o más bloques", "Reconoce su nombre", "Entiende cuentos simples y sigue la conversación"],
+      inf:   ["reconocer colores, formas y algunos números", "resolver problemas simples", "armar torres con 8 o más bloques", "reconocer su nombre", "entender cuentos simples y seguir la conversación"] },
+    { eje: "SOCIAL",
+      hitos: ["Juega con sus compañeros", "Juego simbólico", "Entiende reglas de juego y de convivencia", "Participa de las actividades grupales propuestas por la líder"],
+      inf:   ["jugar con sus compañeros", "realizar juego simbólico", "entender reglas de juego y de convivencia", "participar de las actividades grupales propuestas por la líder"] },
+    { eje: "EMOCIONAL",
+      hitos: ["Expresa emociones con palabras"],
+      inf:   ["expresar emociones con palabras"] },
+    { eje: "LENGUAJE",
+      hitos: ["Forma oraciones sencillas", "Usa pronombres (yo, tu, él)"],
+      inf:   ["formar oraciones sencillas", "usar pronombres (yo, tú, él)"] },
   ],
 };
 
@@ -201,13 +249,13 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
     return items.slice(0, -1).map((s) => s.toLowerCase()).join(", ") + " y " + items[items.length - 1].toLowerCase();
   }
 
-  function autoGenerateTextos(template: { eje: string; hitos: string[] }[], hitos: Record<string, HitoVal>, nombre: string) {
+  function autoGenerateTextos(template: { eje: string; hitos: string[]; inf: string[] }[], hitos: Record<string, HitoVal>, nombre: string) {
     const first = nombre.split(" ")[0] || "El/la niño/a";
     const result: Record<string, string> = {};
-    for (const { eje, hitos: items } of template) {
-      const logra = items.filter((h) => hitos[h] === "L");
-      const proceso = items.filter((h) => hitos[h] === "P");
-      const noLogra = items.filter((h) => hitos[h] === "N");
+    for (const { eje, hitos: items, inf } of template) {
+      const logra = items.map((h, i) => hitos[h] === "L" ? inf[i] : null).filter(Boolean) as string[];
+      const proceso = items.map((h, i) => hitos[h] === "P" ? inf[i] : null).filter(Boolean) as string[];
+      const noLogra = items.map((h, i) => hitos[h] === "N" ? inf[i] : null).filter(Boolean) as string[];
       let text = "";
       if (logra.length) text += `${first} logra ${joinList(logra)}. `;
       if (proceso.length) text += `Se encuentra en proceso de ${joinList(proceso)}. `;
@@ -265,7 +313,7 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
     await loadReports();
   }
 
-  function buildReportHtml(r: any, childName: string, ecoNumber: number, template: { eje: string; hitos: string[] }[]) {
+  function buildReportHtml(r: any, childName: string, ecoNumber: number, roomName: string, template: { eje: string; hitos: string[]; inf: string[] }[]) {
     const LABEL: Record<string, string> = { L: "Logra", P: "En proceso", N: "Aún no logra" };
     const COLOR: Record<string, string> = { L: "#dcfce7;color:#15803d", P: "#fef9c3;color:#a16207", N: "#fee2e2;color:#b91c1c" };
     const logoUrl = `${window.location.origin}/logo-cpi.svg`;
@@ -295,10 +343,11 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
       <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;border-bottom:2px solid #e5e7eb;padding-bottom:16px">
         <img src="${logoUrl}" height="60" style="object-fit:contain" />
         <div>
-          <h2>${childName}</h2>
-          <p style="color:#6b7280;font-size:12px">Ecosistema ${ecoNumber} · Período ${r.period}</p>
-          ${r.lider ? `<p style="font-size:12px">Líder pedagógica: <strong>${r.lider}</strong></p>` : ""}
-          ${r.facilitadora ? `<p style="font-size:12px">Facilitadora: <strong>${r.facilitadora}</strong></p>` : ""}
+          <h2 style="margin:0 0 4px;font-size:20px">${childName}</h2>
+          <p style="color:#6b7280;font-size:12px;margin:0 0 2px">${roomName} (ECO ${ecoNumber}) · Período ${r.period}</p>
+          <p style="color:#6b7280;font-size:12px;margin:0 0 2px">Fecha: ${new Date().toLocaleDateString("es-AR", { day:"2-digit", month:"long", year:"numeric" })}</p>
+          ${r.lider ? `<p style="font-size:12px;margin:0 0 1px">Líder pedagógica: <strong>${r.lider}</strong></p>` : ""}
+          ${r.facilitadora ? `<p style="font-size:12px;margin:0">Facilitadora: <strong>${r.facilitadora}</strong></p>` : ""}
         </div>
       </div>
       <table><tbody>${rows}</tbody></table>
@@ -326,8 +375,8 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
     return hitsCount(eje, template);
   }
 
-  async function handlePrintReport(r: any, childName: string, ecoNumber: number, template: { eje: string; hitos: string[] }[]) {
-    const html = buildReportHtml(r, childName, ecoNumber, template);
+  async function handlePrintReport(r: any, childName: string, ecoNumber: number, roomName: string, template: { eje: string; hitos: string[]; inf: string[] }[]) {
+    const html = buildReportHtml(r, childName, ecoNumber, roomName, template);
     const win = window.open("", "_blank");
     if (!win) return;
     win.document.write(html);
@@ -335,8 +384,8 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
     setTimeout(() => win.print(), 600);
   }
 
-  async function handleShareReport(r: any, childName: string, ecoNumber: number, template: { eje: string; hitos: string[] }[]) {
-    const html = buildReportHtml(r, childName, ecoNumber, template);
+  async function handleShareReport(r: any, childName: string, ecoNumber: number, roomName: string, template: { eje: string; hitos: string[]; inf: string[] }[]) {
+    const html = buildReportHtml(r, childName, ecoNumber, roomName, template);
     const blob = new Blob([html], { type: "text/html" });
     const file = new File([blob], `informe-${childName.replace(/\s+/g, "-")}-${r.period}.html`, { type: "text/html" });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -598,7 +647,8 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                               <div className="flex items-center justify-between">
                                 <span className="font-semibold text-sm">{r.period}</span>
                                 <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                                  <button onClick={() => enterEditReport(r)} className="text-xs text-primary underline">Editar</button>
+                                  <button onClick={() => { setViewingReport(r); setInfMode("view"); }} className="text-xs text-primary font-semibold underline">Ver</button>
+                                  <button onClick={() => enterEditReport(r)} className="text-xs text-muted-foreground underline">Editar</button>
                                   <button onClick={() => deleteReport(r.id)} className="text-xs text-destructive underline">Eliminar</button>
                                 </div>
                               </div>
@@ -673,13 +723,13 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                         <Button
                           variant="outline"
                           className="flex-1"
-                          onClick={() => handlePrintReport(viewingReport, `${c?.apellido} ${c?.nombre}`, ecoNumber, template)}
+                          onClick={() => handlePrintReport(viewingReport, `${c?.apellido} ${c?.nombre}`, ecoNumber, (childRoom as any)?.name ?? "", template)}
                         >
                           Descargar PDF
                         </Button>
                         <Button
                           className="flex-1"
-                          onClick={() => handleShareReport(viewingReport, `${c?.apellido} ${c?.nombre}`, ecoNumber, template)}
+                          onClick={() => handleShareReport(viewingReport, `${c?.apellido} ${c?.nombre}`, ecoNumber, (childRoom as any)?.name ?? "", template)}
                         >
                           Compartir
                         </Button>
@@ -787,6 +837,7 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                         { hitos: infHitos, textos: infTextos, observaciones: infObs, lider: infLider, facilitadora: infFacilitadora, period: infPeriod },
                         `${c?.apellido} ${c?.nombre}`,
                         ecoNumber,
+                        (childRoom as any)?.name ?? "",
                         template
                       )}
                     >

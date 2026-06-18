@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useGetChild, useCreateContact, useUpdateChild, useDischargeChild, useReinstateChild, useListAttendance, useListRooms, getGetChildQueryKey, getListChildrenQueryKey, getGetRoomsSummaryQueryKey, getGetDashboardSummaryQueryKey, getGetAlertsQueryKey, getListAttendanceQueryKey } from "@workspace/api-client-react";
 import type { AttendanceRecord, Room } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -23,6 +23,43 @@ const DOC_TYPES = [
 ] as const;
 
 const MES_ACTUAL = new Date().toISOString().slice(0, 7);
+
+type HitoVal = "L" | "P" | "N" | null;
+
+const ECO_TEMPLATES: Record<number, { eje: string; hitos: string[] }[]> = {
+  1: [
+    { eje: "MOTRICIDAD GRUESA", hitos: ["Camina y corre solo", "Se sube a su silla", "Patea y lanza la pelota", "Levanta objetos del suelo en cuclillas", "Se agacha y se levanta sin apoyo", "Empuja y arrastra objetos"] },
+    { eje: "MOTRICIDAD FINA", hitos: ["Manipula objetos pequeños (como cubos por ejemplo)", "Come con cuchara", "Pasa las páginas del libro", "Apila 2 a 4 cubos", "Usa ambas manos para jugar"] },
+    { eje: "COGNITIVO", hitos: ["Busca juguetes escondidos", "Trasvasado"] },
+    { eje: "SOCIAL", hitos: ["Muestra curiosidad", "Coopera en los momentos de guardado", "Se interesa por sus compañeros/as", "Puede expresar necesidades básicas con llanto o gestos", "Logra almorzar sentado en la mesa"] },
+    { eje: "LENGUAJE", hitos: ["Dice su propio nombre", "Expresa lo quiere alcanzar o pedir", "Señala personas conocidas", 'Usa gestos como "chau" "no" "mano"'] },
+  ],
+  2: [
+    { eje: "MOTRICIDAD GRUESA", hitos: ["Camina, corre y escala sin dificultad", "Patea pelotas", "Sube y baja escaleras sin ayuda", "Salta con ambos pies", "Se agacha sin dificultad", "Camina para atrás"] },
+    { eje: "MOTRICIDAD FINA", hitos: ["Pasa páginas del libro", "Realiza trazos o garabatos", "Puede comer usando cubiertos y vaso"] },
+    { eje: "COGNITIVO", hitos: ["Reconoce objetos", "Cuenta hasta 5", "Sigue instrucciones dobles", "Hace preguntas", "Imita animales", "Juega de manera simbólica", "Reconoce colores"] },
+    { eje: "AUTONOMÍA", hitos: ["Avisa si quiere ir al baño", "Colabora con el guardado de los juguetes", "Se saca algunas prendas"] },
+    { eje: "SOCIAL", hitos: ["Acepta las propuestas de la líder", "Muestra interés por compartir con sus pares", "Respeta la rutina", "Imita comportamientos de adultos", "Busca aprobación del adulto"] },
+    { eje: "EMOCIONAL", hitos: ["Expresa emociones como enojo, alegría o frustración"] },
+    { eje: "LENGUAJE", hitos: ["Nombra objetos o personas conocidas", "Forma frases de 2 palabras o más"] },
+  ],
+  3: [
+    { eje: "MOTRICIDAD GRUESA", hitos: ["Corre con mayor coordinación", "Salta con ambos pies", "Lanza, atrapa y patea pelotas", "Evita obstáculos", "Se viste con ayuda"] },
+    { eje: "MOTRICIDAD FINA", hitos: ["Sostiene el lápiz con más control", "Dibuja líneas, círculos", "Empieza a pintar dentro de los límites", "Come de manera independiente usando cuchara, tenedor y vaso sin pico"] },
+    { eje: "COGNITIVO", hitos: ["Reconoce colores, formas y algunos números", "Resuelve problemas simples (ej: alcanzar objetos)", "Arma torres con 8 o más bloques", "Reconoce su nombre", "Entiende cuentos simples y sigue la conversación"] },
+    { eje: "SOCIAL", hitos: ["Juega con sus compañeros", "Juego simbólico", "Entiende reglas de juego y de convivencia", "Participa de las actividades grupales propuestas por la líder"] },
+    { eje: "EMOCIONAL", hitos: ["Expresa emociones con palabras"] },
+    { eje: "LENGUAJE", hitos: ["Forma oraciones sencillas", "Usa pronombres (yo, tu, él)"] },
+  ],
+  4: [
+    { eje: "MOTRICIDAD GRUESA", hitos: ["Corre con mayor coordinación", "Salta con ambos pies", "Lanza, atrapa y patea pelotas", "Evita obstáculos", "Se viste con ayuda"] },
+    { eje: "MOTRICIDAD FINA", hitos: ["Sostiene el lápiz con más control", "Dibuja líneas, círculos", "Empieza a pintar dentro de los límites", "Come de manera independiente usando cuchara, tenedor y vaso sin pico"] },
+    { eje: "COGNITIVO", hitos: ["Reconoce colores, formas y algunos números", "Resuelve problemas simples", "Arma torres con 8 o más bloques", "Reconoce su nombre", "Entiende cuentos simples y sigue la conversación"] },
+    { eje: "SOCIAL", hitos: ["Juega con sus compañeros", "Juego simbólico", "Entiende reglas de juego y de convivencia", "Participa de las actividades grupales propuestas por la líder"] },
+    { eje: "EMOCIONAL", hitos: ["Expresa emociones con palabras"] },
+    { eje: "LENGUAJE", hitos: ["Forma oraciones sencillas", "Usa pronombres (yo, tu, él)"] },
+  ],
+};
 
 function getMonthDaysCS(month: string) {
   const [y, m] = month.split("-").map(Number);
@@ -60,7 +97,7 @@ const TIPO_BAJA_OPTIONS = [
 export default function ChildSheet({ childId, onClose, roomId }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [view, setView] = useState<"ficha" | "llamado" | "baja" | "historial" | "documentos" | "editar">("ficha");
+  const [view, setView] = useState<"ficha" | "llamado" | "baja" | "historial" | "documentos" | "editar" | "informe">("ficha");
   const [histMonth, setHistMonth] = useState(MES_ACTUAL);
 
   // Docs state
@@ -78,6 +115,22 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
   // Baja form
   const [bajaTipo, setBajaTipo] = useState<string>("");
   const [bajaObs, setBajaObs] = useState("");
+
+  // Informe state
+  const [reportsList, setReportsList] = useState<any[]>([]);
+  const [reportsLoading, setReportsLoading] = useState(false);
+  const [editingReportId, setEditingReportId] = useState<number | null>(null);
+  const [infPeriod, setInfPeriod] = useState(() => {
+    const now = new Date();
+    const t = Math.ceil(now.getMonth() / 4) || 1;
+    return `${now.getFullYear()}-T${t}`;
+  });
+  const [infLider, setInfLider] = useState("");
+  const [infFacilitadora, setInfFacilitadora] = useState("");
+  const [infHitos, setInfHitos] = useState<Record<string, HitoVal>>({});
+  const [infObs, setInfObs] = useState("");
+  const [infSaving, setInfSaving] = useState(false);
+  const [infMode, setInfMode] = useState<"list" | "edit">("list");
 
   const child = useGetChild(childId, {
     query: { queryKey: getGetChildQueryKey(childId) },
@@ -100,6 +153,10 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
     const dow = histDays[0].getDay();
     return dow === 0 ? 6 : dow - 1;
   }, [histDays]);
+
+  useEffect(() => {
+    if (view === "informe") loadReports();
+  }, [view]);
 
   const createContact = useCreateContact();
   const dischargeChild = useDischargeChild();
@@ -125,6 +182,62 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
   const [editEmail, setEditEmail] = useState("");
   const [editEstAsist, setEditEstAsist] = useState("");
   const [editObs, setEditObs] = useState("");
+
+  const loadReports = useCallback(async () => {
+    setReportsLoading(true);
+    try {
+      const res = await fetch(`/api/children/${childId}/reports`);
+      if (res.ok) setReportsList(await res.json());
+    } finally {
+      setReportsLoading(false);
+    }
+  }, [childId]);
+
+  function enterNewReport() {
+    setEditingReportId(null);
+    setInfLider("");
+    setInfFacilitadora("");
+    setInfHitos({});
+    setInfObs("");
+    setInfMode("edit");
+  }
+
+  function enterEditReport(r: any) {
+    setEditingReportId(r.id);
+    setInfPeriod(r.period);
+    setInfLider(r.lider ?? "");
+    setInfFacilitadora(r.facilitadora ?? "");
+    setInfHitos(r.hitos ?? {});
+    setInfObs(r.observaciones ?? "");
+    setInfMode("edit");
+  }
+
+  async function saveReport(ecoNumber: number) {
+    setInfSaving(true);
+    try {
+      const body = { period: infPeriod, ecoNumber, lider: infLider, facilitadora: infFacilitadora, hitos: infHitos, observaciones: infObs };
+      let res: Response;
+      if (editingReportId) {
+        res = await fetch(`/api/children/${childId}/reports/${editingReportId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      } else {
+        res = await fetch(`/api/children/${childId}/reports`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      toast({ title: "Informe guardado correctamente" });
+      await loadReports();
+      setInfMode("list");
+    } catch {
+      toast({ title: "Error al guardar el informe", variant: "destructive" });
+    } finally {
+      setInfSaving(false);
+    }
+  }
+
+  async function deleteReport(id: number) {
+    if (!confirm("¿Eliminar este informe?")) return;
+    await fetch(`/api/children/${childId}/reports/${id}`, { method: "DELETE" });
+    await loadReports();
+  }
 
   function enterEditView() {
     const c = child.data;
@@ -827,6 +940,141 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
           </div>
           </div>
 
+          {/* ── INFORME DE DESARROLLO ── */}
+          {view === "informe" && (() => {
+            const childRoom = allRooms.data?.find((r: Room) => r.id === child.data?.roomId);
+            const ecoNumber = (childRoom as any)?.ecoNumber ?? 1;
+            const template = ECO_TEMPLATES[ecoNumber] ?? ECO_TEMPLATES[1];
+            const HITO_VALS: { val: HitoVal; label: string; color: string }[] = [
+              { val: "L", label: "Logra", color: "bg-green-100 text-green-700 border-green-300" },
+              { val: "P", label: "En proceso", color: "bg-amber-100 text-amber-700 border-amber-300" },
+              { val: "N", label: "Aún no", color: "bg-red-100 text-red-700 border-red-300" },
+            ];
+            return (
+              <div className="flex flex-col flex-1 min-h-0">
+                <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
+                  <button onClick={() => { if (infMode === "edit") setInfMode("list"); else setView("ficha"); }} className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
+                    <ChevronLeft className="w-4 h-4" />{infMode === "edit" ? "Volver a lista" : "Volver"}
+                  </button>
+                  <span className="text-sm font-semibold flex-1 text-center">Informe ECO {ecoNumber}</span>
+                  {infMode === "list" && (
+                    <button onClick={enterNewReport} className="text-xs text-primary font-semibold">+ Nuevo</button>
+                  )}
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+                  {infMode === "list" ? (
+                    reportsLoading ? (
+                      <p className="text-sm text-muted-foreground text-center py-8">Cargando...</p>
+                    ) : reportsList.length === 0 ? (
+                      <div className="text-center py-10 space-y-3">
+                        <p className="text-sm text-muted-foreground">No hay informes registrados todavía.</p>
+                        <button onClick={enterNewReport} className="text-sm font-semibold text-primary underline">Crear primer informe</button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {reportsList.map((r: any) => {
+                          const total = Object.keys(r.hitos ?? {}).length;
+                          const logra = Object.values(r.hitos ?? {}).filter((v) => v === "L").length;
+                          return (
+                            <div key={r.id} className="border rounded-xl p-3 space-y-1">
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold text-sm">{r.period}</span>
+                                <div className="flex gap-2">
+                                  <button onClick={() => enterEditReport(r)} className="text-xs text-primary underline">Editar</button>
+                                  <button onClick={() => deleteReport(r.id)} className="text-xs text-destructive underline">Eliminar</button>
+                                </div>
+                              </div>
+                              {r.lider && <p className="text-xs text-muted-foreground">Líder: {r.lider}</p>}
+                              <div className="flex gap-3 text-xs text-muted-foreground">
+                                <span className="text-green-700 font-medium">{logra} logrados</span>
+                                <span>{total} completados de {template.reduce((a, e) => a + e.hitos.length, 0)} hitos</span>
+                              </div>
+                              {r.observaciones && <p className="text-xs italic text-muted-foreground line-clamp-2">{r.observaciones}</p>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Período */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs">Período</Label>
+                          <Select value={infPeriod} onValueChange={setInfPeriod}>
+                            <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {[2024, 2025, 2026].flatMap((y) => [1, 2, 3].map((t) => `${y}-T${t}`)).map((p) => (
+                                <SelectItem key={p} value={p}>{p}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-xs">ECO</Label>
+                          <Input className="mt-1 h-8 text-xs bg-muted" value={`ECO ${ecoNumber}`} disabled readOnly />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs">Líder pedagógica</Label>
+                          <Input className="mt-1 h-8 text-xs" value={infLider} onChange={(e) => setInfLider(e.target.value)} placeholder="Nombre" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Facilitadora</Label>
+                          <Input className="mt-1 h-8 text-xs" value={infFacilitadora} onChange={(e) => setInfFacilitadora(e.target.value)} placeholder="Nombre" />
+                        </div>
+                      </div>
+
+                      {/* Hitos por eje */}
+                      {template.map(({ eje, hitos }) => (
+                        <div key={eje}>
+                          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1 mt-3">{eje}</p>
+                          <div className="border rounded-lg overflow-hidden divide-y divide-border">
+                            {hitos.map((hito) => {
+                              const current = infHitos[hito] ?? null;
+                              return (
+                                <div key={hito} className="flex items-center gap-2 px-3 py-2">
+                                  <span className="flex-1 text-xs leading-snug">{hito}</span>
+                                  <div className="flex gap-1 shrink-0">
+                                    {HITO_VALS.map(({ val, label, color }) => (
+                                      <button
+                                        key={val}
+                                        onClick={() => setInfHitos((prev) => ({ ...prev, [hito]: current === val ? null : val }))}
+                                        className={`text-[10px] px-1.5 py-0.5 rounded border font-medium transition-all ${current === val ? color : "bg-background text-muted-foreground border-border"}`}
+                                      >
+                                        {label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Observaciones */}
+                      <div>
+                        <Label className="text-xs">Observaciones / Breve reseña</Label>
+                        <Textarea className="mt-1 text-xs resize-none" rows={4} value={infObs} onChange={(e) => setInfObs(e.target.value)} placeholder="Notas sobre el desarrollo del niño/a en el ecosistema..." />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {infMode === "edit" && (
+                  <div className="border-t border-border px-4 py-3">
+                    <Button className="w-full" size="sm" onClick={() => saveReport(ecoNumber)} disabled={infSaving}>
+                      {infSaving ? "Guardando..." : editingReportId ? "Actualizar informe" : "Guardar informe"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Sticky action footer — visible sin scrollear */}
           {view === "ficha" && (
             <div className="border-t border-border bg-card px-4 py-3 space-y-2">
@@ -834,6 +1082,9 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                 <Button size="sm" variant="outline" onClick={() => setView("historial")} data-testid="btn-ver-historial">Historial</Button>
                 <Button size="sm" variant="outline" onClick={() => { setView("documentos"); loadDocs(); }} data-testid="btn-ver-documentos">
                   <FileText className="w-3.5 h-3.5 mr-1" />Documentos
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => { setView("informe"); setInfMode("list"); }} className="col-span-2" data-testid="btn-ver-informe">
+                  Informe de desarrollo
                 </Button>
                 {c?.activo && (
                   <>

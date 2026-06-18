@@ -382,6 +382,15 @@ function NuevaAltaDialog({ onSuccess, onOpenDocs }: { onSuccess: () => void; onO
   const [autLlamada, setAutLlamada] = useState(false);
   const [autFotos, setAutFotos] = useState(false);
   const createChild = useCreateChild();
+  const rooms = useListRooms();
+
+  // Keep sala in sync with first real room ID once rooms load
+  useEffect(() => {
+    if (rooms.data && rooms.data.length > 0 && sala === "1") {
+      const firstId = String((rooms.data[0] as Room).id);
+      if (firstId !== "1") setSala(firstId);
+    }
+  }, [rooms.data]);
 
   function resetForm() {
     setApellido(""); setNombre(""); setLegajo(""); setDni(""); setFnac(""); setDomicilio("");
@@ -485,7 +494,9 @@ function NuevaAltaDialog({ onSuccess, onOpenDocs }: { onSuccess: () => void; onO
               <Select value={sala} onValueChange={setSala}>
                 <SelectTrigger className="mt-1" data-testid="select-alta-sala"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {[1,2,3,4].map((id, i) => <SelectItem key={id} value={String(id)}>ECO {i}</SelectItem>)}
+                  {(rooms.data ?? []).map((r: Room) => (
+                    <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

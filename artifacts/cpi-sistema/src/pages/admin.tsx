@@ -393,41 +393,45 @@ function NuevaAltaDialog({ onSuccess, onOpenDocs }: { onSuccess: () => void; onO
   async function handleSubmit() {
     if (!apellido) return;
     setUploading(true);
-    createChild.mutate(
-      {
-        data: {
-          roomId: parseInt(sala),
-          apellido, nombre, dni: dni || undefined, fnac: fnac || undefined,
-          genero, domicilio: domicilio || undefined,
-          famApellido: famApellido || undefined, famNombre: famNombre || undefined,
-          vinculo: vinculo || undefined, celular: celular || undefined,
-          email: email || undefined, obs: obs || undefined,
-          registro: legajo || undefined,
-          panialesAuth, aptoFisico, autRetiro, autLlamada, autFotos,
-        }
-      },
-      {
-        onSuccess: async (child) => {
-          if (vacunasFile && child?.id) {
-            const url = await uploadVacunas(child.id, vacunasFile);
-            if (url) {
-              await fetch(`/api/children/${child.id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ vacunasUrl: url }),
-              });
-            }
-          }
-          setUploading(false);
-          setCreatedChild({ id: child.id, nombre: child.nombre, apellido: child.apellido });
-          onSuccess();
-        },
-        onError: () => {
-          setUploading(false);
-          toast({ title: "Error al registrar alta", variant: "destructive" });
-        },
+    try {
+      const payload = {
+        roomId: parseInt(sala),
+        apellido, nombre: nombre || "",
+        dni: dni || undefined, fnac: fnac || undefined,
+        genero: genero || undefined, domicilio: domicilio || undefined,
+        famApellido: famApellido || undefined, famNombre: famNombre || undefined,
+        vinculo: vinculo || undefined, celular: celular || undefined,
+        email: email || undefined, obs: obs || undefined,
+        registro: legajo || undefined,
+        panialesAuth, aptoFisico, autRetiro, autLlamada, autFotos,
+      };
+      const res = await fetch("/api/children", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? `HTTP ${res.status}`);
       }
-    );
+      const child = await res.json();
+      if (vacunasFile && child?.id) {
+        const url = await uploadVacunas(child.id, vacunasFile);
+        if (url) {
+          await fetch(`/api/children/${child.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ vacunasUrl: url }),
+          });
+        }
+      }
+      setUploading(false);
+      setCreatedChild({ id: child.id, nombre: child.nombre, apellido: child.apellido });
+      onSuccess();
+    } catch (err: any) {
+      setUploading(false);
+      toast({ title: `Error al registrar alta: ${err?.message ?? "desconocido"}`, variant: "destructive" });
+    }
   }
 
   return (

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 110" width="220" height="110">
+  <!-- CPI letters -->
+  <text x="8" y="78" font-family="Arial Black, Arial" font-size="76" font-weight="900" letter-spacing="-2">
+    <tspan fill="#00AEEF">C</tspan><tspan fill="#BE1E2D">P</tspan><tspan fill="#00AEEF">I</tspan>
+  </text>
+  <!-- AiLI! -->
+  <text x="8" y="104" font-family="Arial Black, Arial" font-size="30" font-weight="900" letter-spacing="1">
+    <tspan fill="#F7941D">A</tspan><tspan fill="#8DC63F">i</tspan><tspan fill="#00AEEF">L</tspan><tspan fill="#F7941D">I</tspan><tspan fill="#F7941D">!</tspan>
+  </text>
+</svg>

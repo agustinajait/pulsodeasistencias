@@ -240,6 +240,82 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
     await loadReports();
   }
 
+  function buildReportHtml(r: any, childName: string, ecoNumber: number, template: { eje: string; hitos: string[] }[]) {
+    const LABEL: Record<string, string> = { L: "Logra", P: "En proceso", N: "Aún no logra" };
+    const COLOR: Record<string, string> = { L: "#dcfce7;color:#15803d", P: "#fef9c3;color:#a16207", N: "#fee2e2;color:#b91c1c" };
+    const logoUrl = `${window.location.origin}/logo-cpi.svg`;
+    const rows = template.flatMap(({ eje, hitos }) =>
+      hitos.map((hito, i) => {
+        const val = (r.hitos ?? {})[hito] ?? null;
+        const bg = val ? COLOR[val].split(";")[0].replace("background:", "") : "#f9fafb";
+        const fg = val ? COLOR[val].split(";")[1]?.replace("color:", "") : "#6b7280";
+        return `
+          <tr>
+            ${i === 0 ? `<td rowspan="${hits(eje, template)}" style="font-weight:700;font-size:11px;vertical-align:top;padding:6px 8px;border:1px solid #e5e7eb;background:#f3f4f6;text-transform:uppercase;letter-spacing:.5px">${eje}</td>` : ""}
+            <td style="font-size:12px;padding:6px 8px;border:1px solid #e5e7eb">${hito}</td>
+            <td style="text-align:center;padding:6px 8px;border:1px solid #e5e7eb;background:${bg};color:${fg};font-size:11px;font-weight:600;white-space:nowrap">${val ? LABEL[val] : "—"}</td>
+          </tr>`;
+      })
+    ).join("");
+
+    return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+      <title>Informe ${childName} - ${r.period}</title>
+      <style>
+        body{font-family:Arial,sans-serif;margin:32px;color:#111;font-size:13px}
+        h2{margin:0 0 4px;font-size:18px} p{margin:0 0 2px}
+        table{width:100%;border-collapse:collapse;margin-top:16px}
+        @media print{body{margin:16px}}
+      </style>
+    </head><body>
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;border-bottom:2px solid #e5e7eb;padding-bottom:16px">
+        <img src="${logoUrl}" height="60" style="object-fit:contain" />
+        <div>
+          <h2>${childName}</h2>
+          <p style="color:#6b7280;font-size:12px">Ecosistema ${ecoNumber} · Período ${r.period}</p>
+          ${r.lider ? `<p style="font-size:12px">Líder pedagógica: <strong>${r.lider}</strong></p>` : ""}
+          ${r.facilitadora ? `<p style="font-size:12px">Facilitadora: <strong>${r.facilitadora}</strong></p>` : ""}
+        </div>
+      </div>
+      <table><tbody>${rows}</tbody></table>
+      ${r.observaciones ? `<div style="margin-top:20px"><strong style="font-size:12px;text-transform:uppercase;color:#6b7280">Observaciones</strong><p style="margin-top:6px;line-height:1.6">${r.observaciones}</p></div>` : ""}
+      <div style="margin-top:32px;display:flex;gap:40px;border-top:1px solid #e5e7eb;padding-top:20px">
+        <div><p style="color:#6b7280;font-size:11px">FIRMA LÍDER PEDAGÓGICA</p><div style="margin-top:24px;border-top:1px solid #111;width:180px"></div></div>
+        <div><p style="color:#6b7280;font-size:11px">FIRMA RESPONSABLE DEL NIÑO/A</p><div style="margin-top:24px;border-top:1px solid #111;width:180px"></div></div>
+      </div>
+    </body></html>`;
+  }
+
+  function hitsCount(eje: string, template: { eje: string; hitos: string[] }[]) {
+    return template.find((e) => e.eje === eje)?.hitos.length ?? 1;
+  }
+
+  function hits(eje: string, template: { eje: string; hitos: string[] }[]) {
+    return hitsCount(eje, template);
+  }
+
+  async function handlePrintReport(r: any, childName: string, ecoNumber: number, template: { eje: string; hitos: string[] }[]) {
+    const html = buildReportHtml(r, childName, ecoNumber, template);
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    setTimeout(() => win.print(), 600);
+  }
+
+  async function handleShareReport(r: any, childName: string, ecoNumber: number, template: { eje: string; hitos: string[] }[]) {
+    const html = buildReportHtml(r, childName, ecoNumber, template);
+    const blob = new Blob([html], { type: "text/html" });
+    const file = new File([blob], `informe-${childName.replace(/\s+/g, "-")}-${r.period}.html`, { type: "text/html" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: `Informe ${childName} - ${r.period}` });
+    } else {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = file.name; a.click();
+      URL.revokeObjectURL(url);
+    }
+  }
+
   function enterEditView() {
     const c = child.data;
     if (!c) return;
@@ -541,6 +617,23 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                           <p className="text-sm leading-relaxed">{viewingReport.observaciones}</p>
                         </div>
                       )}
+
+                      {/* Acciones */}
+                      <div className="flex gap-2 pt-2 pb-4">
+                        <Button
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => handlePrintReport(viewingReport, `${c?.apellido} ${c?.nombre}`, ecoNumber, template)}
+                        >
+                          Descargar PDF
+                        </Button>
+                        <Button
+                          className="flex-1"
+                          onClick={() => handleShareReport(viewingReport, `${c?.apellido} ${c?.nombre}`, ecoNumber, template)}
+                        >
+                          Compartir
+                        </Button>
+                      </div>
                     </div>
                   ) : (
                     <div className="space-y-4">

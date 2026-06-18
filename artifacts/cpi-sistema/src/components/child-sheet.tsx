@@ -1,4 +1,6 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import { useGetChild, useCreateContact, useUpdateChild, useDischargeChild, useReinstateChild, useListAttendance, useListRooms, getGetChildQueryKey, getListChildrenQueryKey, getGetRoomsSummaryQueryKey, getGetDashboardSummaryQueryKey, getGetAlertsQueryKey, getListAttendanceQueryKey } from "@workspace/api-client-react";
 import type { AttendanceRecord, Room } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -375,38 +377,60 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
     return hitsCount(eje, template);
   }
 
-  async function handlePrintReport(r: any, childName: string, ecoNumber: number, roomName: string, template: { eje: string; hitos: string[]; inf: string[] }[]) {
+  async function buildPdfBlob(r: any, childName: string, ecoNumber: number, roomName: string, template: { eje: string; hitos: string[]; inf: string[] }[]): Promise<Blob> {
     const html = buildReportHtml(r, childName, ecoNumber, roomName, template);
-    const win = window.open("", "_blank");
-    if (!win) return;
-    win.document.write(html);
-    win.document.close();
-    setTimeout(() => win.print(), 600);
+    const container = document.createElement("div");
+    container.style.cssText = "position:fixed;left:-9999px;top:0;width:794px;background:#fff;font-family:Arial,sans-serif;font-size:13px";
+    container.innerHTML = html.replace(/^[\s\S]*<body[^>]*>/, "").replace(/<\/body>[\s\S]*$/, "");
+    document.body.appendChild(container);
+    try {
+      const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgW = pageW - 20;
+      const imgH = (canvas.height * imgW) / canvas.width;
+      let yPos = 10;
+      let remaining = imgH;
+      while (remaining > 0) {
+        const sliceH = Math.min(remaining, pageH - 20);
+        pdf.addImage(imgData, "PNG", 10, yPos, imgW, imgH);
+        remaining -= sliceH;
+        if (remaining > 0) { pdf.addPage(); yPos = 10 - (imgH - sliceH); }
+      }
+      return pdf.output("blob");
+    } finally {
+      document.body.removeChild(container);
+    }
+  }
+
+  async function handlePrintReport(r: any, childName: string, ecoNumber: number, roomName: string, template: { eje: string; hitos: string[]; inf: string[] }[]) {
+    const blob = await buildPdfBlob(r, childName, ecoNumber, roomName, template);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `informe-${childName.replace(/\s+/g, "-")}-${r.period}.pdf`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
   }
 
   async function handleShareReport(r: any, childName: string, ecoNumber: number, roomName: string, template: { eje: string; hitos: string[]; inf: string[] }[]) {
-    const fecha = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" });
-    let text = `📋 Informe de desarrollo - ${childName}\n`;
-    text += `Sala: ${roomName} (ECO ${ecoNumber}) | Período: ${r.period}\n`;
-    text += `Fecha: ${fecha}\n`;
-    if (r.lider) text += `Líder pedagógica: ${r.lider}\n`;
-    if (r.facilitadora) text += `Facilitadora: ${r.facilitadora}\n`;
-    text += `\n`;
-    for (const { eje } of template) {
-      const txt = (r.textos ?? {})[eje];
-      if (txt) text += `*${eje}*\n${txt}\n\n`;
-    }
-    if (r.observaciones) text += `Observaciones: ${r.observaciones}\n`;
+    const blob = await buildPdfBlob(r, childName, ecoNumber, roomName, template);
+    const fileName = `informe-${childName.replace(/\s+/g, "-")}-${r.period}.pdf`;
+    const file = new File([blob], fileName, { type: "application/pdf" });
     try {
-      if (navigator.share) {
-        await navigator.share({ title: `Informe ${childName} - ${r.period}`, text });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: `Informe ${childName} - ${r.period}` });
       } else {
-        await navigator.clipboard.writeText(text);
-        alert("Texto del informe copiado al portapapeles");
+        // desktop fallback: download the PDF
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = fileName; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
       }
     } catch {
-      // user cancelled or not supported — fallback to download
-      handlePrintReport(r, childName, ecoNumber, roomName, template);
+      // user cancelled share — do nothing
     }
   }
 

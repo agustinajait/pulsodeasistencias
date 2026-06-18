@@ -670,9 +670,15 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                     )
                   ) : infMode === "view" && viewingReport ? (
                     <div className="space-y-4">
-                      <div className="bg-muted/40 rounded-xl p-3 space-y-1 text-sm">
-                        {viewingReport.lider && <p><span className="text-muted-foreground text-xs">Líder pedagógica:</span> <span className="font-medium">{viewingReport.lider}</span></p>}
-                        {viewingReport.facilitadora && <p><span className="text-muted-foreground text-xs">Facilitadora:</span> <span className="font-medium">{viewingReport.facilitadora}</span></p>}
+                      <div className="bg-muted/40 rounded-xl p-3 grid grid-cols-2 gap-2">
+                        <div>
+                          <p className="text-[10px] text-muted-foreground uppercase font-semibold">Líder pedagógica</p>
+                          <p className="text-sm font-semibold mt-0.5">{viewingReport.lider || <span className="text-muted-foreground italic text-xs">Sin datos</span>}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted-foreground uppercase font-semibold">Facilitadora</p>
+                          <p className="text-sm font-semibold mt-0.5">{viewingReport.facilitadora || <span className="text-muted-foreground italic text-xs">Sin datos</span>}</p>
+                        </div>
                       </div>
                       {template.map(({ eje, hitos }) => (
                         <div key={eje}>
@@ -723,14 +729,11 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                         </div>
                       )}
 
-                      {/* Acción: vista previa antes de descargar/compartir */}
-                      <div className="pt-2 pb-4">
-                        <Button
-                          className="w-full"
-                          onClick={() => setInfMode("preview")}
-                        >
-                          Ver vista previa · Descargar · Compartir
-                        </Button>
+                      {/* Acciones */}
+                      <div className="flex gap-2 pt-2 pb-4">
+                        <Button variant="outline" className="flex-1" onClick={() => setInfMode("preview")}>Vista previa</Button>
+                        <Button variant="outline" className="flex-1" onClick={() => handlePrintReport(viewingReport, `${c?.apellido} ${c?.nombre}`, ecoNumber, (childRoom as any)?.name ?? "", template)}>Descargar</Button>
+                        <Button className="flex-1" onClick={() => handleShareReport(viewingReport, `${c?.apellido} ${c?.nombre}`, ecoNumber, (childRoom as any)?.name ?? "", template)}>Compartir</Button>
                       </div>
                     </div>
                   ) : infMode === "preview" && viewingReport ? (

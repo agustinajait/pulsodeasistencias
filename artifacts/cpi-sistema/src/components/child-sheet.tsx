@@ -778,7 +778,20 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                 </div>
 
                 {infMode === "edit" && (
-                  <div className="border-t border-border px-4 py-3">
+                  <div className="border-t border-border px-4 py-3 space-y-2">
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      size="sm"
+                      onClick={() => handlePrintReport(
+                        { hitos: infHitos, textos: infTextos, observaciones: infObs, lider: infLider, facilitadora: infFacilitadora, period: infPeriod },
+                        `${c?.apellido} ${c?.nombre}`,
+                        ecoNumber,
+                        template
+                      )}
+                    >
+                      Vista previa
+                    </Button>
                     <Button className="w-full" size="sm" onClick={() => saveReport(ecoNumber)} disabled={infSaving}>
                       {infSaving ? "Guardando..." : editingReportId ? "Actualizar informe" : "Guardar informe"}
                     </Button>

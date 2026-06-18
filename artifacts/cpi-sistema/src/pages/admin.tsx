@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import {
   useGetDashboardSummary, useGetAlerts, useGetRecentContacts, useGetRoomsSummary,

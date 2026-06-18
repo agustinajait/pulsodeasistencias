@@ -403,18 +403,25 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
         data-testid="child-sheet"
       >
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border sticky top-0 bg-card z-10">
-          <div>
+          <div className="flex items-center gap-2">
+            {view !== "ficha" && view !== "informe" && (
+              <button onClick={() => setView("ficha")} className="text-muted-foreground hover:text-foreground flex items-center gap-1 mr-1" data-testid="btn-back-ficha">
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+            )}
             {c && (
               <>
-                <h2 className="text-base font-bold">{c.apellido} {c.nombre}</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  ECO {c.ecoNumber}
-                  {c.consecutiveAbsences && c.consecutiveAbsences >= 2 ? (
-                    <span className="ml-2 text-red-600 font-semibold">
-                      {c.consecutiveAbsences} días consecutivos sin asistir
-                    </span>
-                  ) : null}
-                </p>
+                <div>
+                  <h2 className="text-base font-bold">{c.apellido} {c.nombre}</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    ECO {c.ecoNumber}
+                    {(c.consecutiveAbsences ?? 0) >= 2 ? (
+                      <span className="ml-2 text-red-600 font-semibold">
+                        {c.consecutiveAbsences} días consecutivos sin asistir
+                      </span>
+                    ) : null}
+                  </p>
+                </div>
               </>
             )}
           </div>

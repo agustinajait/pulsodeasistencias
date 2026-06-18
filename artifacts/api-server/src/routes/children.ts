@@ -212,8 +212,32 @@ router.post("/children", async (req, res) => {
     try {
       [child] = await db.insert(childrenTable).values(extendedValues).returning();
     } catch {
-      // columnas nuevas (registro/autorizaciones) no migradas aún en producción
-      [child] = await db.insert(childrenTable).values(baseValues).returning();
+      try {
+        // Sin columnas de autorizaciones
+        [child] = await db.insert(childrenTable).values(baseValues).returning();
+      } catch {
+        // Fallback mínimo: solo columnas originales garantizadas
+        const minValues = {
+          roomId,
+          apellido: String(b.apellido).toUpperCase(),
+          nombre: b.nombre ? String(b.nombre).toUpperCase() : "",
+          dni: b.dni || null,
+          fnac: b.fnac || null,
+          genero: b.genero || null,
+          domicilio: b.domicilio || null,
+          famApellido: b.famApellido ? String(b.famApellido).toUpperCase() : null,
+          famNombre: b.famNombre ? String(b.famNombre).toUpperCase() : null,
+          vinculo: b.vinculo || null,
+          celular: b.celular || null,
+          email: b.email || null,
+          obs: b.obs || null,
+          estado: "INSCRIPTX",
+          estAsist: "Regular",
+          activo: true,
+          inscripto: TODAY(),
+        };
+        [child] = await db.insert(childrenTable).values(minValues as any).returning();
+      }
     }
 
     res.status(201).json({ ...child, ecoNumber: room[0].ecoNumber });

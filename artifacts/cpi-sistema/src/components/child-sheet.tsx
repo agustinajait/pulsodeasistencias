@@ -398,7 +398,7 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-card rounded-t-2xl w-full max-w-xl max-h-[92vh] flex flex-col shadow-2xl"
+        className={`bg-card rounded-t-2xl w-full max-w-xl flex flex-col shadow-2xl ${view === "informe" ? "h-[92vh]" : "max-h-[92vh]"}`}
         onClick={(e) => e.stopPropagation()}
         data-testid="child-sheet"
       >

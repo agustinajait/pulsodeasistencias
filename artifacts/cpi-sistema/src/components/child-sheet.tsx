@@ -429,10 +429,140 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
 
         {c && (
           <>
+          {view === "informe" ? (() => {
+            const childRoom = allRooms.data?.find((r: Room) => r.id === child.data?.roomId);
+            const ecoNumber = (childRoom as any)?.ecoNumber ?? 1;
+            const template = ECO_TEMPLATES[ecoNumber] ?? ECO_TEMPLATES[1];
+            const HITO_VALS: { val: HitoVal; label: string; color: string }[] = [
+              { val: "L", label: "Logra", color: "bg-green-100 text-green-700 border-green-300" },
+              { val: "P", label: "En proceso", color: "bg-amber-100 text-amber-700 border-amber-300" },
+              { val: "N", label: "Aún no", color: "bg-red-100 text-red-700 border-red-300" },
+            ];
+            return (
+              <>
+                <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
+                  <button onClick={() => { if (infMode === "edit") setInfMode("list"); else setView("ficha"); }} className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
+                    <ChevronLeft className="w-4 h-4" />{infMode === "edit" ? "Volver a lista" : "Volver"}
+                  </button>
+                  <span className="text-sm font-semibold flex-1 text-center">Informe ECO {ecoNumber}</span>
+                  {infMode === "list" && (
+                    <button onClick={enterNewReport} className="text-xs text-primary font-semibold">+ Nuevo</button>
+                  )}
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+                  {infMode === "list" ? (
+                    reportsLoading ? (
+                      <p className="text-sm text-muted-foreground text-center py-8">Cargando...</p>
+                    ) : reportsList.length === 0 ? (
+                      <div className="text-center py-10 space-y-3">
+                        <p className="text-sm text-muted-foreground">No hay informes registrados todavía.</p>
+                        <button onClick={enterNewReport} className="text-sm font-semibold text-primary underline">Crear primer informe</button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {reportsList.map((r: any) => {
+                          const total = Object.keys(r.hitos ?? {}).length;
+                          const logra = Object.values(r.hitos ?? {}).filter((v) => v === "L").length;
+                          return (
+                            <div key={r.id} className="border rounded-xl p-3 space-y-1">
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold text-sm">{r.period}</span>
+                                <div className="flex gap-2">
+                                  <button onClick={() => enterEditReport(r)} className="text-xs text-primary underline">Editar</button>
+                                  <button onClick={() => deleteReport(r.id)} className="text-xs text-destructive underline">Eliminar</button>
+                                </div>
+                              </div>
+                              {r.lider && <p className="text-xs text-muted-foreground">Líder: {r.lider}</p>}
+                              <div className="flex gap-3 text-xs text-muted-foreground">
+                                <span className="text-green-700 font-medium">{logra} logrados</span>
+                                <span>{total} completados de {template.reduce((a, e) => a + e.hitos.length, 0)} hitos</span>
+                              </div>
+                              {r.observaciones && <p className="text-xs italic text-muted-foreground line-clamp-2">{r.observaciones}</p>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs">Período</Label>
+                          <Select value={infPeriod} onValueChange={setInfPeriod}>
+                            <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {[2024, 2025, 2026].flatMap((y) => [1, 2, 3].map((t) => `${y}-T${t}`)).map((p) => (
+                                <SelectItem key={p} value={p}>{p}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-xs">ECO</Label>
+                          <Input className="mt-1 h-8 text-xs bg-muted" value={`ECO ${ecoNumber}`} disabled readOnly />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs">Líder pedagógica</Label>
+                          <Input className="mt-1 h-8 text-xs" value={infLider} onChange={(e) => setInfLider(e.target.value)} placeholder="Nombre" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Facilitadora</Label>
+                          <Input className="mt-1 h-8 text-xs" value={infFacilitadora} onChange={(e) => setInfFacilitadora(e.target.value)} placeholder="Nombre" />
+                        </div>
+                      </div>
+
+                      {template.map(({ eje, hitos }) => (
+                        <div key={eje}>
+                          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1 mt-3">{eje}</p>
+                          <div className="border rounded-lg overflow-hidden divide-y divide-border">
+                            {hitos.map((hito) => {
+                              const current = infHitos[hito] ?? null;
+                              return (
+                                <div key={hito} className="flex items-center gap-2 px-3 py-2">
+                                  <span className="flex-1 text-xs leading-snug">{hito}</span>
+                                  <div className="flex gap-1 shrink-0">
+                                    {HITO_VALS.map(({ val, label, color }) => (
+                                      <button
+                                        key={val}
+                                        onClick={() => setInfHitos((prev) => ({ ...prev, [hito]: current === val ? null : val }))}
+                                        className={`text-[10px] px-1.5 py-0.5 rounded border font-medium transition-all ${current === val ? color : "bg-background text-muted-foreground border-border"}`}
+                                      >
+                                        {label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+
+                      <div>
+                        <Label className="text-xs">Observaciones / Breve reseña</Label>
+                        <Textarea className="mt-1 text-xs resize-none" rows={4} value={infObs} onChange={(e) => setInfObs(e.target.value)} placeholder="Notas sobre el desarrollo del niño/a en el ecosistema..." />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {infMode === "edit" && (
+                  <div className="border-t border-border px-4 py-3">
+                    <Button className="w-full" size="sm" onClick={() => saveReport(ecoNumber)} disabled={infSaving}>
+                      {infSaving ? "Guardando..." : editingReportId ? "Actualizar informe" : "Guardar informe"}
+                    </Button>
+                  </div>
+                )}
+              </>
+            );
+          })() : (
           <div className="flex-1 overflow-y-auto">
           <div className="px-5 py-4 space-y-4">
             {/* Alert badge */}
-            {c.consecutiveAbsences && c.consecutiveAbsences >= 2 && (
+            {(c.consecutiveAbsences ?? 0) >= 2 && (
               <div className="flex items-center gap-2 bg-red-50 text-red-700 border border-red-200 rounded-lg px-3 py-2 text-sm font-medium">
                 <AlertTriangle className="w-4 h-4 shrink-0" />
                 <span>{c.consecutiveAbsences} días consecutivos sin asistir — requiere contacto</span>
@@ -939,141 +1069,7 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
             )}
           </div>
           </div>
-
-          {/* ── INFORME DE DESARROLLO ── */}
-          {view === "informe" && (() => {
-            const childRoom = allRooms.data?.find((r: Room) => r.id === child.data?.roomId);
-            const ecoNumber = (childRoom as any)?.ecoNumber ?? 1;
-            const template = ECO_TEMPLATES[ecoNumber] ?? ECO_TEMPLATES[1];
-            const HITO_VALS: { val: HitoVal; label: string; color: string }[] = [
-              { val: "L", label: "Logra", color: "bg-green-100 text-green-700 border-green-300" },
-              { val: "P", label: "En proceso", color: "bg-amber-100 text-amber-700 border-amber-300" },
-              { val: "N", label: "Aún no", color: "bg-red-100 text-red-700 border-red-300" },
-            ];
-            return (
-              <div className="flex flex-col flex-1 min-h-0">
-                <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
-                  <button onClick={() => { if (infMode === "edit") setInfMode("list"); else setView("ficha"); }} className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
-                    <ChevronLeft className="w-4 h-4" />{infMode === "edit" ? "Volver a lista" : "Volver"}
-                  </button>
-                  <span className="text-sm font-semibold flex-1 text-center">Informe ECO {ecoNumber}</span>
-                  {infMode === "list" && (
-                    <button onClick={enterNewReport} className="text-xs text-primary font-semibold">+ Nuevo</button>
-                  )}
-                </div>
-
-                <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
-                  {infMode === "list" ? (
-                    reportsLoading ? (
-                      <p className="text-sm text-muted-foreground text-center py-8">Cargando...</p>
-                    ) : reportsList.length === 0 ? (
-                      <div className="text-center py-10 space-y-3">
-                        <p className="text-sm text-muted-foreground">No hay informes registrados todavía.</p>
-                        <button onClick={enterNewReport} className="text-sm font-semibold text-primary underline">Crear primer informe</button>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {reportsList.map((r: any) => {
-                          const total = Object.keys(r.hitos ?? {}).length;
-                          const logra = Object.values(r.hitos ?? {}).filter((v) => v === "L").length;
-                          return (
-                            <div key={r.id} className="border rounded-xl p-3 space-y-1">
-                              <div className="flex items-center justify-between">
-                                <span className="font-semibold text-sm">{r.period}</span>
-                                <div className="flex gap-2">
-                                  <button onClick={() => enterEditReport(r)} className="text-xs text-primary underline">Editar</button>
-                                  <button onClick={() => deleteReport(r.id)} className="text-xs text-destructive underline">Eliminar</button>
-                                </div>
-                              </div>
-                              {r.lider && <p className="text-xs text-muted-foreground">Líder: {r.lider}</p>}
-                              <div className="flex gap-3 text-xs text-muted-foreground">
-                                <span className="text-green-700 font-medium">{logra} logrados</span>
-                                <span>{total} completados de {template.reduce((a, e) => a + e.hitos.length, 0)} hitos</span>
-                              </div>
-                              {r.observaciones && <p className="text-xs italic text-muted-foreground line-clamp-2">{r.observaciones}</p>}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )
-                  ) : (
-                    <div className="space-y-4">
-                      {/* Período */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label className="text-xs">Período</Label>
-                          <Select value={infPeriod} onValueChange={setInfPeriod}>
-                            <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {[2024, 2025, 2026].flatMap((y) => [1, 2, 3].map((t) => `${y}-T${t}`)).map((p) => (
-                                <SelectItem key={p} value={p}>{p}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label className="text-xs">ECO</Label>
-                          <Input className="mt-1 h-8 text-xs bg-muted" value={`ECO ${ecoNumber}`} disabled readOnly />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label className="text-xs">Líder pedagógica</Label>
-                          <Input className="mt-1 h-8 text-xs" value={infLider} onChange={(e) => setInfLider(e.target.value)} placeholder="Nombre" />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Facilitadora</Label>
-                          <Input className="mt-1 h-8 text-xs" value={infFacilitadora} onChange={(e) => setInfFacilitadora(e.target.value)} placeholder="Nombre" />
-                        </div>
-                      </div>
-
-                      {/* Hitos por eje */}
-                      {template.map(({ eje, hitos }) => (
-                        <div key={eje}>
-                          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1 mt-3">{eje}</p>
-                          <div className="border rounded-lg overflow-hidden divide-y divide-border">
-                            {hitos.map((hito) => {
-                              const current = infHitos[hito] ?? null;
-                              return (
-                                <div key={hito} className="flex items-center gap-2 px-3 py-2">
-                                  <span className="flex-1 text-xs leading-snug">{hito}</span>
-                                  <div className="flex gap-1 shrink-0">
-                                    {HITO_VALS.map(({ val, label, color }) => (
-                                      <button
-                                        key={val}
-                                        onClick={() => setInfHitos((prev) => ({ ...prev, [hito]: current === val ? null : val }))}
-                                        className={`text-[10px] px-1.5 py-0.5 rounded border font-medium transition-all ${current === val ? color : "bg-background text-muted-foreground border-border"}`}
-                                      >
-                                        {label}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-
-                      {/* Observaciones */}
-                      <div>
-                        <Label className="text-xs">Observaciones / Breve reseña</Label>
-                        <Textarea className="mt-1 text-xs resize-none" rows={4} value={infObs} onChange={(e) => setInfObs(e.target.value)} placeholder="Notas sobre el desarrollo del niño/a en el ecosistema..." />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {infMode === "edit" && (
-                  <div className="border-t border-border px-4 py-3">
-                    <Button className="w-full" size="sm" onClick={() => saveReport(ecoNumber)} disabled={infSaving}>
-                      {infSaving ? "Guardando..." : editingReportId ? "Actualizar informe" : "Guardar informe"}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
+          )}
 
           {/* Sticky action footer — visible sin scrollear */}
           {view === "ficha" && (

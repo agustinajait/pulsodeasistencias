@@ -129,6 +129,7 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
   const [infFacilitadora, setInfFacilitadora] = useState("");
   const [infHitos, setInfHitos] = useState<Record<string, HitoVal>>({});
   const [infObs, setInfObs] = useState("");
+  const [infTextos, setInfTextos] = useState<Record<string, string>>({});
   const [infSaving, setInfSaving] = useState(false);
   const [infMode, setInfMode] = useState<"list" | "edit" | "view">("list");
   const [viewingReport, setViewingReport] = useState<any>(null);
@@ -194,11 +195,34 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
     }
   }, [childId]);
 
+  function joinList(items: string[]) {
+    if (items.length === 0) return "";
+    if (items.length === 1) return items[0].toLowerCase();
+    return items.slice(0, -1).map((s) => s.toLowerCase()).join(", ") + " y " + items[items.length - 1].toLowerCase();
+  }
+
+  function autoGenerateTextos(template: { eje: string; hitos: string[] }[], hitos: Record<string, HitoVal>, nombre: string) {
+    const first = nombre.split(" ")[0] || "El/la niño/a";
+    const result: Record<string, string> = {};
+    for (const { eje, hitos: items } of template) {
+      const logra = items.filter((h) => hitos[h] === "L");
+      const proceso = items.filter((h) => hitos[h] === "P");
+      const noLogra = items.filter((h) => hitos[h] === "N");
+      let text = "";
+      if (logra.length) text += `${first} logra ${joinList(logra)}. `;
+      if (proceso.length) text += `Se encuentra en proceso de ${joinList(proceso)}. `;
+      if (noLogra.length) text += `Aún no logra ${joinList(noLogra)}. `;
+      result[eje] = text.trim() || `Sin observaciones registradas para ${eje}.`;
+    }
+    return result;
+  }
+
   function enterNewReport() {
     setEditingReportId(null);
     setInfLider("");
     setInfFacilitadora("");
     setInfHitos({});
+    setInfTextos({});
     setInfObs("");
     setInfMode("edit");
   }
@@ -209,6 +233,7 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
     setInfLider(r.lider ?? "");
     setInfFacilitadora(r.facilitadora ?? "");
     setInfHitos(r.hitos ?? {});
+    setInfTextos(r.textos ?? {});
     setInfObs(r.observaciones ?? "");
     setInfMode("edit");
   }
@@ -216,7 +241,7 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
   async function saveReport(ecoNumber: number) {
     setInfSaving(true);
     try {
-      const body = { period: infPeriod, ecoNumber, lider: infLider, facilitadora: infFacilitadora, hitos: infHitos, observaciones: infObs };
+      const body = { period: infPeriod, ecoNumber, lider: infLider, facilitadora: infFacilitadora, hitos: infHitos, textos: infTextos, observaciones: infObs };
       let res: Response;
       if (editingReportId) {
         res = await fetch(`/api/children/${childId}/reports/${editingReportId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -277,7 +302,15 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
         </div>
       </div>
       <table><tbody>${rows}</tbody></table>
-      ${r.observaciones ? `<div style="margin-top:20px"><strong style="font-size:12px;text-transform:uppercase;color:#6b7280">Observaciones</strong><p style="margin-top:6px;line-height:1.6">${r.observaciones}</p></div>` : ""}
+      ${Object.keys(r.textos ?? {}).length > 0 ? `
+        <div style="margin-top:24px">
+          <strong style="font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:.5px">Descripción por área</strong>
+          ${template.map(({ eje }) => {
+            const txt = (r.textos ?? {})[eje];
+            return txt ? `<div style="margin-top:12px;padding:10px 12px;background:#f9fafb;border-left:3px solid #e5e7eb;border-radius:4px"><p style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin:0 0 4px">${eje}</p><p style="font-size:13px;line-height:1.6;margin:0">${txt}</p></div>` : "";
+          }).join("")}
+        </div>` : ""}
+      ${r.observaciones ? `<div style="margin-top:20px"><strong style="font-size:12px;text-transform:uppercase;color:#6b7280">Observaciones generales</strong><p style="margin-top:6px;line-height:1.6">${r.observaciones}</p></div>` : ""}
       <div style="margin-top:32px;display:flex;gap:40px;border-top:1px solid #e5e7eb;padding-top:20px">
         <div><p style="color:#6b7280;font-size:11px">FIRMA LÍDER PEDAGÓGICA</p><div style="margin-top:24px;border-top:1px solid #111;width:180px"></div></div>
         <div><p style="color:#6b7280;font-size:11px">FIRMA RESPONSABLE DEL NIÑO/A</p><div style="margin-top:24px;border-top:1px solid #111;width:180px"></div></div>
@@ -611,9 +644,26 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                           </div>
                         </div>
                       ))}
+                      {/* Textos descriptivos por eje */}
+                      {template.some(({ eje }) => (viewingReport.textos ?? {})[eje]) && (
+                        <div className="space-y-3 mt-2">
+                          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Descripción por área</p>
+                          {template.map(({ eje }) => {
+                            const txt = (viewingReport.textos ?? {})[eje];
+                            if (!txt) return null;
+                            return (
+                              <div key={eje} className="bg-muted/30 rounded-lg px-3 py-2">
+                                <p className="text-[10px] font-bold uppercase text-muted-foreground mb-1">{eje}</p>
+                                <p className="text-sm leading-relaxed">{txt}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
                       {viewingReport.observaciones && (
                         <div>
-                          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1">Observaciones</p>
+                          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1">Observaciones generales</p>
                           <p className="text-sm leading-relaxed">{viewingReport.observaciones}</p>
                         </div>
                       )}
@@ -692,9 +742,36 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                         </div>
                       ))}
 
+                      {/* Textos descriptivos por eje */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Descripción por área</p>
+                          <button
+                            type="button"
+                            className="text-xs text-primary font-semibold underline"
+                            onClick={() => setInfTextos(autoGenerateTextos(template, infHitos, `${c?.nombre ?? ""} ${c?.apellido ?? ""}`.trim()))}
+                          >
+                            ✦ Generar automático
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mb-2">Podés editar el texto generado antes de guardar.</p>
+                        {template.map(({ eje }) => (
+                          <div key={eje}>
+                            <Label className="text-[10px] font-semibold text-muted-foreground uppercase">{eje}</Label>
+                            <Textarea
+                              className="mt-1 text-xs resize-none"
+                              rows={3}
+                              value={infTextos[eje] ?? ""}
+                              onChange={(e) => setInfTextos((prev) => ({ ...prev, [eje]: e.target.value }))}
+                              placeholder={`Descripción del niño/a en ${eje.toLowerCase()}...`}
+                            />
+                          </div>
+                        ))}
+                      </div>
+
                       <div>
-                        <Label className="text-xs">Observaciones / Breve reseña</Label>
-                        <Textarea className="mt-1 text-xs resize-none" rows={4} value={infObs} onChange={(e) => setInfObs(e.target.value)} placeholder="Notas sobre el desarrollo del niño/a en el ecosistema..." />
+                        <Label className="text-xs">Observaciones generales</Label>
+                        <Textarea className="mt-1 text-xs resize-none" rows={3} value={infObs} onChange={(e) => setInfObs(e.target.value)} placeholder="Notas adicionales sobre el desarrollo del niño/a..." />
                       </div>
                     </div>
                   )}

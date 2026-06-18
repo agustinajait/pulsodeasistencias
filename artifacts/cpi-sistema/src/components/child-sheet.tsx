@@ -179,7 +179,7 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
   const [infObs, setInfObs] = useState("");
   const [infTextos, setInfTextos] = useState<Record<string, string>>({});
   const [infSaving, setInfSaving] = useState(false);
-  const [infMode, setInfMode] = useState<"list" | "edit" | "view">("list");
+  const [infMode, setInfMode] = useState<"list" | "edit" | "view" | "preview">("list");
   const [viewingReport, setViewingReport] = useState<any>(null);
 
   const child = useGetChild(childId, {
@@ -608,13 +608,18 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
               <>
                 <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
                   <button
-                    onClick={() => { if (infMode === "edit" || infMode === "view") setInfMode("list"); else setView("ficha"); }}
+                    onClick={() => {
+                      if (infMode === "preview") setInfMode("view");
+                      else if (infMode === "edit" || infMode === "view") setInfMode("list");
+                      else setView("ficha");
+                    }}
                     className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
                   >
-                    <ChevronLeft className="w-4 h-4" />{infMode === "list" ? "Volver" : "Lista"}
+                    <ChevronLeft className="w-4 h-4" />
+                    {infMode === "list" ? "Volver" : infMode === "preview" ? "Informe" : "Lista"}
                   </button>
                   <span className="text-sm font-semibold flex-1 text-center">
-                    {infMode === "view" && viewingReport ? viewingReport.period : `Informe ECO ${ecoNumber}`}
+                    {infMode === "preview" ? "Vista previa" : infMode === "view" && viewingReport ? viewingReport.period : `Informe ECO ${ecoNumber}`}
                   </span>
                   {infMode === "list" && (
                     <button onClick={enterNewReport} className="text-xs text-primary font-semibold">+ Nuevo</button>
@@ -718,22 +723,23 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                         </div>
                       )}
 
-                      {/* Acciones */}
-                      <div className="flex gap-2 pt-2 pb-4">
+                      {/* Acción: vista previa antes de descargar/compartir */}
+                      <div className="pt-2 pb-4">
                         <Button
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => handlePrintReport(viewingReport, `${c?.apellido} ${c?.nombre}`, ecoNumber, (childRoom as any)?.name ?? "", template)}
+                          className="w-full"
+                          onClick={() => setInfMode("preview")}
                         >
-                          Descargar PDF
-                        </Button>
-                        <Button
-                          className="flex-1"
-                          onClick={() => handleShareReport(viewingReport, `${c?.apellido} ${c?.nombre}`, ecoNumber, (childRoom as any)?.name ?? "", template)}
-                        >
-                          Compartir
+                          Ver vista previa · Descargar · Compartir
                         </Button>
                       </div>
+                    </div>
+                  ) : infMode === "preview" && viewingReport ? (
+                    <div className="flex flex-col h-full">
+                      <iframe
+                        className="flex-1 w-full border-0 bg-white"
+                        srcDoc={buildReportHtml(viewingReport, `${c?.apellido} ${c?.nombre}`, ecoNumber, (childRoom as any)?.name ?? "", template)}
+                        title="Vista previa del informe"
+                      />
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -827,22 +833,25 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                   )}
                 </div>
 
-                {infMode === "edit" && (
-                  <div className="border-t border-border px-4 py-3 space-y-2">
+                {infMode === "preview" && viewingReport && (
+                  <div className="border-t border-border px-4 py-3 flex gap-2">
                     <Button
                       variant="outline"
-                      className="w-full"
-                      size="sm"
-                      onClick={() => handlePrintReport(
-                        { hitos: infHitos, textos: infTextos, observaciones: infObs, lider: infLider, facilitadora: infFacilitadora, period: infPeriod },
-                        `${c?.apellido} ${c?.nombre}`,
-                        ecoNumber,
-                        (childRoom as any)?.name ?? "",
-                        template
-                      )}
+                      className="flex-1"
+                      onClick={() => handlePrintReport(viewingReport, `${c?.apellido} ${c?.nombre}`, ecoNumber, (childRoom as any)?.name ?? "", template)}
                     >
-                      Vista previa
+                      Descargar PDF
                     </Button>
+                    <Button
+                      className="flex-1"
+                      onClick={() => handleShareReport(viewingReport, `${c?.apellido} ${c?.nombre}`, ecoNumber, (childRoom as any)?.name ?? "", template)}
+                    >
+                      Compartir
+                    </Button>
+                  </div>
+                )}
+                {infMode === "edit" && (
+                  <div className="border-t border-border px-4 py-3 space-y-2">
                     <Button className="w-full" size="sm" onClick={() => saveReport(ecoNumber)} disabled={infSaving}>
                       {infSaving ? "Guardando..." : editingReportId ? "Actualizar informe" : "Guardar informe"}
                     </Button>

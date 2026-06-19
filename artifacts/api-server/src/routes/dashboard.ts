@@ -93,7 +93,56 @@ router.get("/dashboard/summary", async (req, res) => {
   }
 });
 
-// GET /dashboard/alerts
+// GET /dashboard/summary-by-center  (super admin only)
+router.get("/dashboard/summary-by-center", async (req, res) => {
+  try {
+    const today = TODAY();
+    const allRooms = await db.select().from(roomsTable);
+
+    // group rooms by centerId
+    const centerIds = [...new Set(allRooms.map((r) => r.centerId).filter(Boolean))] as number[];
+
+    const allChildren = await db.select().from(childrenTable);
+    const todayAtt = await db.select().from(attendanceTable).where(eq(attendanceTable.fecha, today));
+
+    const attByChild: Record<number, string | null> = {};
+    todayAtt.forEach((a) => { attByChild[a.childId] = a.estado ?? null; });
+
+    // import centers table to get names
+    const { centersTable } = await import("@workspace/db");
+    const allCenters = await db.select().from(centersTable);
+    const centerNameMap: Record<number, string> = {};
+    allCenters.forEach((c) => { centerNameMap[c.id] = c.name; });
+
+    const result = centerIds.map((cid) => {
+      const rooms = allRooms.filter((r) => r.centerId === cid);
+      const roomIds = new Set(rooms.map((r) => r.id));
+      const children = allChildren.filter((c) => roomIds.has(c.roomId));
+      const active = children.filter((c) => c.activo);
+      const discharged = children.filter((c) => !c.activo);
+      const present = active.filter((c) => attByChild[c.id] === "P").length;
+      const absent = active.filter((c) => attByChild[c.id] === "A").length;
+      const capacity = rooms.reduce((s, r) => s + r.capacity, 0);
+      return {
+        centerId: cid,
+        centerName: centerNameMap[cid] ?? `Centro ${cid}`,
+        totalActive: active.length,
+        totalPresent: present,
+        totalAbsent: absent,
+        totalDischarge: discharged.length,
+        totalCapacity: capacity,
+        pctPresent: active.length > 0 ? Math.round((present / active.length) * 100) : 0,
+      };
+    });
+
+    res.json(result);
+  } catch (err) {
+    req.log.error(err, "Error getting summary by center");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
 router.get("/dashboard/alerts", async (req, res) => {
   try {
     const today = TODAY();

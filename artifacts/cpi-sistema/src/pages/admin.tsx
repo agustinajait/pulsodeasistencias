@@ -9,7 +9,7 @@ import {
   getListCentersQueryKey
 } from "@workspace/api-client-react";
 import type { RoomSummary as RoomSummaryType } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -783,6 +783,16 @@ export default function AdminPage() {
   const [passcodeInput, setPasscodeInput] = useState("");
 
   const dashboard = useGetDashboardSummary(centerParam);
+  const summaryByCenter = useQuery<Array<{ centerId: number; centerName: string; totalActive: number; totalPresent: number; totalAbsent: number; totalDischarge: number; totalCapacity: number; pctPresent: number }>>({
+    queryKey: ["dashboard-summary-by-center"],
+    queryFn: async () => {
+      const res = await fetch("/api/dashboard/summary-by-center");
+      if (!res.ok) throw new Error("Error");
+      return res.json();
+    },
+    enabled: isSuperAdmin && activeCenterId === null,
+    staleTime: 30_000,
+  });
   const alerts = useGetAlerts(centerParam);
   const recentContacts = useGetRecentContacts();
   const roomSummary = useGetRoomsSummary(centerParam);
@@ -1238,6 +1248,37 @@ export default function AdminPage() {
                   <StatCard value={dashboard.data.totalCapacity} label="Capacidad total" />
                 </div>
               </>
+            )}
+            {isSuperAdmin && activeCenterId === null && summaryByCenter.data && summaryByCenter.data.length > 1 && (
+              <div className="mb-5">
+                <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">Totales por centro</h3>
+                <div className="rounded-xl border overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-muted/50 text-muted-foreground text-xs uppercase tracking-wide">
+                        <th className="text-left px-3 py-2 font-semibold">Centro</th>
+                        <th className="text-center px-2 py-2 font-semibold">Activos</th>
+                        <th className="text-center px-2 py-2 font-semibold text-green-600">Presentes</th>
+                        <th className="text-center px-2 py-2 font-semibold text-red-600">Ausentes</th>
+                        <th className="text-center px-2 py-2 font-semibold text-primary">Asist.</th>
+                        <th className="text-center px-2 py-2 font-semibold text-muted-foreground">Egresos</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {summaryByCenter.data.map((c, i) => (
+                        <tr key={c.centerId} className={i % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                          <td className="px-3 py-2 font-semibold">{c.centerName}</td>
+                          <td className="text-center px-2 py-2">{c.totalActive}</td>
+                          <td className="text-center px-2 py-2 text-green-600 font-medium">{c.totalPresent}</td>
+                          <td className="text-center px-2 py-2 text-red-600 font-medium">{c.totalAbsent}</td>
+                          <td className="text-center px-2 py-2 text-primary font-medium">{c.pctPresent}%</td>
+                          <td className="text-center px-2 py-2 text-muted-foreground">{c.totalDischarge}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             )}
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">Por sala — hoy</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

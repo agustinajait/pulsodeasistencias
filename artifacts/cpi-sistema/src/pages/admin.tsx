@@ -3,7 +3,7 @@ import { useAuth } from "@/lib/auth-context";
 import {
   useGetDashboardSummary, useGetAlerts, useGetRecentContacts, useGetRoomsSummary,
   useListChildren, useListAttendance, useCreateChild, useUpdateRoom, useDeleteChild, useUpdateChild,
-  useListCenters, useListRooms, useCreateCenter, useCreateRoom, useDeleteRoom, useUpdateCenter,
+  useListCenters, useListRooms, useCreateCenter, useCreateRoom, useDeleteRoom, useUpdateCenter, useDeleteCenter,
   getGetDashboardSummaryQueryKey, getGetAlertsQueryKey, getGetRecentContactsQueryKey,
   getGetRoomsSummaryQueryKey, getListChildrenQueryKey, getListRoomsQueryKey, getListAttendanceQueryKey,
   getListCentersQueryKey
@@ -777,6 +777,7 @@ export default function AdminPage() {
   const allRooms = useListRooms(centerParam);
   const createCenter = useCreateCenter();
   const updateCenter = useUpdateCenter();
+  const deleteCenter = useDeleteCenter();
   const createRoom = useCreateRoom();
   const deleteRoom = useDeleteRoom();
   const [editingPasscodeId, setEditingPasscodeId] = useState<number | null>(null);
@@ -1133,6 +1134,19 @@ export default function AdminPage() {
                       >
                         {c.hasPasscode ? <Lock className="w-3 h-3" /> : <LockOpen className="w-3 h-3" />}
                         {c.hasPasscode ? "Cambiar código" : "Agregar código"}
+                      </button>
+                      <button
+                        className="flex items-center gap-1 text-[11px] text-red-500 hover:text-red-700 transition-colors px-1.5 py-0.5 rounded border border-red-200 hover:border-red-400"
+                        onClick={() => {
+                          if (!confirm(`¿Eliminar el centro "${c.name}"? Esta acción no se puede deshacer.`)) return;
+                          deleteCenter.mutate({ centerId: c.id }, {
+                            onSuccess: () => { toast({ title: "Centro eliminado" }); centers.refetch(); },
+                            onError: () => toast({ title: "Error al eliminar", variant: "destructive" }),
+                          });
+                        }}
+                        disabled={deleteCenter.isPending}
+                      >
+                        <Trash2 className="w-3 h-3" /> Eliminar
                       </button>
                     </div>
                     {editingPasscodeId === c.id && (

@@ -141,18 +141,18 @@ router.get("/rooms/summary", async (req, res) => {
 
     // Get recent attendance for alert calculation
     const allActiveIds = allChildren.map((c) => c.id);
-    let recentAtt: Array<{ childId: number; fecha: string; estado: string | null }> = [];
+    let recentAtt: Array<{ childId: number; fecha: string; estado: string | null; mercaderia: boolean | null }> = [];
     if (allActiveIds.length > 0) {
       recentAtt = await db
-        .select({ childId: attendanceTable.childId, fecha: attendanceTable.fecha, estado: attendanceTable.estado })
+        .select({ childId: attendanceTable.childId, fecha: attendanceTable.fecha, estado: attendanceTable.estado, mercaderia: attendanceTable.mercaderia })
         .from(attendanceTable)
         .where(and(gte(attendanceTable.fecha, cutoff), inArray(attendanceTable.childId, allActiveIds)));
     }
 
-    const kidAttMap: Record<number, Record<string, string | null>> = {};
+    const kidAttMap: Record<number, Record<string, { estado: string | null; mercaderia: boolean | null }>> = {};
     recentAtt.forEach((a) => {
       if (!kidAttMap[a.childId]) kidAttMap[a.childId] = {};
-      kidAttMap[a.childId][a.fecha] = a.estado ?? null;
+      kidAttMap[a.childId][a.fecha] = { estado: a.estado ?? null, mercaderia: a.mercaderia ?? false };
     });
 
     const SPECIAL_ESTADOS = ["EN REVISION", "ALERTA"];
@@ -173,8 +173,8 @@ router.get("/rooms/summary", async (req, res) => {
         const dayMap = kidAttMap[kid.id] ?? {};
         let consec = 0;
         for (const d of allDays) {
-          const v = dayMap[d];
-          if (v === "A") consec++;
+          const entry = dayMap[d];
+          if (entry?.estado === "A" && !entry?.mercaderia) consec++;
           else break;
         }
         if (consec >= 2) alerts++;

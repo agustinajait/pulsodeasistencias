@@ -356,7 +356,7 @@ async function uploadVacunas(childId: number, file: File): Promise<string | null
   return `${SUPABASE_URL}/storage/v1/object/vacunas/${path}`;
 }
 
-function NuevaAltaDialog({ onSuccess, onOpenDocs }: { onSuccess: () => void; onOpenDocs: (childId: number) => void }) {
+function NuevaAltaDialog({ onSuccess, onOpenDocs, centerId }: { onSuccess: () => void; onOpenDocs: (childId: number) => void; centerId?: number | null }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [apellido, setApellido] = useState("");
@@ -383,14 +383,15 @@ function NuevaAltaDialog({ onSuccess, onOpenDocs }: { onSuccess: () => void; onO
   const [autFotos, setAutFotos] = useState(false);
   const createChild = useCreateChild();
   const rooms = useListRooms();
+  const filteredRooms = centerId ? (rooms.data ?? []).filter((r: Room) => r.centerId === centerId) : (rooms.data ?? []);
 
-  // Keep sala in sync with first real room ID once rooms load
+  // Keep sala in sync with first available room once rooms load
   useEffect(() => {
-    if (rooms.data && rooms.data.length > 0 && sala === "1") {
-      const firstId = String((rooms.data[0] as Room).id);
-      if (firstId !== "1") setSala(firstId);
+    if (filteredRooms.length > 0) {
+      const firstId = String((filteredRooms[0] as Room).id);
+      setSala(firstId);
     }
-  }, [rooms.data]);
+  }, [rooms.data, centerId]);
 
   function resetForm() {
     setApellido(""); setNombre(""); setLegajo(""); setDni(""); setFnac(""); setDomicilio("");
@@ -494,7 +495,7 @@ function NuevaAltaDialog({ onSuccess, onOpenDocs }: { onSuccess: () => void; onO
               <Select value={sala} onValueChange={setSala}>
                 <SelectTrigger className="mt-1" data-testid="select-alta-sala"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {(rooms.data ?? []).map((r: Room) => (
+                  {filteredRooms.map((r: Room) => (
                     <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -1414,7 +1415,7 @@ export default function AdminPage() {
                       Exportar CSV
                     </button>
                     <ImportarCSVDialog rooms={roomSummary.data ?? []} onSuccess={invalidateAll} />
-                    <NuevaAltaDialog onSuccess={invalidateAll} onOpenDocs={(id) => setSelectedChild(id)} />
+                    <NuevaAltaDialog onSuccess={invalidateAll} onOpenDocs={(id) => setSelectedChild(id)} centerId={activeCenterId} />
                     <button
                       onClick={() => { setBulkDeleteMode(true); setSelectedIds(new Set()); setConfirmBulkDelete(false); }}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-xs font-semibold text-red-600 hover:bg-red-100 transition-colors"

@@ -51,19 +51,19 @@ router.get("/dashboard/summary", async (req, res) => {
     const cutoff = past14[past14.length - 1];
     const allDays = [today, ...past14];
 
-    let recentAtt: Array<{ childId: number; fecha: string; estado: string | null }> = [];
+    let recentAtt: Array<{ childId: number; fecha: string; estado: string | null; mercaderia: boolean | null }> = [];
     if (active.length > 0) {
       const activeIds = active.map((k) => k.id);
       recentAtt = await db
-        .select({ childId: attendanceTable.childId, fecha: attendanceTable.fecha, estado: attendanceTable.estado })
+        .select({ childId: attendanceTable.childId, fecha: attendanceTable.fecha, estado: attendanceTable.estado, mercaderia: attendanceTable.mercaderia })
         .from(attendanceTable)
         .where(and(gte(attendanceTable.fecha, cutoff), inArray(attendanceTable.childId, activeIds)));
     }
 
-    const kidAttMap: Record<number, Record<string, string | null>> = {};
+    const kidAttMap: Record<number, Record<string, { estado: string | null; mercaderia: boolean | null }>> = {};
     recentAtt.forEach((a) => {
       if (!kidAttMap[a.childId]) kidAttMap[a.childId] = {};
-      kidAttMap[a.childId][a.fecha] = a.estado ?? null;
+      kidAttMap[a.childId][a.fecha] = { estado: a.estado ?? null, mercaderia: a.mercaderia ?? false };
     });
 
     let totalAlerts = 0;
@@ -71,8 +71,8 @@ router.get("/dashboard/summary", async (req, res) => {
       const dayMap = kidAttMap[kid.id] ?? {};
       let consec = 0;
       for (const d of allDays) {
-        const v = dayMap[d];
-        if (v === "A") consec++;
+        const entry = dayMap[d];
+        if (entry?.estado === "A" && !entry?.mercaderia) consec++;
         else break;
       }
       if (consec >= 2) totalAlerts++;
@@ -168,14 +168,14 @@ router.get("/dashboard/alerts", async (req, res) => {
 
     const activeIds = active.map((k) => k.id);
     const recentAtt = await db
-      .select({ childId: attendanceTable.childId, fecha: attendanceTable.fecha, estado: attendanceTable.estado })
+      .select({ childId: attendanceTable.childId, fecha: attendanceTable.fecha, estado: attendanceTable.estado, mercaderia: attendanceTable.mercaderia })
       .from(attendanceTable)
       .where(and(gte(attendanceTable.fecha, cutoff), inArray(attendanceTable.childId, activeIds)));
 
-    const kidAttMap: Record<number, Record<string, string | null>> = {};
+    const kidAttMap: Record<number, Record<string, { estado: string | null; mercaderia: boolean | null }>> = {};
     recentAtt.forEach((a) => {
       if (!kidAttMap[a.childId]) kidAttMap[a.childId] = {};
-      kidAttMap[a.childId][a.fecha] = a.estado ?? null;
+      kidAttMap[a.childId][a.fecha] = { estado: a.estado ?? null, mercaderia: a.mercaderia ?? false };
     });
 
     const alerts = active
@@ -183,8 +183,8 @@ router.get("/dashboard/alerts", async (req, res) => {
         const dayMap = kidAttMap[kid.id] ?? {};
         let consec = 0;
         for (const d of allDays) {
-          const v = dayMap[d];
-          if (v === "A") consec++;
+          const entry = dayMap[d];
+          if (entry?.estado === "A" && !entry?.mercaderia) consec++;
           else break;
         }
         return { kid, consec };

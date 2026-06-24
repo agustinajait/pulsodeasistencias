@@ -147,7 +147,7 @@ const TIPO_BAJA_OPTIONS = [
 export default function ChildSheet({ childId, onClose, roomId }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [view, setView] = useState<"ficha" | "llamado" | "baja" | "historial" | "documentos" | "editar" | "informe">("ficha");
+  const [view, setView] = useState<"ficha" | "llamado" | "baja" | "historial" | "documentos" | "editar" | "informe" | "casos">("ficha");
   const [histMonth, setHistMonth] = useState(MES_ACTUAL);
 
   // Docs state
@@ -184,6 +184,31 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
   const [infMode, setInfMode] = useState<"list" | "edit" | "view" | "preview">("list");
   const [viewingReport, setViewingReport] = useState<any>(null);
 
+  // Casos state
+  const [casosMode, setCasosMode] = useState<"list" | "new" | "view" | "novedad">("list");
+  const [casesList, setCasesList] = useState<any[]>([]);
+  const [casesLoading, setCasesLoading] = useState(false);
+  const [viewingCase, setViewingCase] = useState<any>(null);
+  const [caseSaving, setCaseSaving] = useState(false);
+  // New case form
+  const [caseIvsBase, setCaseIvsBase] = useState("");
+  const [caseIvsPotencial, setCaseIvsPotencial] = useState("");
+  const [caseRefNombre, setCaseRefNombre] = useState("");
+  const [caseRefVinculo, setCaseRefVinculo] = useState("");
+  const [caseRefTel, setCaseRefTel] = useState("");
+  const [caseSituacion, setCaseSituacion] = useState("");
+  const [caseTipos, setCaseTipos] = useState<string[]>([]);
+  const [caseOrganismos, setCaseOrganismos] = useState("");
+  const [caseAcompPrevio, setCaseAcompPrevio] = useState(false);
+  const [caseTieneCud, setCaseTieneCud] = useState(false);
+  const [caseCudPendiente, setCaseCudPendiente] = useState(false);
+  // Novedad form
+  const [novFecha, setNovFecha] = useState(TODAY);
+  const [novDesc, setNovDesc] = useState("");
+  const [novAcuerdos, setNovAcuerdos] = useState("");
+  const [novOrganismo, setNovOrganismo] = useState("");
+  const [novRegistradoPor, setNovRegistradoPor] = useState("");
+
   const child = useGetChild(childId, {
     query: { queryKey: getGetChildQueryKey(childId) },
   });
@@ -208,6 +233,7 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
 
   useEffect(() => {
     if (view === "informe") loadReports();
+    if (view === "casos") loadCases();
   }, [view]);
 
   const createContact = useCreateContact();
@@ -244,6 +270,161 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
       setReportsLoading(false);
     }
   }, [childId]);
+
+  const loadCases = useCallback(async () => {
+    setCasesLoading(true);
+    try {
+      const res = await fetch(`/api/cases?childId=${childId}`);
+      if (res.ok) setCasesList(await res.json());
+    } finally {
+      setCasesLoading(false);
+    }
+  }, [childId]);
+
+  async function loadSingleCase(id: number) {
+    const res = await fetch(`/api/cases/${id}`);
+    if (res.ok) {
+      const data = await res.json();
+      setViewingCase(data);
+    }
+  }
+
+  function resetCaseForm() {
+    setCaseIvsBase(""); setCaseIvsPotencial("");
+    setCaseRefNombre(""); setCaseRefVinculo(""); setCaseRefTel("");
+    setCaseSituacion(""); setCaseTipos([]); setCaseOrganismos("");
+    setCaseAcompPrevio(false); setCaseTieneCud(false); setCaseCudPendiente(false);
+  }
+
+  function resetNovForm() {
+    setNovFecha(TODAY); setNovDesc(""); setNovAcuerdos(""); setNovOrganismo(""); setNovRegistradoPor("");
+  }
+
+  async function handleSaveCase() {
+    if (!c) return;
+    setCaseSaving(true);
+    try {
+      const centerId = (c as any).centerId ?? (c as any).center_id ?? null;
+      const res = await fetch("/api/cases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          childId,
+          centerId,
+          ivsBase: caseIvsBase ? parseInt(caseIvsBase) : null,
+          ivsPotencial: caseIvsPotencial ? parseInt(caseIvsPotencial) : null,
+          referenteNombre: caseRefNombre || null,
+          referenteVinculo: caseRefVinculo || null,
+          referenteTelefono: caseRefTel || null,
+          situacionResumen: caseSituacion || null,
+          tiposProblematica: caseTipos,
+          organismos: caseOrganismos || null,
+          tieneCud: caseTieneCud,
+          cudPendiente: caseCudPendiente,
+          acompaniamientoPrevio: caseAcompPrevio,
+          estado: "ABIERTO",
+        }),
+      });
+      if (!res.ok) throw new Error();
+      toast({ title: "Caso creado" });
+      await loadCases();
+      resetCaseForm();
+      setCasosMode("list");
+    } catch {
+      toast({ title: "Error al guardar el caso", variant: "destructive" });
+    } finally {
+      setCaseSaving(false);
+    }
+  }
+
+  async function handleCaseEstado(caseId: number, nuevoEstado: string) {
+    const res = await fetch(`/api/cases/${caseId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...viewingCase, estado: nuevoEstado }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setViewingCase(updated);
+      await loadCases();
+    }
+  }
+
+  async function handleDeleteCase(caseId: number) {
+    if (!confirm("¿Eliminar este caso?")) return;
+    await fetch(`/api/cases/${caseId}`, { method: "DELETE" });
+    await loadCases();
+    setCasosMode("list");
+  }
+
+  async function handleSaveNovedad() {
+    if (!viewingCase || !novDesc) return;
+    setCaseSaving(true);
+    try {
+      const res = await fetch(`/api/cases/${viewingCase.id}/novedades`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fecha: novFecha,
+          descripcion: novDesc,
+          acuerdos: novAcuerdos || null,
+          organismo: novOrganismo || null,
+          registradoPor: novRegistradoPor || null,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      toast({ title: "Novedad registrada" });
+      resetNovForm();
+      await loadSingleCase(viewingCase.id);
+      await loadCases();
+      setCasosMode("view");
+    } catch {
+      toast({ title: "Error al guardar la novedad", variant: "destructive" });
+    } finally {
+      setCaseSaving(false);
+    }
+  }
+
+  async function handleDeleteNovedad(novedadId: number) {
+    if (!viewingCase || !confirm("¿Eliminar esta novedad?")) return;
+    await fetch(`/api/cases/${viewingCase.id}/novedades/${novedadId}`, { method: "DELETE" });
+    await loadSingleCase(viewingCase.id);
+    await loadCases();
+  }
+
+  const TIPOS_PROBLEMATICA = [
+    { key: "INTERVENCION_CNNNYA", label: "Intervención CNNyA" },
+    { key: "SALUD", label: "Salud" },
+    { key: "LABORAL", label: "Laboral" },
+    { key: "HABITACIONAL", label: "Habitacional" },
+    { key: "PRESTACIONES", label: "Prestaciones sociales" },
+    { key: "DOCUMENTACION", label: "Documentación" },
+    { key: "DESARROLLO", label: "Desarrollo infantil" },
+    { key: "VIOLENCIA", label: "Violencia" },
+    { key: "OTROS", label: "Otros" },
+  ];
+
+  function tipoLabel(key: string) {
+    return TIPOS_PROBLEMATICA.find((t) => t.key === key)?.label ?? key;
+  }
+
+  function estadoBadge(estado: string) {
+    if (estado === "ABIERTO") return <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-semibold">Abierto</span>;
+    if (estado === "EN_SEGUIMIENTO") return <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold">En seguimiento</span>;
+    return <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-semibold">Cerrado</span>;
+  }
+
+  function nextEstado(estado: string) {
+    if (estado === "ABIERTO") return "EN_SEGUIMIENTO";
+    if (estado === "EN_SEGUIMIENTO") return "CERRADO";
+    return null;
+  }
+
+  function nextEstadoLabel(estado: string) {
+    if (estado === "ABIERTO") return "Marcar en seguimiento";
+    if (estado === "EN_SEGUIMIENTO") return "Cerrar caso";
+    return null;
+  }
 
   function joinList(items: string[]) {
     if (items.length === 0) return "";
@@ -593,13 +774,13 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center backdrop-blur-sm" onClick={onClose}>
       <div
-        className={`bg-card rounded-t-2xl w-full max-w-xl flex flex-col shadow-2xl ${view === "informe" ? "h-[92vh]" : "max-h-[92vh]"}`}
+        className={`bg-card rounded-t-2xl w-full max-w-xl flex flex-col shadow-2xl ${view === "informe" || view === "casos" ? "h-[92vh]" : "max-h-[92vh]"}`}
         onClick={(e) => e.stopPropagation()}
         data-testid="child-sheet"
       >
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border sticky top-0 bg-card z-10">
           <div className="flex items-center gap-2">
-            {view !== "ficha" && view !== "informe" && (
+            {view !== "ficha" && view !== "informe" && view !== "casos" && (
               <button onClick={() => setView("ficha")} className="text-muted-foreground hover:text-foreground flex items-center gap-1 mr-1" data-testid="btn-back-ficha">
                 <ChevronLeft className="w-5 h-5" />
               </button>
@@ -631,7 +812,327 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
 
         {c && (
           <>
-          {view === "informe" ? (() => {
+          {view === "casos" ? (() => {
+            return (
+              <>
+                {/* CASOS HEADER NAV */}
+                <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
+                  <button
+                    onClick={() => {
+                      if (casosMode === "new" || casosMode === "view") setCasosMode("list");
+                      else if (casosMode === "novedad") setCasosMode("view");
+                      else setView("ficha");
+                    }}
+                    className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    {casosMode === "list" ? "Volver" : casosMode === "novedad" ? "Caso" : "Lista"}
+                  </button>
+                  <span className="text-sm font-semibold flex-1 text-center">
+                    {casosMode === "list" ? "Seguimiento de casos" :
+                     casosMode === "new" ? "Nuevo caso" :
+                     casosMode === "novedad" ? "Agregar novedad" :
+                     viewingCase ? (viewingCase.tiposProblematica?.map(tipoLabel).join(", ") || "Caso") : "Caso"}
+                  </span>
+                  {casosMode === "list" && (
+                    <button
+                      onClick={() => { resetCaseForm(); setCasosMode("new"); }}
+                      className="text-xs text-primary font-semibold"
+                    >
+                      + Nuevo
+                    </button>
+                  )}
+                  {casosMode === "view" && viewingCase && (
+                    <button
+                      onClick={() => handleDeleteCase(viewingCase.id)}
+                      className="text-xs text-destructive font-semibold"
+                    >
+                      Eliminar
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+
+                  {/* LIST MODE */}
+                  {casosMode === "list" && (
+                    casesLoading ? (
+                      <p className="text-sm text-muted-foreground text-center py-8">Cargando...</p>
+                    ) : casesList.length === 0 ? (
+                      <div className="text-center py-10 space-y-3">
+                        <p className="text-sm text-muted-foreground">No hay casos registrados todavía.</p>
+                        <button
+                          onClick={() => { resetCaseForm(); setCasosMode("new"); }}
+                          className="text-sm font-semibold text-primary underline"
+                        >
+                          Crear primer caso
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {casesList.map((caso: any) => (
+                          <div
+                            key={caso.id}
+                            className="border rounded-xl p-3 space-y-2 cursor-pointer hover:bg-muted/40 active:bg-muted/60 transition-colors"
+                            onClick={() => { setViewingCase(caso); setCasosMode("view"); }}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex flex-wrap gap-1">
+                                {(caso.tiposProblematica ?? []).map((t: string) => (
+                                  <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{tipoLabel(t)}</span>
+                                ))}
+                              </div>
+                              {estadoBadge(caso.estado)}
+                            </div>
+                            {caso.referenteNombre && (
+                              <p className="text-xs text-muted-foreground">Ref: {caso.referenteNombre}{caso.referenteVinculo ? ` (${caso.referenteVinculo})` : ""}</p>
+                            )}
+                            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                              <span>{new Date(caso.createdAt).toLocaleDateString("es-AR")}</span>
+                              <span>{(caso.novedades ?? []).length} novedad{(caso.novedades ?? []).length !== 1 ? "es" : ""}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  )}
+
+                  {/* NEW CASE FORM */}
+                  {casosMode === "new" && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs">IVS Base</Label>
+                          <Input type="number" className="mt-1 h-8 text-xs" value={caseIvsBase} onChange={(e) => setCaseIvsBase(e.target.value)} placeholder="0" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">IVS Potencial</Label>
+                          <Input type="number" className="mt-1 h-8 text-xs" value={caseIvsPotencial} onChange={(e) => setCaseIvsPotencial(e.target.value)} placeholder="0" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs">Referente nombre</Label>
+                          <Input className="mt-1 h-8 text-xs" value={caseRefNombre} onChange={(e) => setCaseRefNombre(e.target.value)} placeholder="Nombre" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Vínculo</Label>
+                          <Input className="mt-1 h-8 text-xs" value={caseRefVinculo} onChange={(e) => setCaseRefVinculo(e.target.value)} placeholder="madre, padre..." />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Teléfono referente</Label>
+                        <Input className="mt-1 h-8 text-xs" value={caseRefTel} onChange={(e) => setCaseRefTel(e.target.value)} placeholder="+54 11..." />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Resumen de situación</Label>
+                        <Textarea className="mt-1 text-xs resize-none" rows={3} value={caseSituacion} onChange={(e) => setCaseSituacion(e.target.value)} placeholder="Descripción de la situación..." />
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-2 block">Tipos de problemática</Label>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {TIPOS_PROBLEMATICA.map(({ key, label }) => (
+                            <label key={key} className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                className="rounded"
+                                checked={caseTipos.includes(key)}
+                                onChange={(e) => {
+                                  if (e.target.checked) setCaseTipos((p) => [...p, key]);
+                                  else setCaseTipos((p) => p.filter((k) => k !== key));
+                                }}
+                              />
+                              <span className="text-xs">{label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Organismos intervinientes</Label>
+                        <Textarea className="mt-1 text-xs resize-none" rows={2} value={caseOrganismos} onChange={(e) => setCaseOrganismos(e.target.value)} placeholder="Instituciones involucradas..." />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input type="checkbox" className="rounded" checked={caseAcompPrevio} onChange={(e) => setCaseAcompPrevio(e.target.checked)} />
+                          <span className="text-xs">Acompañamiento previo</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input type="checkbox" className="rounded" checked={caseTieneCud} onChange={(e) => setCaseTieneCud(e.target.checked)} />
+                          <span className="text-xs">Tiene CUD</span>
+                        </label>
+                        {!caseTieneCud && (
+                          <label className="flex items-center gap-2 cursor-pointer ml-4">
+                            <input type="checkbox" className="rounded" checked={caseCudPendiente} onChange={(e) => setCaseCudPendiente(e.target.checked)} />
+                            <span className="text-xs">CUD pendiente</span>
+                          </label>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* VIEW CASE */}
+                  {casosMode === "view" && viewingCase && (
+                    <div className="space-y-4">
+                      {/* Estado */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground font-medium">Estado:</span>
+                          {estadoBadge(viewingCase.estado)}
+                        </div>
+                        {nextEstado(viewingCase.estado) && (
+                          <button
+                            onClick={() => handleCaseEstado(viewingCase.id, nextEstado(viewingCase.estado)!)}
+                            className="text-xs text-primary font-semibold underline"
+                          >
+                            {nextEstadoLabel(viewingCase.estado)}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Info */}
+                      <div className="bg-muted/40 rounded-xl p-3 space-y-2">
+                        {(viewingCase.ivsBase != null || viewingCase.ivsPotencial != null) && (
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <p className="text-[10px] text-muted-foreground uppercase font-semibold">IVS Base</p>
+                              <p className="text-sm font-semibold">{viewingCase.ivsBase ?? "—"}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-muted-foreground uppercase font-semibold">IVS Potencial</p>
+                              <p className="text-sm font-semibold">{viewingCase.ivsPotencial ?? "—"}</p>
+                            </div>
+                          </div>
+                        )}
+                        {viewingCase.referenteNombre && (
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase font-semibold">Referente</p>
+                            <p className="text-sm">{viewingCase.referenteNombre}{viewingCase.referenteVinculo ? ` · ${viewingCase.referenteVinculo}` : ""}{viewingCase.referenteTelefono ? ` · ${viewingCase.referenteTelefono}` : ""}</p>
+                          </div>
+                        )}
+                        {viewingCase.situacionResumen && (
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase font-semibold">Situación</p>
+                            <p className="text-sm leading-relaxed">{viewingCase.situacionResumen}</p>
+                          </div>
+                        )}
+                        {viewingCase.organismos && (
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase font-semibold">Organismos</p>
+                            <p className="text-sm">{viewingCase.organismos}</p>
+                          </div>
+                        )}
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          {viewingCase.tieneCud && <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 font-medium">Con CUD</span>}
+                          {viewingCase.cudPendiente && <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">CUD pendiente</span>}
+                          {viewingCase.acompaniamientoPrevio && <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">Acomp. previo</span>}
+                        </div>
+                        {(viewingCase.tiposProblematica ?? []).length > 0 && (
+                          <div className="flex flex-wrap gap-1 pt-1">
+                            {viewingCase.tiposProblematica.map((t: string) => (
+                              <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{tipoLabel(t)}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Novedades */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Novedades</p>
+                          <button
+                            onClick={() => { resetNovForm(); setCasosMode("novedad"); }}
+                            className="text-xs text-primary font-semibold"
+                          >
+                            + Agregar
+                          </button>
+                        </div>
+                        {(viewingCase.novedades ?? []).length === 0 ? (
+                          <p className="text-xs text-muted-foreground text-center py-4">Sin novedades registradas</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {(viewingCase.novedades ?? []).map((nov: any) => (
+                              <div key={nov.id} className="border rounded-lg p-3 space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[11px] font-mono text-muted-foreground">{nov.fecha}</span>
+                                  <button
+                                    onClick={() => handleDeleteNovedad(nov.id)}
+                                    className="text-[10px] text-destructive underline"
+                                  >
+                                    Eliminar
+                                  </button>
+                                </div>
+                                <p className="text-sm leading-relaxed">{nov.descripcion}</p>
+                                {nov.acuerdos && (
+                                  <div>
+                                    <span className="text-[10px] text-muted-foreground uppercase font-semibold">Acuerdos: </span>
+                                    <span className="text-xs">{nov.acuerdos}</span>
+                                  </div>
+                                )}
+                                {nov.organismo && (
+                                  <div>
+                                    <span className="text-[10px] text-muted-foreground uppercase font-semibold">Organismo: </span>
+                                    <span className="text-xs">{nov.organismo}</span>
+                                  </div>
+                                )}
+                                {nov.registradoPor && (
+                                  <p className="text-[10px] text-primary font-semibold">{nov.registradoPor}</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* NOVEDAD FORM */}
+                  {casosMode === "novedad" && (
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="text-xs">Fecha</Label>
+                        <Input type="date" className="mt-1 h-8 text-xs" value={novFecha} onChange={(e) => setNovFecha(e.target.value)} />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Descripción *</Label>
+                        <Textarea className="mt-1 text-xs resize-none" rows={5} value={novDesc} onChange={(e) => setNovDesc(e.target.value)} placeholder="Descripción de la novedad..." />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Acuerdos / próximos pasos</Label>
+                        <Textarea className="mt-1 text-xs resize-none" rows={3} value={novAcuerdos} onChange={(e) => setNovAcuerdos(e.target.value)} placeholder="Acuerdos y próximos pasos..." />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Organismo interviniente</Label>
+                        <Input className="mt-1 h-8 text-xs" value={novOrganismo} onChange={(e) => setNovOrganismo(e.target.value)} placeholder="Ej: Hospital Garrahan" />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Registrado por</Label>
+                        <Input className="mt-1 h-8 text-xs" value={novRegistradoPor} onChange={(e) => setNovRegistradoPor(e.target.value)} placeholder="Nombre y apellido" />
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+
+                {/* FOOTERS */}
+                {casosMode === "new" && (
+                  <div className="border-t border-border px-4 py-3 flex gap-2">
+                    <Button variant="outline" className="flex-1" size="sm" onClick={() => setCasosMode("list")}>Cancelar</Button>
+                    <Button className="flex-1" size="sm" onClick={handleSaveCase} disabled={caseSaving}>
+                      {caseSaving ? "Guardando..." : "Guardar caso"}
+                    </Button>
+                  </div>
+                )}
+                {casosMode === "novedad" && (
+                  <div className="border-t border-border px-4 py-3 flex gap-2">
+                    <Button variant="outline" className="flex-1" size="sm" onClick={() => setCasosMode("view")}>Cancelar</Button>
+                    <Button className="flex-1" size="sm" onClick={handleSaveNovedad} disabled={caseSaving || !novDesc}>
+                      {caseSaving ? "Guardando..." : "Guardar novedad"}
+                    </Button>
+                  </div>
+                )}
+              </>
+            );
+          })() : view === "informe" ? (() => {
             const childRoom = allRooms.data?.find((r: Room) => r.id === child.data?.roomId);
             const ecoNumber = (childRoom as any)?.ecoNumber ?? 1;
             const template = ECO_TEMPLATES[ecoNumber] ?? ECO_TEMPLATES[1];
@@ -1419,8 +1920,11 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                 <Button size="sm" variant="outline" onClick={() => { setView("documentos"); loadDocs(); }} data-testid="btn-ver-documentos">
                   <FileText className="w-3.5 h-3.5 mr-1" />Documentos
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => { setView("informe"); setInfMode("list"); }} className="col-span-2" data-testid="btn-ver-informe">
+                <Button size="sm" variant="outline" onClick={() => { setView("informe"); setInfMode("list"); }} className="col-span-1" data-testid="btn-ver-informe">
                   Informe de desarrollo
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => { setView("casos"); setCasosMode("list"); }} className="col-span-1" data-testid="btn-ver-casos">
+                  Seguimiento
                 </Button>
                 {c?.activo && (
                   <>

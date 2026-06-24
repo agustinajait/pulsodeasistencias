@@ -805,6 +805,39 @@ export default function AdminPage() {
   const deleteChild = useDeleteChild();
   const updateChild = useUpdateChild();
 
+  // Casos data
+  const casosQuery = useQuery<any[]>({
+    queryKey: ["cases", activeCenterId],
+    queryFn: async () => {
+      const params = activeCenterId != null ? `centerId=${activeCenterId}` : "";
+      const res = await fetch(`/api/cases${params ? `?${params}` : ""}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
+
+  const casosAbiertos = (casosQuery.data ?? []).filter((c: any) => c.estado !== "CERRADO");
+
+  const tiposCounts = casosAbiertos.reduce<Record<string, number>>((acc, caso) => {
+    for (const t of (caso.tiposProblematica ?? [])) {
+      acc[t] = (acc[t] ?? 0) + 1;
+    }
+    return acc;
+  }, {});
+
+  const TIPOS_ADMIN = [
+    { key: "INTERVENCION_CNNNYA", label: "CNNyA", color: "bg-red-100 text-red-700" },
+    { key: "SALUD", label: "Salud", color: "bg-blue-100 text-blue-700" },
+    { key: "LABORAL", label: "Laboral", color: "bg-amber-100 text-amber-700" },
+    { key: "HABITACIONAL", label: "Habitacional", color: "bg-orange-100 text-orange-700" },
+    { key: "PRESTACIONES", label: "Prestaciones", color: "bg-purple-100 text-purple-700" },
+    { key: "DOCUMENTACION", label: "Docs.", color: "bg-gray-100 text-gray-700" },
+    { key: "DESARROLLO", label: "Desarrollo", color: "bg-green-100 text-green-700" },
+    { key: "VIOLENCIA", label: "Violencia", color: "bg-rose-100 text-rose-700" },
+    { key: "OTROS", label: "Otros", color: "bg-slate-100 text-slate-700" },
+  ];
+
   const histMonthParams = histRoomId != null ? { roomId: histRoomId, month: histMonth } : { month: histMonth };
   const histYearParams = histRoomId != null ? { roomId: histRoomId, year: histYear } : { year: histYear };
 
@@ -1253,6 +1286,12 @@ export default function AdminPage() {
             <TabsTrigger value="vacantes" className="flex-1 text-xs" data-testid="tab-vacantes">Vacantes</TabsTrigger>
             <TabsTrigger value="egresos" className="flex-1 text-xs" data-testid="tab-egresos">Egresos</TabsTrigger>
             <TabsTrigger value="historial" className="flex-1 text-xs" data-testid="tab-historial">Historial</TabsTrigger>
+            <TabsTrigger value="casos" className="flex-1 text-xs relative" data-testid="tab-casos">
+              Casos
+              {casosAbiertos.length > 0 && (
+                <span className="ml-1 bg-blue-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{casosAbiertos.length}</span>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           {/* TABLERO */}
@@ -2081,6 +2120,93 @@ export default function AdminPage() {
                 })()}
               </div>
             )}
+          </TabsContent>
+
+          {/* CASOS */}
+          <TabsContent value="casos">
+            <div className="space-y-4">
+              {casosQuery.isLoading ? (
+                <p className="text-sm text-muted-foreground text-center py-8">Cargando casos...</p>
+              ) : (
+                <>
+                  {/* Conteo por tipo */}
+                  {Object.keys(tiposCounts).length > 0 && (
+                    <div>
+                      <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Problemáticas activas</h3>
+                      <div className="flex flex-wrap gap-1.5">
+                        {TIPOS_ADMIN.map(({ key, label, color }) => {
+                          const count = tiposCounts[key] ?? 0;
+                          if (count === 0) return null;
+                          return (
+                            <span key={key} className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${color}`}>
+                              {label}: {count}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Lista de casos abiertos */}
+                  <div>
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                      Casos abiertos / en seguimiento ({casosAbiertos.length})
+                    </h3>
+                    {casosAbiertos.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-6">No hay casos abiertos</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {casosAbiertos.map((caso: any) => {
+                          // Find child from allChildren
+                          const childData = (allChildren.data ?? []).find((ch: Child) => ch.id === caso.childId);
+                          const lastNovedad = (caso.novedades ?? [])[0];
+                          return (
+                            <div
+                              key={caso.id}
+                              className="border rounded-xl p-3 space-y-1.5 cursor-pointer hover:bg-muted/40 active:bg-muted/60 transition-colors"
+                              onClick={() => {
+                                if (childData) setSelectedChild(childData.id);
+                              }}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-sm font-semibold">
+                                  {childData ? `${childData.apellido}, ${childData.nombre}` : `Caso #${caso.id}`}
+                                </span>
+                                {caso.estado === "ABIERTO" ? (
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-semibold shrink-0">Abierto</span>
+                                ) : (
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold shrink-0">En seguimiento</span>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {(caso.tiposProblematica ?? []).map((t: string) => {
+                                  const tipo = TIPOS_ADMIN.find((ta) => ta.key === t);
+                                  return (
+                                    <span key={t} className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${tipo?.color ?? "bg-muted text-muted-foreground"}`}>
+                                      {tipo?.label ?? t}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                                {caso.referenteNombre ? (
+                                  <span>Ref: {caso.referenteNombre}</span>
+                                ) : <span />}
+                                {lastNovedad ? (
+                                  <span>Últ. novedad: {lastNovedad.fecha}</span>
+                                ) : (
+                                  <span>Sin novedades</span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           </TabsContent>
 
         </Tabs>

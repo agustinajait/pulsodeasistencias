@@ -12,6 +12,7 @@ import { childDocsRouter } from "./child-docs";
 import reportsRouter from "./reports";
 import servicesRouter from "./services";
 import providersRouter from "./providers";
+import casesRouter from "./cases";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use("/child-docs", childDocsRouter);
 router.use(reportsRouter);
 router.use(servicesRouter);
 router.use(providersRouter);
+router.use(casesRouter);
 
 export default router;

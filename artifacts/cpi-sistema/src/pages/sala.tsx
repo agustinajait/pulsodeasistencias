@@ -67,20 +67,21 @@ export default function SalaPage() {
   // Si viene con ?roomId=X desde el admin (click en tarjeta de sala), usarlo directamente
   const urlRoomId = parseInt(new URLSearchParams(window.location.search).get("roomId") ?? "") || null;
 
-  // Superadmin: selector de centro y sala
-  const savedCenterId = role === "superadmin" ? parseInt(localStorage.getItem("superadmin_sala_centerId") ?? "0") || null : null;
-  const savedRoomId = role === "superadmin" ? parseInt(localStorage.getItem("superadmin_sala_roomId") ?? "0") || null : null;
+  // Superadmin / admin: selector de centro y sala
+  const isCoord = role === "superadmin" || role === "admin";
+  const savedCenterId = isCoord ? parseInt(localStorage.getItem("superadmin_sala_centerId") ?? "0") || null : null;
+  const savedRoomId = isCoord ? parseInt(localStorage.getItem("superadmin_sala_roomId") ?? "0") || null : null;
   const [superCenterId, setSuperCenterId] = useState<number | null>(savedCenterId);
   const [superRoomId, setSuperRoomId] = useState<number | null>(savedRoomId);
-  const centers = useListCenters({ query: { enabled: role === "superadmin" } });
+  const centers = useListCenters({ query: { enabled: isCoord } });
 
   const rooms = useListRooms();
   // Resolve actual DB roomId by matching ecoNumber — robust against re-seeds
-  const roomInfo = role === "superadmin"
+  const roomInfo = isCoord
     ? rooms.data?.find((r: Room) => r.id === superRoomId) ?? null
     : rooms.data?.find((r: Room) => r.ecoNumber === ecoNumber);
   // urlRoomId tiene prioridad (viene del admin al hacer click en tarjeta de sala)
-  const roomId = urlRoomId ?? (role === "superadmin" ? superRoomId : (roomInfo?.id ?? null));
+  const roomId = urlRoomId ?? (isCoord ? superRoomId : (roomInfo?.id ?? null));
 
   const centerRoomsForSuper = (rooms.data ?? []).filter((r: Room) => r.centerId === superCenterId);
 
@@ -107,8 +108,10 @@ export default function SalaPage() {
   // Alertas de esta sala (2+ ausencias consecutivas)
   const allAlerts = useGetAlerts();
   const salaAlerts = useMemo(
-    () => (allAlerts.data ?? []).filter((a: Alert) => a.ecoNumber === ecoNumber),
-    [allAlerts.data, ecoNumber]
+    () => isCoord
+      ? (allAlerts.data ?? []).filter((a: Alert) => a.roomId === roomId)
+      : (allAlerts.data ?? []).filter((a: Alert) => a.ecoNumber === ecoNumber),
+    [allAlerts.data, ecoNumber, roomId, isCoord]
   );
 
   function waUrl(alert: Alert) {
@@ -258,7 +261,7 @@ export default function SalaPage() {
   const firstDow = calDays[0].getDay();
   const paddingDays = firstDow === 0 ? 6 : firstDow - 1;
 
-  const roomLabel = roomInfo?.name ?? `Sala ECO ${ecoNumber ?? 0}`;
+  const roomLabel = roomInfo?.name ?? (ecoNumber != null ? `Sala ECO ${ecoNumber}` : "");
   const totalKids = children.data?.length ?? 0;
 
   return (
@@ -268,8 +271,8 @@ export default function SalaPage() {
         <div className="h-12 flex items-center justify-between px-4">
           <div className="flex items-center gap-2">
             <span className="font-bold text-sm">Asistencias</span>
-            {role !== "superadmin" && <Badge variant="secondary" className="text-xs font-semibold">{roomLabel}</Badge>}
-            {role === "superadmin" && roomId && <Badge variant="secondary" className="text-xs font-semibold">{roomInfo?.name ?? ""}</Badge>}
+            {!isCoord && <Badge variant="secondary" className="text-xs font-semibold">{roomLabel}</Badge>}
+            {isCoord && roomId && <Badge variant="secondary" className="text-xs font-semibold">{roomInfo?.name ?? ""}</Badge>}
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-muted-foreground capitalize hidden sm:inline">{formatDateLabel(TODAY)}</span>
@@ -281,7 +284,7 @@ export default function SalaPage() {
             </button>
           </div>
         </div>
-        {role === "superadmin" && (
+        {isCoord && (
           <div className="flex items-center gap-2 px-4 pb-3">
             <Select value={superCenterId ? String(superCenterId) : ""} onValueChange={(v) => { setSuperCenterId(Number(v)); setSuperRoomId(null); }}>
               <SelectTrigger className="h-8 text-sm flex-1 min-w-0">

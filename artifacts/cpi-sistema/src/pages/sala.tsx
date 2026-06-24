@@ -354,6 +354,7 @@ export default function SalaPage() {
         <Tabs defaultValue="lista">
           <TabsList className="w-full mb-4" data-testid="tabs-sala">
             <TabsTrigger value="lista" className="flex-1" data-testid="tab-lista">Lista</TabsTrigger>
+            <TabsTrigger value="mercaderia" className="flex-1" data-testid="tab-mercaderia">Mercadería</TabsTrigger>
             <TabsTrigger value="calendario" className="flex-1" data-testid="tab-calendario">Calendario</TabsTrigger>
           </TabsList>
 
@@ -441,15 +442,6 @@ export default function SalaPage() {
                             <div className="text-xs text-muted-foreground truncate">{child.famNombre} · {child.celular}</div>
                           )}
                         </div>
-                        {/* M button */}
-                        <button
-                          onClick={() => handleMercaderia(child.id)}
-                          className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold border transition-colors shrink-0 ${mercaderia ? "bg-yellow-300 text-yellow-800 border-yellow-400 shadow-[0_0_6px_2px_rgba(250,204,21,0.6)]" : "bg-muted text-muted-foreground border-border"}`}
-                          title="Mercadería"
-                          data-testid={`btn-mercaderia-${child.id}`}
-                        >
-                          M
-                        </button>
                         {/* P/A toggle */}
                         <div className="flex border border-border rounded-lg overflow-hidden shrink-0">
                           <button
@@ -504,6 +496,43 @@ export default function SalaPage() {
                 )}
               </div>
             )}
+          </TabsContent>
+
+          {/* MERCADERÍA */}
+          <TabsContent value="mercaderia">
+            <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
+              <div className="px-4 py-3 border-b border-border bg-muted/40 flex items-center justify-between">
+                <span className="text-sm font-semibold">Mercadería — hoy</span>
+                <span className="text-xs text-muted-foreground">
+                  {filtered.filter((child: Child) => mergedAttMap[child.id]?.mercaderia).length} marcados
+                </span>
+              </div>
+              {filtered.map((child: Child) => {
+                const att = mergedAttMap[child.id];
+                const mercaderia = att?.mercaderia ?? false;
+                return (
+                  <div key={child.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-0">
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 cursor-pointer"
+                      style={{ background: child.genero === "FEMENINO" ? "var(--color-primary)/10" : "hsl(215 60% 92%)", color: child.genero === "FEMENINO" ? "var(--color-primary)" : "hsl(215 60% 35%)" }}
+                      onClick={() => setSelectedChild(child.id)}
+                    >
+                      {child.apellido.slice(0, 1)}{child.nombre.slice(0, 1)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold truncate">{child.apellido} {child.nombre}</div>
+                    </div>
+                    <button
+                      onClick={() => handleMercaderia(child.id)}
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold border transition-colors shrink-0 ${mercaderia ? "bg-yellow-300 text-yellow-800 border-yellow-400 shadow-[0_0_6px_2px_rgba(250,204,21,0.6)]" : "bg-muted text-muted-foreground border-border"}`}
+                      data-testid={`btn-mercaderia-${child.id}`}
+                    >
+                      M
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </TabsContent>
 
           {/* CALENDARIO */}

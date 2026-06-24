@@ -8,6 +8,7 @@ import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
 import Sala from "@/pages/sala";
 import Admin from "@/pages/admin";
+import Servicios from "@/pages/servicios";
 import CheckIn from "@/pages/check-in";
 import ChildDocs from "@/pages/child-docs";
 
@@ -53,6 +54,9 @@ function Router() {
       </Route>
       <Route path="/admin">
         {() => <ProtectedRoute component={Admin} allowedRoles={["admin", "superadmin"]} />}
+      </Route>
+      <Route path="/servicios">
+        {() => <ProtectedRoute component={Servicios} allowedRoles={["admin", "superadmin"]} />}
       </Route>
       <Route path="/">
         {() => {

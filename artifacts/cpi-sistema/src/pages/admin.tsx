@@ -1064,6 +1064,14 @@ export default function AdminPage() {
             <Button
               variant="ghost" size="sm"
               className="text-xs text-muted-foreground"
+              onClick={() => setLocation("/servicios")}
+              data-testid="button-go-servicios"
+            >
+              Servicios
+            </Button>
+            <Button
+              variant="ghost" size="sm"
+              className="text-xs text-muted-foreground"
               onClick={() => { logout(); setLocation("/login"); }}
               data-testid="button-logout-admin"
             >

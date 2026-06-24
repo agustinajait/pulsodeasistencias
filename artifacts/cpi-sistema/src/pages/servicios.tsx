@@ -142,7 +142,7 @@ async function uploadCertificado(serviceId: number, file: File): Promise<string 
 
 interface ServiceFormProps {
   open: boolean;
-  centerId: number;
+  centerId: number | null;
   providers: Provider[];
   initial?: ServiceRecord | null;
   onClose: () => void;
@@ -611,18 +611,20 @@ function CalendarView({ services }: { services: ServiceRecord[] }) {
 // Services Tab
 // ---------------------------------------------------------------------------
 
-function ServicesTab({ centerId, providers }: { centerId: number; providers: Provider[] }) {
+function ServicesTab({ centerId, providers, centers }: { centerId: number | null; providers: Provider[]; centers?: { id: number; name: string }[] }) {
   const [services, setServices] = useState<ServiceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"lista" | "calendario">("lista");
   const [formOpen, setFormOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<ServiceRecord | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const centerMap = Object.fromEntries((centers ?? []).map((c) => [c.id, c.name]));
 
   async function loadServices() {
     setLoading(true);
     try {
-      const res = await fetch(`/api/services?centerId=${centerId}`);
+      const url = centerId ? `/api/services?centerId=${centerId}` : `/api/services`;
+      const res = await fetch(url);
       if (res.ok) setServices(await res.json());
     } finally {
       setLoading(false);
@@ -664,7 +666,9 @@ function ServicesTab({ centerId, providers }: { centerId: number; providers: Pro
             Calendario
           </button>
         </div>
-        <Button size="sm" onClick={openNew}><Plus size={14} className="mr-1" />Nuevo</Button>
+        {centerId && (
+          <Button size="sm" onClick={openNew}><Plus size={14} className="mr-1" />Nuevo</Button>
+        )}
       </div>
 
       {loading && <p className="text-sm text-gray-400 text-center py-8">Cargando...</p>}
@@ -695,6 +699,11 @@ function ServicesTab({ centerId, providers }: { centerId: number; providers: Pro
                               <Badge variant={statusBadgeVariant(s.status)} className="text-xs">
                                 {statusLabel(s.status)}
                               </Badge>
+                              {!centerId && centerMap[s.centerId] && (
+                                <span className="text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded px-1.5 py-0.5">
+                                  {centerMap[s.centerId]}
+                                </span>
+                              )}
                             </div>
                             <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-gray-700">
                               <div><span className="font-medium">Realizado:</span> {formatDate(s.dateDone)}</div>
@@ -897,7 +906,9 @@ export default function ServiciosPage() {
   const [, navigate] = useLocation();
   const isSuperAdmin = role === "superadmin";
 
-  const [selectedCenterId, setSelectedCenterId] = useState<number | null>(authCenterId);
+  const [selectedCenterId, setSelectedCenterId] = useState<number | null>(
+    isSuperAdmin ? null : authCenterId  // super admin empieza sin filtro (ve todos)
+  );
   const [centers, setCenters] = useState<{ id: number; name: string }[]>([]);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [activeTab, setActiveTab] = useState<"servicios" | "proveedores">("servicios");
@@ -918,6 +929,7 @@ export default function ServiciosPage() {
       .catch(() => {});
   }, []);
 
+  // For non-superadmin, always use their own centerId
   const effectiveCenterId = isSuperAdmin ? selectedCenterId : authCenterId;
 
   return (
@@ -931,13 +943,14 @@ export default function ServiciosPage() {
           <h1 className="text-lg font-bold flex-1">Servicios</h1>
           {isSuperAdmin && centers.length > 0 && (
             <Select
-              value={selectedCenterId ? String(selectedCenterId) : ""}
-              onValueChange={(v) => setSelectedCenterId(parseInt(v))}
+              value={selectedCenterId ? String(selectedCenterId) : "todos"}
+              onValueChange={(v) => setSelectedCenterId(v === "todos" ? null : parseInt(v))}
             >
-              <SelectTrigger className="w-40 h-8 text-xs">
-                <SelectValue placeholder="Seleccionar centro" />
+              <SelectTrigger className="w-44 h-8 text-xs">
+                <SelectValue placeholder="Todos los centros" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="todos">Todos los centros</SelectItem>
                 {centers.map((c) => (
                   <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                 ))}
@@ -968,12 +981,8 @@ export default function ServiciosPage() {
       <div className="max-w-2xl mx-auto px-4 py-4">
         {activeTab === "servicios" ? (
           effectiveCenterId ? (
-            <ServicesTab centerId={effectiveCenterId} providers={providers} />
-          ) : (
-            <p className="text-center text-sm text-gray-400 py-16">
-              {isSuperAdmin ? "Seleccioná un centro para ver los servicios." : "No se pudo determinar el centro."}
-            </p>
-          )
+            <ServicesTab centerId={effectiveCenterId} providers={providers} centers={centers} />
+          ) : null
         ) : (
           <ProvidersTab />
         )}

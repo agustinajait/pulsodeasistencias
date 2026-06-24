@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRoute } from "wouter";
 
 const DOC_TYPES = [
@@ -38,6 +38,129 @@ const EMPTY_CONTACT: EmergencyContact = { nombre: "", telefono: "" };
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "/api";
 
+// ── Signature Pad ──────────────────────────────────────────────────────────
+function SignaturePad({ onSign, existingDataUrl }: { onSign: (dataUrl: string | null) => void; existingDataUrl?: string | null }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const drawing = useRef(false);
+  const lastPos = useRef<{ x: number; y: number } | null>(null);
+  const [signed, setSigned] = useState(false);
+  const [showExisting, setShowExisting] = useState(!!existingDataUrl);
+
+  function getPos(e: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    if ("touches" in e) {
+      return {
+        x: (e.touches[0].clientX - rect.left) * scaleX,
+        y: (e.touches[0].clientY - rect.top) * scaleY,
+      };
+    }
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    };
+  }
+
+  function startDraw(e: React.MouseEvent | React.TouchEvent) {
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    drawing.current = true;
+    lastPos.current = getPos(e, canvas);
+    setShowExisting(false);
+  }
+
+  function draw(e: React.MouseEvent | React.TouchEvent) {
+    e.preventDefault();
+    if (!drawing.current) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const pos = getPos(e, canvas);
+    if (lastPos.current) {
+      ctx.beginPath();
+      ctx.moveTo(lastPos.current.x, lastPos.current.y);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.strokeStyle = "#1e1147";
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.stroke();
+    }
+    lastPos.current = pos;
+  }
+
+  function endDraw(e: React.MouseEvent | React.TouchEvent) {
+    e.preventDefault();
+    if (!drawing.current) return;
+    drawing.current = false;
+    lastPos.current = null;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const dataUrl = canvas.toDataURL("image/png");
+    setSigned(true);
+    onSign(dataUrl);
+  }
+
+  function clearCanvas() {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setSigned(false);
+    setShowExisting(false);
+    onSign(null);
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-gray-700">Firma manuscrita *</p>
+        <button type="button" onClick={clearCanvas} className="text-xs text-gray-400 hover:text-gray-600 underline">
+          Borrar
+        </button>
+      </div>
+
+      {showExisting && existingDataUrl ? (
+        <div className="border-2 border-green-300 rounded-xl bg-green-50 p-2 text-center space-y-1">
+          <img src={existingDataUrl} alt="Firma guardada" className="max-h-20 mx-auto" />
+          <p className="text-xs text-green-600 font-semibold">Firma guardada — dibujá abajo para reemplazarla</p>
+        </div>
+      ) : null}
+
+      <div className="relative border-2 border-gray-300 rounded-xl bg-white overflow-hidden touch-none"
+        style={{ userSelect: "none" }}>
+        <canvas
+          ref={canvasRef}
+          width={600}
+          height={160}
+          className="w-full block"
+          style={{ touchAction: "none" }}
+          onMouseDown={startDraw}
+          onMouseMove={draw}
+          onMouseUp={endDraw}
+          onMouseLeave={endDraw}
+          onTouchStart={startDraw}
+          onTouchMove={draw}
+          onTouchEnd={endDraw}
+        />
+        {!signed && !showExisting && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <p className="text-gray-300 text-sm font-medium select-none">Firmá aquí con el dedo o el mouse</p>
+          </div>
+        )}
+      </div>
+      <p className="text-[10px] text-gray-400">
+        Tu firma quedará registrada junto con tu nombre, DNI y la fecha/hora de aceptación.
+      </p>
+    </div>
+  );
+}
+
+// ── Main component ─────────────────────────────────────────────────────────
 export default function ChildDocs() {
   const [, params] = useRoute("/docs/:token");
   const token = params?.token;
@@ -48,11 +171,11 @@ export default function ChildDocs() {
   const [panialesLoading, setPanialesLoading] = useState(false);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  // authorizations state
+  // authorizations
   const [authorizations, setAuthorizations] = useState<AuthRecord[]>([]);
   const [activeTab, setActiveTab] = useState<"docs" | "retiro" | "higiene">("docs");
 
-  // retiro form state
+  // retiro form
   const [retiroPersons, setRetiroPersons] = useState<AuthorizedPerson[]>([
     { ...EMPTY_PERSON }, { ...EMPTY_PERSON }, { ...EMPTY_PERSON }, { ...EMPTY_PERSON },
   ]);
@@ -60,16 +183,16 @@ export default function ChildDocs() {
     { ...EMPTY_CONTACT }, { ...EMPTY_CONTACT },
   ]);
   const [retiroSigner, setRetiroSigner] = useState({ nombre: "", dni: "", vinculo: "" });
+  const [retiroSignature, setRetiroSignature] = useState<string | null>(null);
   const [retiroSaving, setRetiroSaving] = useState(false);
   const [retiroSaved, setRetiroSaved] = useState(false);
 
-  // higiene form state
+  // higiene form
   const [higieneConsents, setHigieneConsents] = useState<Record<string, boolean | null>>({
-    fotos: null,
-    higiene: null,
-    simulacro: null,
+    fotos: null, higiene: null, simulacro: null,
   });
   const [higieneSigner, setHigieneSigner] = useState({ nombre: "", dni: "", vinculo: "" });
+  const [higieneSignature, setHigieneSignature] = useState<string | null>(null);
   const [higieneSaving, setHigieneSaving] = useState(false);
   const [higieneSaved, setHigieneSaved] = useState(false);
 
@@ -94,16 +217,13 @@ export default function ChildDocs() {
     } catch { /* silent */ }
   }
 
-  useEffect(() => {
-    loadData();
-    loadAuthorizations();
-  }, [token]);
+  useEffect(() => { loadData(); loadAuthorizations(); }, [token]);
 
-  // Pre-fill form if already saved
+  // Pre-fill form from saved data
   useEffect(() => {
     const retiro = authorizations.find(a => a.tipo === "RETIRO");
     if (retiro) {
-      const d = retiro.data as { authorized_persons?: AuthorizedPerson[]; emergency_contacts?: EmergencyContact[] };
+      const d = retiro.data as { authorized_persons?: AuthorizedPerson[]; emergency_contacts?: EmergencyContact[]; signature?: string };
       setRetiroPersons(d.authorized_persons?.length ? d.authorized_persons : [EMPTY_PERSON, EMPTY_PERSON, EMPTY_PERSON, EMPTY_PERSON]);
       setRetiroContacts(d.emergency_contacts?.length ? d.emergency_contacts : [EMPTY_CONTACT, EMPTY_CONTACT]);
       setRetiroSigner({ nombre: retiro.accepted_by_name ?? "", dni: retiro.accepted_by_dni ?? "", vinculo: retiro.accepted_by_vinculo ?? "" });
@@ -130,15 +250,11 @@ export default function ChildDocs() {
             body: JSON.stringify({ tipo, fileBase64: base64, mimeType: file.type, ext }),
           });
           if (res.ok) await loadData();
-        } finally {
-          setUploading(null);
-        }
+        } finally { setUploading(null); }
       };
       reader.onerror = () => setUploading(null);
       reader.readAsDataURL(file);
-    } catch {
-      setUploading(null);
-    }
+    } catch { setUploading(null); }
   }
 
   async function handlePanialesToggle() {
@@ -151,13 +267,11 @@ export default function ChildDocs() {
         body: JSON.stringify({ auth: !data.panialesAuth }),
       });
       if (res.ok) await loadData();
-    } finally {
-      setPanialesLoading(false);
-    }
+    } finally { setPanialesLoading(false); }
   }
 
   async function handleRetiroSave() {
-    if (!retiroSigner.nombre || !retiroSigner.dni) return;
+    if (!retiroSigner.nombre || !retiroSigner.dni || !retiroSignature) return;
     setRetiroSaving(true);
     try {
       const res = await fetch(`${BASE_URL}/child-authorizations/${token}/retiro`, {
@@ -169,19 +283,15 @@ export default function ChildDocs() {
           accepted_by_vinculo: retiroSigner.vinculo,
           authorized_persons: retiroPersons.filter(p => p.nombre.trim()),
           emergency_contacts: retiroContacts.filter(c => c.nombre.trim()),
+          signature: retiroSignature,
         }),
       });
-      if (res.ok) {
-        setRetiroSaved(true);
-        await loadAuthorizations();
-      }
-    } finally {
-      setRetiroSaving(false);
-    }
+      if (res.ok) { setRetiroSaved(true); await loadAuthorizations(); }
+    } finally { setRetiroSaving(false); }
   }
 
   async function handleHigieneSave() {
-    if (!higieneSigner.nombre || !higieneSigner.dni) return;
+    if (!higieneSigner.nombre || !higieneSigner.dni || !higieneSignature) return;
     if (higieneConsents.fotos === null || higieneConsents.higiene === null || higieneConsents.simulacro === null) return;
     setHigieneSaving(true);
     try {
@@ -195,15 +305,11 @@ export default function ChildDocs() {
           fotos: higieneConsents.fotos,
           higiene: higieneConsents.higiene,
           simulacro: higieneConsents.simulacro,
+          signature: higieneSignature,
         }),
       });
-      if (res.ok) {
-        setHigieneSaved(true);
-        await loadAuthorizations();
-      }
-    } finally {
-      setHigieneSaving(false);
-    }
+      if (res.ok) { setHigieneSaved(true); await loadAuthorizations(); }
+    } finally { setHigieneSaving(false); }
   }
 
   if (loadError) {
@@ -241,10 +347,10 @@ export default function ChildDocs() {
       <div className="bg-white border-b border-gray-200 px-4 flex gap-1 overflow-x-auto">
         <TabBtn active={activeTab === "docs"} onClick={() => setActiveTab("docs")}>Documentación</TabBtn>
         <TabBtn active={activeTab === "retiro"} onClick={() => setActiveTab("retiro")} badge={!retiroAuth}>
-          Aut. de Retiro {retiroAuth ? "✓" : ""}
+          Aut. de Retiro{retiroAuth ? " ✓" : ""}
         </TabBtn>
         <TabBtn active={activeTab === "higiene"} onClick={() => setActiveTab("higiene")} badge={!higieneAuth}>
-          Higiene y Fotos {higieneAuth ? "✓" : ""}
+          Higiene y Fotos{higieneAuth ? " ✓" : ""}
         </TabBtn>
       </div>
 
@@ -321,7 +427,7 @@ export default function ChildDocs() {
           <div className="space-y-5">
             {retiroAuth && (
               <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm text-green-800">
-                ✓ Ficha firmada digitalmente por <strong>{retiroAuth.accepted_by_name}</strong> el{" "}
+                ✓ Firmado por <strong>{retiroAuth.accepted_by_name}</strong> el{" "}
                 {new Date(retiroAuth.accepted_at).toLocaleDateString("es-AR")}. Podés actualizar los datos a continuación.
               </div>
             )}
@@ -361,10 +467,10 @@ export default function ChildDocs() {
               ))}
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+            <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
               <h2 className="font-bold text-gray-800 text-base">Firma digital</h2>
               <p className="text-xs text-gray-500">
-                Al guardar, confirmás que los datos son correctos y que autorizás a las personas indicadas a retirar a{" "}
+                Al firmar, confirmás que los datos son correctos y que autorizás a las personas indicadas a retirar a{" "}
                 <strong>{data.nombre} {data.apellido}</strong> del CPI.
               </p>
               <input placeholder="Tu nombre completo *" value={retiroSigner.nombre}
@@ -378,6 +484,10 @@ export default function ChildDocs() {
                   onChange={e => setRetiroSigner(s => ({ ...s, vinculo: e.target.value }))}
                   className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-violet-400" />
               </div>
+              <SignaturePad
+                onSign={setRetiroSignature}
+                existingDataUrl={(retiroAuth?.data as any)?.signature ?? null}
+              />
             </div>
 
             {retiroSaved && (
@@ -388,11 +498,15 @@ export default function ChildDocs() {
 
             <button
               onClick={handleRetiroSave}
-              disabled={retiroSaving || !retiroSigner.nombre || !retiroSigner.dni}
+              disabled={retiroSaving || !retiroSigner.nombre || !retiroSigner.dni || !retiroSignature}
               className="w-full bg-violet-600 hover:bg-violet-700 active:bg-violet-800 disabled:opacity-50 text-white rounded-xl py-4 text-base font-bold transition-colors"
             >
               {retiroSaving ? "Guardando..." : "Firmar y guardar autorización"}
             </button>
+
+            {!retiroSignature && retiroSigner.nombre && retiroSigner.dni && (
+              <p className="text-center text-xs text-amber-600 font-medium">Dibujá tu firma en el recuadro para continuar</p>
+            )}
           </div>
         )}
 
@@ -401,7 +515,7 @@ export default function ChildDocs() {
           <div className="space-y-5">
             {higieneAuth && (
               <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm text-green-800">
-                ✓ Ficha firmada digitalmente por <strong>{higieneAuth.accepted_by_name}</strong> el{" "}
+                ✓ Firmado por <strong>{higieneAuth.accepted_by_name}</strong> el{" "}
                 {new Date(higieneAuth.accepted_at).toLocaleDateString("es-AR")}. Podés actualizar los datos a continuación.
               </div>
             )}
@@ -431,10 +545,10 @@ export default function ChildDocs() {
               />
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+            <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
               <h2 className="font-bold text-gray-800 text-base">Firma digital</h2>
               <p className="text-xs text-gray-500">
-                Al guardar confirmás que la información es correcta y que diste tu consentimiento para los ítems marcados como SÍ.
+                Al firmar confirmás que la información es correcta y que diste tu consentimiento para los ítems marcados como SÍ.
               </p>
               <input placeholder="Tu nombre completo *" value={higieneSigner.nombre}
                 onChange={e => setHigieneSigner(s => ({ ...s, nombre: e.target.value }))}
@@ -447,6 +561,10 @@ export default function ChildDocs() {
                   onChange={e => setHigieneSigner(s => ({ ...s, vinculo: e.target.value }))}
                   className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-violet-400" />
               </div>
+              <SignaturePad
+                onSign={setHigieneSignature}
+                existingDataUrl={(higieneAuth?.data as any)?.signature ?? null}
+              />
             </div>
 
             {higieneSaved && (
@@ -461,6 +579,7 @@ export default function ChildDocs() {
                 higieneSaving ||
                 !higieneSigner.nombre ||
                 !higieneSigner.dni ||
+                !higieneSignature ||
                 higieneConsents.fotos === null ||
                 higieneConsents.higiene === null ||
                 higieneConsents.simulacro === null
@@ -469,6 +588,10 @@ export default function ChildDocs() {
             >
               {higieneSaving ? "Guardando..." : "Firmar y guardar consentimientos"}
             </button>
+
+            {!higieneSignature && higieneSigner.nombre && higieneSigner.dni && (
+              <p className="text-center text-xs text-amber-600 font-medium">Dibujá tu firma en el recuadro para continuar</p>
+            )}
           </div>
         )}
       </div>
@@ -476,6 +599,7 @@ export default function ChildDocs() {
   );
 }
 
+// ── Sub-components ─────────────────────────────────────────────────────────
 function TabBtn({ children, active, onClick, badge }: {
   children: React.ReactNode;
   active: boolean;

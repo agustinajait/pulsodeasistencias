@@ -1943,6 +1943,9 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                                 <p className="text-[10px] text-green-700">
                                   Firmada por {retiro.accepted_by_name} ({retiro.accepted_by_vinculo}) · {new Date(retiro.accepted_at).toLocaleDateString("es-AR")}
                                 </p>
+                                {(retiro.data as any)?.signature && (
+                                  <img src={(retiro.data as any).signature} alt="Firma" className="max-h-12 rounded border border-green-200 bg-white mt-1" />
+                                )}
                                 {(() => {
                                   const d = retiro.data as { authorized_persons?: {nombre:string;dni:string;telefono:string}[] };
                                   const persons = d.authorized_persons?.filter(p => p.nombre) ?? [];
@@ -1971,6 +1974,9 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                                 <p className="text-[10px] text-green-700">
                                   Firmada por {higiene.accepted_by_name} ({higiene.accepted_by_vinculo}) · {new Date(higiene.accepted_at).toLocaleDateString("es-AR")}
                                 </p>
+                                {(higiene.data as any)?.signature && (
+                                  <img src={(higiene.data as any).signature} alt="Firma" className="max-h-12 rounded border border-green-200 bg-white mt-1" />
+                                )}
                                 {(() => {
                                   const d = higiene.data as { fotos?: boolean; higiene?: boolean; simulacro?: boolean };
                                   return (

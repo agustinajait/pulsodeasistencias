@@ -23,6 +23,7 @@ function getWorkdaysBefore(dateStr: string, n: number): string[] {
 router.get("/dashboard/summary", async (req, res) => {
   try {
     const today = TODAY();
+    const currentMonth = today.slice(0, 7); // YYYY-MM
     const { centerId } = req.query as { centerId?: string };
 
     const allRooms = await db.select().from(roomsTable);
@@ -78,6 +79,22 @@ router.get("/dashboard/summary", async (req, res) => {
       if (consec >= 2) totalAlerts++;
     });
 
+    // Mercadería retirada en el mes actual
+    const activeIds = active.map((k) => k.id);
+    const monthMerch = activeIds.length > 0
+      ? await db
+          .select({ childId: attendanceTable.childId })
+          .from(attendanceTable)
+          .where(
+            and(
+              gte(attendanceTable.fecha, currentMonth + "-01"),
+              inArray(attendanceTable.childId, activeIds),
+              eq(attendanceTable.mercaderia, true)
+            )
+          )
+      : [];
+    const totalMercaderiaMonth = monthMerch.length;
+
     res.json({
       totalActive: active.length,
       totalPresent: present,
@@ -86,6 +103,7 @@ router.get("/dashboard/summary", async (req, res) => {
       totalDischarge: discharged.length,
       totalCapacity,
       pctPresent,
+      totalMercaderiaMonth,
     });
   } catch (err) {
     req.log.error(err, "Error getting dashboard summary");

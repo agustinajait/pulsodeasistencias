@@ -12,6 +12,7 @@ type Summary = {
   totalDischarge: number;
   totalCapacity: number;
   pctPresent: number;
+  totalMercaderiaMonth: number;
 };
 
 type CenterSummary = Summary & {
@@ -210,9 +211,9 @@ export default function Reportes() {
           </div>
         </Section>
 
-        {/* ── Matrícula ── */}
-        <Section title="Matrícula">
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        {/* ── Matrícula + Mercadería ── */}
+        <Section title="Matrícula y mercadería">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Metric
               value={s?.totalActive ?? "—"}
               label="Inscriptos activos"
@@ -222,6 +223,12 @@ export default function Reportes() {
               value={s ? s.totalCapacity - s.totalActive : "—"}
               label="Vacantes disponibles"
               color="text-blue-600"
+            />
+            <Metric
+              value={s?.totalMercaderiaMonth ?? "—"}
+              label="Bolsones retirados"
+              sub="en el mes actual"
+              color="text-violet-600"
             />
             <Metric
               value={s?.totalDischarge ?? "—"}

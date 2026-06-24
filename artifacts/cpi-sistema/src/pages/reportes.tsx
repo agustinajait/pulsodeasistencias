@@ -36,7 +36,7 @@ async function fetchByCenter(): Promise<CenterSummary[]> {
 
 async function fetchCases(centerId?: number | null): Promise<{ estado: string; tipos_problematica: string[] }[]> {
   const qs = centerId ? `?centerId=${centerId}` : "";
-  const r = await fetch(`${BASE}/api/cases${qs}`);
+  const r = await fetch(`${BASE}/cases${qs}`);
   if (!r.ok) return [];
   const j = await r.json();
   return j.cases ?? j ?? [];
@@ -211,9 +211,9 @@ export default function Reportes() {
           </div>
         </Section>
 
-        {/* ── Matrícula + Mercadería ── */}
-        <Section title="Matrícula y mercadería">
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {/* ── Matrícula ── */}
+        <Section title="Matrícula">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
             <Metric
               value={s?.totalActive ?? "—"}
               label="Inscriptos activos"
@@ -225,15 +225,21 @@ export default function Reportes() {
               color="text-blue-600"
             />
             <Metric
+              value={s?.totalDischarge ?? "—"}
+              label="Bajas en el año"
+              color="text-gray-400"
+            />
+          </div>
+        </Section>
+
+        {/* ── Mercadería ── */}
+        <Section title="Mercadería">
+          <div className="grid grid-cols-2 gap-3">
+            <Metric
               value={s?.totalMercaderiaMonth ?? "—"}
               label="Bolsones retirados"
               sub="en el mes actual"
               color="text-violet-600"
-            />
-            <Metric
-              value={s?.totalDischarge ?? "—"}
-              label="Bajas en el año"
-              color="text-gray-400"
             />
           </div>
         </Section>

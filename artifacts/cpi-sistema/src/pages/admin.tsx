@@ -749,6 +749,7 @@ export default function AdminPage() {
   const [nominaVacunas, setNominaVacunas] = useState<"todos" | "con" | "sin">("todos");
   const [editingRoomId, setEditingRoomId] = useState<number | null>(null);
   const [editRoomName, setEditRoomName] = useState("");
+  const [editRoomCapacity, setEditRoomCapacity] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
@@ -922,8 +923,9 @@ export default function AdminPage() {
   function saveRoomName(roomId: number) {
     const name = editRoomName.trim();
     if (!name) return;
+    const capacity = parseInt(editRoomCapacity);
     updateRoom.mutate(
-      { roomId, data: { name } },
+      { roomId, data: { name, ...(isNaN(capacity) ? {} : { capacity }) } },
       {
         onSuccess: () => {
           setEditingRoomId(null);
@@ -1667,13 +1669,23 @@ export default function AdminPage() {
                   <div key={r.id} className="bg-card rounded-xl border border-border p-4 shadow-sm" data-testid={`asist-room-${r.ecoNumber}`}>
                     <div className="flex items-center gap-2 mb-2">
                       {editingRoomId === r.id ? (
-                        <div className="flex items-center gap-1 flex-1">
+                        <div className="flex items-center gap-1 flex-1 flex-wrap">
                           <Input
                             value={editRoomName}
                             onChange={(e) => setEditRoomName(e.target.value)}
                             onKeyDown={(e) => { if (e.key === "Enter") saveRoomName(r.id); if (e.key === "Escape") setEditingRoomId(null); }}
-                            className="h-7 text-sm font-semibold py-0"
+                            className="h-7 text-sm font-semibold py-0 w-32"
+                            placeholder="Nombre"
                             autoFocus
+                          />
+                          <Input
+                            value={editRoomCapacity}
+                            onChange={(e) => setEditRoomCapacity(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") saveRoomName(r.id); if (e.key === "Escape") setEditingRoomId(null); }}
+                            className="h-7 text-sm py-0 w-16"
+                            placeholder="Cap."
+                            type="number"
+                            min={1}
                           />
                           <button onClick={() => saveRoomName(r.id)} className="text-green-600 hover:text-green-700 p-0.5">
                             <Check className="w-4 h-4" />
@@ -1699,7 +1711,7 @@ export default function AdminPage() {
                           <RoomAttendanceDialog room={r} onOpenChild={(id) => setSelectedChild(id)} />
                           <QrDialogButton room={r} allRooms={allRooms.data ?? []} />
                           <button
-                            onClick={() => { setEditingRoomId(r.id); setEditRoomName(r.name); }}
+                            onClick={() => { setEditingRoomId(r.id); setEditRoomName(r.name); setEditRoomCapacity(String(r.capacity ?? "")); }}
                             className="text-muted-foreground hover:text-foreground p-0.5 opacity-50 hover:opacity-100 transition-opacity"
                             title="Renombrar sala"
                           >

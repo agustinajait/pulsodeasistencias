@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 
-export type Role = 'superadmin' | 'admin' | 'sala0' | 'sala1' | 'sala2' | 'sala3' | null;
+export type Role = 'superadmin' | 'admin' | 'sala0' | 'sala1' | 'sala2' | 'sala3' | 'equipotecnico' | null;
 
 interface AuthContextType {
   role: Role;

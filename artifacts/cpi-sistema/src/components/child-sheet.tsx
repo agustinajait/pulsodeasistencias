@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useLocation } from "wouter";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { useGetChild, useCreateContact, useUpdateChild, useDischargeChild, useReinstateChild, useListAttendance, useListRooms, getGetChildQueryKey, getListChildrenQueryKey, getGetRoomsSummaryQueryKey, getGetDashboardSummaryQueryKey, getGetAlertsQueryKey, getListAttendanceQueryKey } from "@workspace/api-client-react";
@@ -146,6 +147,7 @@ const TIPO_BAJA_OPTIONS = [
 
 export default function ChildSheet({ childId, onClose, roomId }: Props) {
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const [view, setView] = useState<"ficha" | "llamado" | "baja" | "historial" | "documentos" | "editar" | "informe" | "casos">("ficha");
   const [histMonth, setHistMonth] = useState(MES_ACTUAL);
@@ -2017,8 +2019,8 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                 <Button size="sm" variant="outline" onClick={() => { setView("informe"); setInfMode("list"); }} className="col-span-1" data-testid="btn-ver-informe">
                   Informe de desarrollo
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => { setView("casos"); setCasosMode("list"); }} className="col-span-1" data-testid="btn-ver-casos">
-                  Seguimiento
+                <Button size="sm" variant="outline" onClick={() => { onClose(); navigate(`/casos?childId=${childId}`); }} className="col-span-1" data-testid="btn-ver-casos">
+                  Equipo técnico
                 </Button>
                 {c?.activo && (
                   <>

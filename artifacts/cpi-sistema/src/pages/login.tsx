@@ -5,7 +5,7 @@ import { useListCenters, useListRooms, getListRoomsQueryKey, verifyCenterPasscod
 import type { Center, Room } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, Plus, Lock, ShieldCheck, ChevronRight, Activity } from "lucide-react";
+import { ChevronLeft, Plus, Lock, ShieldCheck, ChevronRight, Activity, FolderOpen } from "lucide-react";
 
 export default function Login() {
   const { login } = useAuth();
@@ -100,6 +100,8 @@ export default function Login() {
     login(selectedCenter.id, role);
     if (role === "admin") {
       setLocation("/admin");
+    } else if (role === "equipotecnico") {
+      setLocation("/casos");
     } else {
       setLocation("/sala");
     }
@@ -363,6 +365,20 @@ export default function Login() {
                     <div className="text-xs text-primary-foreground/75">Panel general</div>
                   </div>
                   <ChevronRight className="w-4 h-4 ml-auto opacity-75" />
+                </button>
+                <button
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border border-border bg-card hover:border-primary/50 hover:bg-primary/5 transition-colors text-left"
+                  onClick={() => handleLogin("equipotecnico")}
+                  data-testid="btn-equipotecnico"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-teal-100 flex items-center justify-center shrink-0">
+                    <FolderOpen className="w-4 h-4 text-teal-600" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-sm text-foreground">Equipo Técnico</div>
+                    <div className="text-xs text-muted-foreground">Seguimiento de casos</div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground" />
                 </button>
               </div>
             </div>

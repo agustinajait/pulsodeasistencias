@@ -11,6 +11,7 @@ import Sala from "@/pages/sala";
 import Admin from "@/pages/admin";
 import Servicios from "@/pages/servicios";
 import Reportes from "@/pages/reportes";
+import Casos from "@/pages/casos";
 import CheckIn from "@/pages/check-in";
 import ChildDocs from "@/pages/child-docs";
 
@@ -29,7 +30,7 @@ function ProtectedRoute({
   withLayout = true,
 }: {
   component: () => React.ReactElement;
-  allowedRoles: ("admin" | "sala" | "superadmin")[];
+  allowedRoles: ("admin" | "sala" | "superadmin" | "equipotecnico")[];
   withLayout?: boolean;
 }) {
   const { role } = useAuth();
@@ -38,9 +39,10 @@ function ProtectedRoute({
     return <Redirect to="/login" />;
   }
 
-  const roleType = role === "superadmin" ? "superadmin" : role === "admin" ? "admin" : "sala";
+  const roleType = role === "superadmin" ? "superadmin" : role === "admin" ? "admin" : role === "equipotecnico" ? "equipotecnico" : "sala";
 
   if (!allowedRoles.includes(roleType)) {
+    if (role === "equipotecnico") return <Redirect to="/casos" />;
     return <Redirect to={role === "admin" || role === "superadmin" ? "/reportes" : "/sala"} />;
   }
 
@@ -76,12 +78,16 @@ function Router() {
       <Route path="/servicios">
         {() => <ProtectedRoute component={Servicios} allowedRoles={["admin", "superadmin"]} />}
       </Route>
+      <Route path="/casos">
+        {() => <ProtectedRoute component={Casos} allowedRoles={["admin", "superadmin", "equipotecnico"]} />}
+      </Route>
 
       {/* Root redirect */}
       <Route path="/">
         {() => {
           const { role } = useAuth();
           if (!role) return <Redirect to="/login" />;
+          if (role === "equipotecnico") return <Redirect to="/casos" />;
           return <Redirect to={role === "admin" || role === "superadmin" ? "/reportes" : "/sala"} />;
         }}
       </Route>

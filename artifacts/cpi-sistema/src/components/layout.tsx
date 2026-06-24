@@ -14,7 +14,7 @@ type NavItem = {
   label: string;
   path: string;
   icon: React.ReactNode;
-  roles: ("admin" | "superadmin" | "sala")[];
+  roles: ("admin" | "superadmin" | "sala" | "equipotecnico")[];
 };
 
 const NAV_ITEMS: NavItem[] = [
@@ -40,7 +40,7 @@ const NAV_ITEMS: NavItem[] = [
     label: "Casos",
     path: "/casos",
     icon: <FolderOpen className="w-5 h-5" />,
-    roles: ["admin", "superadmin"],
+    roles: ["admin", "superadmin", "equipotecnico"],
   },
   {
     label: "Servicios",
@@ -50,9 +50,10 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-function roleType(role: string | null): "admin" | "superadmin" | "sala" {
+function roleType(role: string | null): "admin" | "superadmin" | "sala" | "equipotecnico" {
   if (role === "superadmin") return "superadmin";
   if (role === "admin") return "admin";
+  if (role === "equipotecnico") return "equipotecnico";
   return "sala";
 }
 
@@ -81,7 +82,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="px-5 pt-7 pb-6">
           <div className="text-white font-bold text-lg leading-none">Koratic</div>
           <div className="text-white/40 text-[10px] font-semibold uppercase tracking-widest mt-0.5">
-            {rt === "superadmin" ? "Super Admin" : rt === "admin" ? "Coordinación" : "Sala"}
+            {rt === "superadmin" ? "Super Admin" : rt === "admin" ? "Coordinación" : rt === "equipotecnico" ? "Equipo Técnico" : "Sala"}
           </div>
         </div>
 
@@ -122,7 +123,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div>
             <div className="text-white font-bold text-base">Koratic</div>
             <div className="text-white/40 text-[10px] font-semibold uppercase tracking-widest">
-              {rt === "superadmin" ? "Super Admin" : rt === "admin" ? "Coordinación" : "Sala"}
+              {rt === "superadmin" ? "Super Admin" : rt === "admin" ? "Coordinación" : rt === "equipotecnico" ? "Equipo Técnico" : "Sala"}
             </div>
           </div>
           <button onClick={handleLogout} className="text-white/60 hover:text-white p-1.5">

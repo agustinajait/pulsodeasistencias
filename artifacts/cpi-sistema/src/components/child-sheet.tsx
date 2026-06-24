@@ -154,6 +154,7 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
   const [docsData, setDocsData] = useState<{ docsToken: string; panialesAuth: boolean; aptoFisico: boolean; autRetiro: boolean; autLlamada: boolean; autFotos: boolean; carnetVacunas: boolean; docs: {tipo:string;url:string;uploadedAt?:string}[] } | null>(null);
   const [docsLoading, setDocsLoading] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
+  const [digitalAuths, setDigitalAuths] = useState<{ tipo: string; accepted_at: string; accepted_by_name: string; accepted_by_vinculo: string; data: Record<string, unknown> }[]>([]);
 
   // Llamado form
   const [llFecha, setLlFecha] = useState(TODAY);
@@ -713,8 +714,24 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
   async function loadDocs() {
     setDocsLoading(true);
     try {
-      const res = await fetch(`/api/children/${childId}/docs`);
-      if (res.ok) setDocsData(await res.json());
+      const [docsRes, authRes] = await Promise.all([
+        fetch(`/api/children/${childId}/docs`),
+        docsData?.docsToken
+          ? fetch(`/api/child-authorizations/${docsData.docsToken}`)
+          : Promise.resolve(null),
+      ]);
+      if (docsRes.ok) {
+        const d = await docsRes.json();
+        setDocsData(d);
+        // now fetch digital auths with the token we just got
+        if (d.docsToken) {
+          const ar = await fetch(`/api/child-authorizations/${d.docsToken}`);
+          if (ar.ok) {
+            const aj = await ar.json();
+            setDigitalAuths(aj.authorizations ?? []);
+          }
+        }
+      }
     } finally {
       setDocsLoading(false);
     }
@@ -1903,6 +1920,77 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                           </Badge>
                         </div>
                       ))}
+
+                      {/* Autorizaciones digitales */}
+                      {(() => {
+                        const retiro = digitalAuths.find(a => a.tipo === "RETIRO");
+                        const higiene = digitalAuths.find(a => a.tipo === "HIGIENE");
+                        if (!retiro && !higiene) return (
+                          <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50 px-3 py-3 text-center">
+                            <p className="text-xs font-semibold text-amber-700">Autorizaciones digitales pendientes</p>
+                            <p className="text-[10px] text-amber-600 mt-0.5">La familia aún no completó el formulario de retiro ni higiene/fotos.</p>
+                          </div>
+                        );
+                        return (
+                          <div className="space-y-2">
+                            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mt-1">Autorizaciones digitales</p>
+                            {retiro ? (
+                              <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2.5 space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                                  <p className="text-sm font-medium text-green-800">Autorización de retiro</p>
+                                </div>
+                                <p className="text-[10px] text-green-700">
+                                  Firmada por {retiro.accepted_by_name} ({retiro.accepted_by_vinculo}) · {new Date(retiro.accepted_at).toLocaleDateString("es-AR")}
+                                </p>
+                                {(() => {
+                                  const d = retiro.data as { authorized_persons?: {nombre:string;dni:string;telefono:string}[] };
+                                  const persons = d.authorized_persons?.filter(p => p.nombre) ?? [];
+                                  if (!persons.length) return null;
+                                  return (
+                                    <div className="mt-1 space-y-0.5">
+                                      {persons.map((p, i) => (
+                                        <p key={i} className="text-[10px] text-green-700">• {p.nombre} — DNI {p.dni} — {p.telefono}</p>
+                                      ))}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 rounded-lg border border-dashed border-amber-300 bg-amber-50 px-3 py-2">
+                                <Circle className="w-4 h-4 text-amber-400 shrink-0" />
+                                <p className="text-xs text-amber-700">Retiro: pendiente de firma familiar</p>
+                              </div>
+                            )}
+                            {higiene ? (
+                              <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2.5 space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                                  <p className="text-sm font-medium text-green-800">Higiene y fotos</p>
+                                </div>
+                                <p className="text-[10px] text-green-700">
+                                  Firmada por {higiene.accepted_by_name} ({higiene.accepted_by_vinculo}) · {new Date(higiene.accepted_at).toLocaleDateString("es-AR")}
+                                </p>
+                                {(() => {
+                                  const d = higiene.data as { fotos?: boolean; higiene?: boolean; simulacro?: boolean };
+                                  return (
+                                    <div className="flex gap-3 mt-1">
+                                      <span className={`text-[10px] font-semibold ${d.fotos ? "text-green-700" : "text-red-600"}`}>Fotos: {d.fotos ? "SÍ" : "NO"}</span>
+                                      <span className={`text-[10px] font-semibold ${d.higiene ? "text-green-700" : "text-red-600"}`}>Higiene: {d.higiene ? "SÍ" : "NO"}</span>
+                                      <span className={`text-[10px] font-semibold ${d.simulacro ? "text-green-700" : "text-red-600"}`}>Simulacro: {d.simulacro ? "SÍ" : "NO"}</span>
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 rounded-lg border border-dashed border-amber-300 bg-amber-50 px-3 py-2">
+                                <Circle className="w-4 h-4 text-amber-400 shrink-0" />
+                                <p className="text-xs text-amber-700">Higiene y fotos: pendiente de firma familiar</p>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </>
                 )}

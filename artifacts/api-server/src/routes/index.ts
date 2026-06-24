@@ -10,6 +10,8 @@ import dashboardRouter from "./dashboard";
 import { checkInRouter } from "./check-in";
 import { childDocsRouter } from "./child-docs";
 import reportsRouter from "./reports";
+import servicesRouter from "./services";
+import providersRouter from "./providers";
 
 const router: IRouter = Router();
 
@@ -24,5 +26,7 @@ router.use(dashboardRouter);
 router.use("/check-in", checkInRouter);
 router.use("/child-docs", childDocsRouter);
 router.use(reportsRouter);
+router.use(servicesRouter);
+router.use(providersRouter);
 
 export default router;

@@ -20,7 +20,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Plus, Pencil, Trash2, FileText, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Plus, Pencil, Trash2, FileText, ChevronLeft, ChevronRight, X } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -933,14 +933,11 @@ export default function ServiciosPage() {
   const effectiveCenterId = isSuperAdmin ? selectedCenterId : authCenterId;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-full bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b sticky top-0 z-10">
+      <div className="bg-white border-b sticky top-0 z-40">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
-          <button onClick={() => navigate("/admin")} className="p-1 rounded hover:bg-gray-100">
-            <ArrowLeft size={20} className="text-gray-600" />
-          </button>
-          <h1 className="text-lg font-bold flex-1">Servicios</h1>
+          <h1 className="text-base font-bold flex-1">Servicios</h1>
           {isSuperAdmin && centers.length > 0 && (
             <Select
               value={selectedCenterId ? String(selectedCenterId) : "todos"}

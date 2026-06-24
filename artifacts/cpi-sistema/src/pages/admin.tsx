@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, LogOut, Phone, ExternalLink, AlertTriangle, Plus, Copy, Download, Pencil, Check, X, Upload, Trash2, ChevronLeft, ChevronRight, FileText, Lock, LockOpen, Users, QrCode } from "lucide-react";
+import { Search, Phone, ExternalLink, AlertTriangle, Plus, Copy, Download, Pencil, Check, X, Upload, Trash2, ChevronLeft, ChevronRight, FileText, Lock, LockOpen, Users, QrCode } from "lucide-react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import type { Child, Alert, RoomSummary, Contact, AttendanceRecord, Center, Room } from "@workspace/api-client-react";
@@ -737,7 +737,7 @@ function QrDialogButton({ room, allRooms }: { room: RoomSummary; allRooms: Room[
 }
 
 export default function AdminPage() {
-  const { logout, centerId: authCenterId, role } = useAuth();
+  const { centerId: authCenterId, role } = useAuth();
   const isSuperAdmin = role === "superadmin";
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
@@ -1076,43 +1076,13 @@ export default function AdminPage() {
   }, [childMonthlyStats, allChildren.data, roomSummary.data]);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-full bg-background flex flex-col">
       {/* Topbar */}
-      <header className="bg-card border-b border-border sticky top-0 z-50 flex flex-col z-50">
-        <div className="h-14 flex items-center justify-between px-4">
-          <div className="flex items-center gap-3">
-            <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_0_3px_rgba(28,110,68,0.2)]" />
-            <span className="font-bold text-sm">Sistema CPI</span>
-            <Badge variant="secondary" className="text-xs font-semibold">Coordinación</Badge>
-          </div>
-          <div className="flex items-center gap-1">
-            {isSuperAdmin && (
-              <Button
-                variant="ghost" size="sm"
-                className="text-xs text-muted-foreground"
-                onClick={() => setLocation("/sala")}
-                data-testid="button-go-sala"
-              >
-                Tomar asistencia
-              </Button>
-            )}
-            <Button
-              variant="ghost" size="sm"
-              className="text-xs text-muted-foreground"
-              onClick={() => setLocation("/servicios")}
-              data-testid="button-go-servicios"
-            >
-              Servicios
-            </Button>
-            <Button
-              variant="ghost" size="sm"
-              className="text-xs text-muted-foreground"
-              onClick={() => { logout(); setLocation("/login"); }}
-              data-testid="button-logout-admin"
-            >
-              <LogOut className="w-3.5 h-3.5 mr-1" />
-              Salir
-            </Button>
+      <header className="bg-card border-b border-border sticky top-0 z-40 flex flex-col">
+        <div className="h-12 flex items-center justify-between px-4">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-sm">Coordinación</span>
+            <Badge variant="secondary" className="text-xs font-semibold">Niños y familias</Badge>
           </div>
         </div>
         {/* Centro selector bar — solo visible para superadmin */}

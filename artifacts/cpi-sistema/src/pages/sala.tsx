@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, ChevronLeft, ChevronRight, LogOut, AlertTriangle, MessageCircle, X } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, AlertTriangle, MessageCircle, X } from "lucide-react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import type { Child, AttendanceRecord, Room, RoomSummary, Alert } from "@workspace/api-client-react";
@@ -50,7 +50,7 @@ function dayColor(att: AttendanceRecord[], total: number) {
 }
 
 export default function SalaPage() {
-  const { role, ecoNumber, logout } = useAuth();
+  const { role, ecoNumber } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -262,41 +262,16 @@ export default function SalaPage() {
   const totalKids = children.data?.length ?? 0;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-full bg-background flex flex-col">
       {/* Topbar */}
-      <header className="bg-card border-b border-border sticky top-0 z-50">
-        <div className="h-14 flex items-center justify-between px-4">
-          <div className="flex items-center gap-3">
-            <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_0_3px_rgba(28,110,68,0.2)]" />
-            <span className="font-bold text-sm">{role === "superadmin" ? "Super Admin" : "CPI Norte"}</span>
+      <header className="bg-card border-b border-border sticky top-0 z-40">
+        <div className="h-12 flex items-center justify-between px-4">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-sm">Asistencias</span>
             {role !== "superadmin" && <Badge variant="secondary" className="text-xs font-semibold">{roomLabel}</Badge>}
             {role === "superadmin" && roomId && <Badge variant="secondary" className="text-xs font-semibold">{roomInfo?.name ?? ""}</Badge>}
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground capitalize hidden sm:inline">{formatDateLabel(TODAY)}</span>
-            {(role === "admin" || role === "superadmin") && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs text-muted-foreground"
-                onClick={() => { setLocation("/admin"); }}
-                data-testid="button-back-admin"
-              >
-                <ChevronLeft className="w-3.5 h-3.5 mr-1" />
-                Admin
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs text-muted-foreground"
-              onClick={() => { logout(); setLocation("/login"); }}
-              data-testid="button-logout"
-            >
-              <LogOut className="w-3.5 h-3.5 mr-1" />
-              Salir
-            </Button>
-          </div>
+          <span className="text-xs text-muted-foreground capitalize hidden sm:inline">{formatDateLabel(TODAY)}</span>
         </div>
         {role === "superadmin" && (
           <div className="flex items-center gap-2 px-4 pb-3">

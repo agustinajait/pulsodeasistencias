@@ -209,6 +209,76 @@ router.get("/dashboard/alerts", async (req, res) => {
   }
 });
 
+// GET /dashboard/monthly-trend — last 6 months avg attendance %
+router.get("/dashboard/monthly-trend", async (req, res) => {
+  try {
+    const { centerId } = req.query as { centerId?: string };
+    const allRooms = await db.select().from(roomsTable);
+    const rooms = centerId ? allRooms.filter((r) => r.centerId === parseInt(centerId)) : allRooms;
+    const roomIds = rooms.map((r) => r.id);
+
+    // build last 6 months YYYY-MM
+    const months: string[] = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    }
+
+    const allChildren = roomIds.length > 0
+      ? await db.select().from(childrenTable).where(inArray(childrenTable.roomId, roomIds))
+      : await db.select().from(childrenTable);
+    const activeIds = allChildren.filter((c) => c.activo).map((c) => c.id);
+
+    const cutoff = months[0] + "-01";
+    const attRows = activeIds.length > 0
+      ? await db
+          .select({ childId: attendanceTable.childId, fecha: attendanceTable.fecha, estado: attendanceTable.estado, mercaderia: attendanceTable.mercaderia })
+          .from(attendanceTable)
+          .where(and(gte(attendanceTable.fecha, cutoff), inArray(attendanceTable.childId, activeIds)))
+      : [];
+
+    // group by month
+    const byMonth: Record<string, { present: number; total: number }> = {};
+    months.forEach((m) => { byMonth[m] = { present: 0, total: 0 }; });
+
+    // aggregate: for each (child, day) that has a record, count present vs total
+    const daySet: Record<string, Set<string>> = {}; // month -> set of unique dates
+    attRows.forEach((a) => {
+      if (!a.fecha) return;
+      const m = a.fecha.slice(0, 7);
+      if (!byMonth[m]) return;
+      if (!daySet[m]) daySet[m] = new Set();
+      daySet[m].add(a.fecha);
+    });
+
+    // per month: sum present / total records (excluding mercaderia)
+    attRows.forEach((a) => {
+      if (!a.fecha) return;
+      const m = a.fecha.slice(0, 7);
+      if (!byMonth[m]) return;
+      if (a.mercaderia) return; // exclude merch
+      byMonth[m].total++;
+      if (a.estado === "P") byMonth[m].present++;
+    });
+
+    const result = months.map((m) => {
+      const { present, total } = byMonth[m];
+      return {
+        mes: m,
+        present,
+        total,
+        pct: total > 0 ? Math.round((present / total) * 100) : 0,
+      };
+    });
+
+    res.json(result);
+  } catch (err) {
+    req.log.error(err, "Error getting monthly trend");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // GET /dashboard/recent-contacts
 router.get("/dashboard/recent-contacts", async (req, res) => {
   try {

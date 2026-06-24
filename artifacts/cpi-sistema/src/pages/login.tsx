@@ -125,8 +125,8 @@ export default function Login() {
             <Activity className="w-5 h-5 text-white" />
           </div>
           <div>
-            <div className="text-white font-bold text-lg leading-tight">Pulso de Asistencias</div>
-            <div className="text-purple-200 text-xs font-medium">By Caipli Lab</div>
+            <div className="text-white font-bold text-lg leading-tight">Koratic</div>
+            <div className="text-purple-200 text-xs font-medium">By Koratic</div>
           </div>
         </div>
 
@@ -156,7 +156,7 @@ export default function Login() {
 
         {/* Footer */}
         <div className="text-purple-300 text-xs relative z-10">
-          © 2026 Caipli Lab · Red de Centros de Primera Infancia
+          © 2026 Koratic · Red de Centros de Primera Infancia
         </div>
       </div>
 
@@ -168,8 +168,8 @@ export default function Login() {
             <Activity className="w-4 h-4 text-white" />
           </div>
           <div>
-            <div className="font-bold text-sm">Pulso de Asistencias</div>
-            <div className="text-xs text-muted-foreground">By Caipli Lab</div>
+            <div className="font-bold text-sm">Koratic</div>
+            <div className="text-xs text-muted-foreground">By Koratic</div>
           </div>
         </div>
 

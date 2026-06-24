@@ -79,7 +79,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <aside className="hidden lg:flex flex-col w-56 bg-[#1e1147] text-white shrink-0">
         {/* Logo */}
         <div className="px-5 pt-7 pb-6">
-          <div className="text-white font-bold text-lg leading-none">Pulso</div>
+          <div className="text-white font-bold text-lg leading-none">Koratic</div>
           <div className="text-white/40 text-[10px] font-semibold uppercase tracking-widest mt-0.5">
             {rt === "superadmin" ? "Super Admin" : rt === "admin" ? "Coordinación" : "Sala"}
           </div>
@@ -123,7 +123,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* Mobile top bar */}
         <div className="lg:hidden flex items-center justify-between px-4 pt-10 pb-3 bg-[#1e1147] shrink-0">
           <div>
-            <div className="text-white font-bold text-base">Pulso</div>
+            <div className="text-white font-bold text-base">Koratic</div>
             <div className="text-white/40 text-[10px] font-semibold uppercase tracking-widest">
               {rt === "superadmin" ? "Super Admin" : rt === "admin" ? "Coordinación" : "Sala"}
             </div>

@@ -338,7 +338,7 @@ export default function ChildDocs() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-violet-600 text-white px-4 pt-10 pb-6">
-        <p className="text-violet-200 text-xs font-semibold uppercase tracking-widest mb-1">Pulso de Asistencias · Caipli Lab</p>
+        <p className="text-violet-200 text-xs font-semibold uppercase tracking-widest mb-1">Koratic</p>
         <h1 className="text-2xl font-bold">{data.apellido} {data.nombre}</h1>
         <p className="text-violet-200 text-sm mt-1">Ficha familiar</p>
       </div>

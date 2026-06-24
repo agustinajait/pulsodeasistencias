@@ -102,7 +102,7 @@ export default function CheckIn() {
       {/* Header */}
       <div className="px-6 pt-10 pb-6 text-center">
         <div className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-1">
-          Pulso de Asistencias · Caipli Lab
+          Koratic
         </div>
         <div className="text-white text-2xl font-bold">{data.roomName}</div>
       </div>

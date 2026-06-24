@@ -13,6 +13,7 @@ import reportsRouter from "./reports";
 import servicesRouter from "./services";
 import providersRouter from "./providers";
 import casesRouter from "./cases";
+import importCases2026Router from "./import-cases-2026";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(reportsRouter);
 router.use(servicesRouter);
 router.use(providersRouter);
 router.use(casesRouter);
+router.use(importCases2026Router);
 
 export default router;

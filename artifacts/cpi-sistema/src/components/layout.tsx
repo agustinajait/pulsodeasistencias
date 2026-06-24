@@ -86,7 +86,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-3 space-y-0.5">
+        <nav className="px-3 space-y-0.5 py-2">
           {visible.map((item) => {
             const active = isActive(item.path);
             return (
@@ -104,18 +104,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </button>
             );
           })}
-        </nav>
-
-        {/* Logout */}
-        <div className="px-3 pb-6">
+          {/* Logout — always visible below nav items */}
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-white/50 hover:text-white hover:bg-white/8 transition-all"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-white/40 hover:text-white hover:bg-white/8 transition-all mt-2"
           >
             <LogOut className="w-5 h-5" />
             Salir
           </button>
-        </div>
+        </nav>
       </aside>
 
       {/* ── Main area ── */}

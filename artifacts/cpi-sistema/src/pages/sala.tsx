@@ -50,7 +50,7 @@ function dayColor(att: AttendanceRecord[], total: number) {
 }
 
 export default function SalaPage() {
-  const { role, ecoNumber } = useAuth();
+  const { role, ecoNumber, logout } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -271,7 +271,15 @@ export default function SalaPage() {
             {role !== "superadmin" && <Badge variant="secondary" className="text-xs font-semibold">{roomLabel}</Badge>}
             {role === "superadmin" && roomId && <Badge variant="secondary" className="text-xs font-semibold">{roomInfo?.name ?? ""}</Badge>}
           </div>
-          <span className="text-xs text-muted-foreground capitalize hidden sm:inline">{formatDateLabel(TODAY)}</span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground capitalize hidden sm:inline">{formatDateLabel(TODAY)}</span>
+            <button
+              onClick={() => { logout(); setLocation("/login"); }}
+              className="text-xs font-semibold text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 rounded-lg px-3 py-1.5 transition-colors"
+            >
+              Salir
+            </button>
+          </div>
         </div>
         {role === "superadmin" && (
           <div className="flex items-center gap-2 px-4 pb-3">

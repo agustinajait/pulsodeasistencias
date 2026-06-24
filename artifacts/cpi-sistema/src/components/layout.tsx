@@ -155,6 +155,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </button>
             );
           })}
+          <button
+            onClick={handleLogout}
+            className="flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 text-[10px] font-semibold text-gray-400 hover:text-red-500 transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+            Salir
+          </button>
         </nav>
       </div>
     </div>

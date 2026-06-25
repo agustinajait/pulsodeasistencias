@@ -5,9 +5,11 @@ import {
   ClipboardCheck,
   Users,
   Briefcase,
-  BarChart3,
   FolderOpen,
   LogOut,
+  Sparkles,
+  Network,
+  CalendarDays,
 } from "lucide-react";
 
 type NavItem = {
@@ -46,6 +48,24 @@ const NAV_ITEMS: NavItem[] = [
     label: "Servicios",
     path: "/servicios",
     icon: <Briefcase className="w-5 h-5" />,
+    roles: ["admin", "superadmin"],
+  },
+  {
+    label: "Oportunai",
+    path: "/oportunai",
+    icon: <Sparkles className="w-5 h-5" />,
+    roles: ["admin", "superadmin"],
+  },
+  {
+    label: "Red de talentos",
+    path: "/talentos",
+    icon: <Network className="w-5 h-5" />,
+    roles: ["admin", "superadmin"],
+  },
+  {
+    label: "Calendario",
+    path: "/calendario",
+    icon: <CalendarDays className="w-5 h-5" />,
     roles: ["admin", "superadmin"],
   },
 ];

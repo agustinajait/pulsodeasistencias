@@ -15,6 +15,7 @@ import servicesRouter from "./services";
 import providersRouter from "./providers";
 import casesRouter from "./cases";
 import importCases2026Router from "./import-cases-2026";
+import calendarioRouter from "./calendario";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(servicesRouter);
 router.use(providersRouter);
 router.use(casesRouter);
 router.use(importCases2026Router);
+router.use(calendarioRouter);
 
 export default router;

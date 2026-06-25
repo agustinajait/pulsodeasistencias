@@ -10,6 +10,7 @@ import {
   Sparkles,
   Network,
   CalendarDays,
+  BarChart3,
 } from "lucide-react";
 
 type NavItem = {
@@ -66,6 +67,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Calendario",
     path: "/calendario",
     icon: <CalendarDays className="w-5 h-5" />,
+    roles: ["admin", "superadmin"],
+  },
+  {
+    label: "Planificaciones",
+    path: "/planificaciones",
+    icon: <BarChart3 className="w-5 h-5" />,
     roles: ["admin", "superadmin"],
   },
 ];

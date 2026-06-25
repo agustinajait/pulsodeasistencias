@@ -15,6 +15,7 @@ import Casos from "@/pages/casos";
 import Oportunai from "@/pages/oportunai";
 import Talentos from "@/pages/talentos";
 import Calendario from "@/pages/calendario";
+import Planificaciones from "@/pages/planificaciones";
 import CheckIn from "@/pages/check-in";
 import ChildDocs from "@/pages/child-docs";
 
@@ -92,6 +93,9 @@ function Router() {
       </Route>
       <Route path="/calendario">
         {() => <ProtectedRoute component={Calendario} allowedRoles={["admin", "superadmin"]} />}
+      </Route>
+      <Route path="/planificaciones">
+        {() => <ProtectedRoute component={Planificaciones} allowedRoles={["admin", "superadmin"]} />}
       </Route>
 
       {/* Root redirect */}

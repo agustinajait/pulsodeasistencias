@@ -12,6 +12,7 @@ import Admin from "@/pages/admin";
 import Servicios from "@/pages/servicios";
 import Reportes from "@/pages/reportes";
 import Casos from "@/pages/casos";
+import Informes from "@/pages/informes";
 import Oportunai from "@/pages/oportunai";
 import Talentos from "@/pages/talentos";
 import Calendario from "@/pages/calendario";
@@ -84,6 +85,9 @@ function Router() {
       </Route>
       <Route path="/casos">
         {() => <ProtectedRoute component={Casos} allowedRoles={["admin", "superadmin", "equipotecnico"]} />}
+      </Route>
+      <Route path="/informes">
+        {() => <ProtectedRoute component={Informes} allowedRoles={["admin", "superadmin"]} />}
       </Route>
       <Route path="/oportunai">
         {() => <ProtectedRoute component={Oportunai} allowedRoles={["admin", "superadmin"]} />}

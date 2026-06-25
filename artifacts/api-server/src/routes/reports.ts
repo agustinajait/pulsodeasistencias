@@ -22,6 +22,33 @@ async function ensureTable() {
   await pool.query(`ALTER TABLE child_reports ADD COLUMN IF NOT EXISTS textos JSONB NOT NULL DEFAULT '{}'`);
 }
 
+// GET /reports?centerId=X&ecoNumber=Y&period=Z  — all reports for a center
+router.get("/reports", async (req, res) => {
+  try {
+    await ensureTable();
+    const { centerId, ecoNumber, period } = req.query;
+    const conditions: string[] = ["ch.center_id = $1"];
+    const params: any[] = [Number(centerId)];
+    if (ecoNumber) { params.push(Number(ecoNumber)); conditions.push(`r.eco_number = $${params.length}`); }
+    if (period) { params.push(period); conditions.push(`r.period = $${params.length}`); }
+    const where = conditions.join(" AND ");
+    const { rows } = await pool.query(
+      `SELECT r.id, r.child_id AS "childId", ch.nombre, ch.apellido, r.period,
+              r.eco_number AS "ecoNumber", r.lider, r.facilitadora, r.hitos, r.textos,
+              r.observaciones, r.created_at AS "createdAt", r.updated_at AS "updatedAt"
+       FROM child_reports r
+       JOIN children ch ON ch.id = r.child_id
+       WHERE ${where}
+       ORDER BY ch.apellido, ch.nombre, r.period DESC`,
+      params
+    );
+    res.json(rows);
+  } catch (err) {
+    req.log.error(err, "Error listing all reports");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // GET /children/:id/reports
 router.get("/children/:id/reports", async (req, res) => {
   try {

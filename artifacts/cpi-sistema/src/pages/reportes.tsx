@@ -50,6 +50,12 @@ async function fetchServices(centerId?: number | null): Promise<{ status: string
   return r.json();
 }
 
+async function fetchCenterProfile(centerId?: number | null) {
+  if (!centerId) return null;
+  const r = await fetch(`${BASE}/centers/${centerId}/profile`);
+  return r.ok ? r.json() : null;
+}
+
 async function fetchTodayEvents(centerId?: number | null): Promise<CalEvent[]> {
   const today = new Date().toISOString().slice(0, 7); // YYYY-MM
   const qs = centerId ? `?centerId=${centerId}&month=${today}` : `?month=${today}`;
@@ -180,6 +186,13 @@ export default function Reportes() {
     refetchInterval: 60_000,
   });
 
+  const profileQ = useQuery({
+    queryKey: ["center-profile-dashboard", centerId],
+    queryFn: () => fetchCenterProfile(centerId),
+    enabled: !!centerId,
+  });
+  const profile = profileQ.data;
+
   const s = summaryQ.data;
   const todayEvents = todayEventsQ.data ?? [];
 
@@ -213,6 +226,22 @@ export default function Reportes() {
     <div className="min-h-full bg-gray-50">
       {/* Page header */}
       <div className="bg-[#1e1147] text-white px-5 pt-6 pb-5 lg:pt-8">
+        {/* Center identity */}
+        {(profile?.logoBase64 || profile?.directorNombre) && (
+          <div className="flex items-center gap-3 mb-4">
+            {profile.logoBase64 && (
+              <img src={profile.logoBase64} alt="Logo" className="w-10 h-10 rounded-lg object-contain bg-white/10" />
+            )}
+            <div>
+              {profile.directorNombre && (
+                <p className="text-white/50 text-[11px] font-semibold">Dir. {profile.directorNombre}</p>
+              )}
+              {profile.direccion && (
+                <p className="text-white/30 text-[10px]">{profile.direccion}</p>
+              )}
+            </div>
+          </div>
+        )}
         <div className="text-white/50 text-[11px] font-semibold uppercase tracking-widest capitalize">{todayStr}</div>
         <h1 className="text-2xl font-bold mt-1">{greeting()}, {roleLabel(role)}</h1>
 

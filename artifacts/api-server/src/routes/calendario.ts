@@ -179,4 +179,58 @@ router.delete("/calendario/staff/:id", async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Center profile ─────────────────────────────────────────────────────────
+
+async function ensureCenterProfile() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS center_profile (
+      center_id INTEGER PRIMARY KEY,
+      logo_base64 TEXT,
+      direccion VARCHAR(300),
+      director_nombre VARCHAR(200),
+      telefono VARCHAR(80),
+      email VARCHAR(200),
+      descripcion TEXT,
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+}
+
+// GET /centers/:id/profile
+router.get("/centers/:id/profile", async (req, res) => {
+  await ensureCenterProfile();
+  const { rows } = await pool.query(`SELECT * FROM center_profile WHERE center_id=$1`, [req.params.id]);
+  if (!rows[0]) return res.json({ centerId: Number(req.params.id) });
+  const r = rows[0];
+  res.json({
+    centerId: r.center_id,
+    logoBase64: r.logo_base64,
+    direccion: r.direccion,
+    directorNombre: r.director_nombre,
+    telefono: r.telefono,
+    email: r.email,
+    descripcion: r.descripcion,
+  });
+});
+
+// PUT /centers/:id/profile
+router.put("/centers/:id/profile", async (req, res) => {
+  await ensureCenterProfile();
+  const { logoBase64, direccion, directorNombre, telefono, email, descripcion } = req.body;
+  await pool.query(
+    `INSERT INTO center_profile (center_id, logo_base64, direccion, director_nombre, telefono, email, descripcion, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
+     ON CONFLICT (center_id) DO UPDATE SET
+       logo_base64=EXCLUDED.logo_base64,
+       direccion=EXCLUDED.direccion,
+       director_nombre=EXCLUDED.director_nombre,
+       telefono=EXCLUDED.telefono,
+       email=EXCLUDED.email,
+       descripcion=EXCLUDED.descripcion,
+       updated_at=NOW()`,
+    [req.params.id, logoBase64 ?? null, direccion ?? null, directorNombre ?? null, telefono ?? null, email ?? null, descripcion ?? null]
+  );
+  res.json({ ok: true });
+});
+
 export default router;

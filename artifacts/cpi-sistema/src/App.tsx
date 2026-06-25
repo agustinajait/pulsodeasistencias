@@ -13,6 +13,7 @@ import Servicios from "@/pages/servicios";
 import Reportes from "@/pages/reportes";
 import Casos from "@/pages/casos";
 import Informes from "@/pages/informes";
+import Configuracion from "@/pages/configuracion";
 import Oportunai from "@/pages/oportunai";
 import Talentos from "@/pages/talentos";
 import Calendario from "@/pages/calendario";
@@ -88,6 +89,9 @@ function Router() {
       </Route>
       <Route path="/informes">
         {() => <ProtectedRoute component={Informes} allowedRoles={["admin", "superadmin"]} />}
+      </Route>
+      <Route path="/configuracion">
+        {() => <ProtectedRoute component={Configuracion} allowedRoles={["admin", "superadmin"]} />}
       </Route>
       <Route path="/oportunai">
         {() => <ProtectedRoute component={Oportunai} allowedRoles={["admin", "superadmin"]} />}

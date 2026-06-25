@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useListCenters } from "@workspace/api-client-react";
 
 const BASE = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -361,26 +362,50 @@ function StaffPanel({ centerId, workingDays }: { centerId: number; workingDays: 
   );
 }
 
+// ── SuperCenterPicker ──────────────────────────────────────────────────────
+function SuperCenterPicker({ value, onChange }: { value: number | null; onChange: (id: number) => void }) {
+  const centers = useListCenters();
+  return (
+    <div className="mb-4">
+      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Centro</p>
+      <select
+        value={value ?? ""}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+      >
+        <option value="">Seleccioná un centro...</option>
+        {(centers.data ?? []).map((c) => (
+          <option key={c.id} value={c.id}>{c.name}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 // ── Main page ──────────────────────────────────────────────────────────────
 const DOW_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
 export default function Calendario() {
-  const { centerId } = useAuth();
+  const { centerId, role } = useAuth();
   const qc = useQueryClient();
   const [month, setMonth] = useState(currentMonth);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [tab, setTab] = useState<"calendario" | "personal">("calendario");
+  // For superadmin (centerId=0), use a local centerId picker
+  const [superCenterId, setSuperCenterId] = useState<number | null>(null);
+  const isSuperAdmin = role === "superadmin";
+  const effectiveCenterId = isSuperAdmin ? superCenterId : centerId;
 
   const [y, m] = month.split("-").map(Number);
 
   const eventsQ = useQuery({
-    queryKey: ["cal-events", centerId, month],
-    queryFn: () => fetchEvents(centerId, month),
+    queryKey: ["cal-events", effectiveCenterId, month],
+    queryFn: () => fetchEvents(effectiveCenterId, month),
   });
 
   const workingQ = useQuery({
-    queryKey: ["cal-working", centerId, month],
-    queryFn: () => fetchWorkingDays(centerId, month),
+    queryKey: ["cal-working", effectiveCenterId, month],
+    queryFn: () => fetchWorkingDays(effectiveCenterId, month),
   });
 
   const days = getDays(month);
@@ -405,11 +430,12 @@ export default function Calendario() {
   }
 
   function refresh() {
-    qc.invalidateQueries({ queryKey: ["cal-events", centerId, month] });
-    qc.invalidateQueries({ queryKey: ["cal-working", centerId, month] });
+    qc.invalidateQueries({ queryKey: ["cal-events", effectiveCenterId, month] });
+    qc.invalidateQueries({ queryKey: ["cal-working", effectiveCenterId, month] });
   }
 
   const selectedEvents = selectedDate ? (eventsByDate[selectedDate] ?? []) : [];
+  const canEdit = effectiveCenterId != null && effectiveCenterId !== 0;
 
   return (
     <div className="min-h-full bg-gray-50">
@@ -438,6 +464,9 @@ export default function Calendario() {
       </div>
 
       <div className="px-4 py-5 max-w-2xl mx-auto">
+        {/* superadmin center picker */}
+        {isSuperAdmin && <SuperCenterPicker value={superCenterId} onChange={setSuperCenterId} />}
+
         {tab === "calendario" && (
           <div className="space-y-4">
             {/* month nav */}
@@ -446,6 +475,21 @@ export default function Calendario() {
               <h2 className="font-bold text-gray-900">{MESES[m - 1]} {y}</h2>
               <button onClick={nextMonth} className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"><ChevronRight className="w-5 h-5" /></button>
             </div>
+
+            {/* add event CTA */}
+            {canEdit ? (
+              <button
+                onClick={() => setSelectedDate(new Date().toISOString().slice(0, 10))}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-violet-200 text-violet-500 hover:border-violet-400 hover:bg-violet-50 transition-colors text-sm font-semibold"
+              >
+                <Plus className="w-4 h-4" />
+                Agregar evento (feriado, supervisión, capacitación...)
+              </button>
+            ) : (
+              <p className="text-center text-sm text-gray-400 py-2">
+                {isSuperAdmin ? "Seleccioná un centro para agregar eventos" : ""}
+              </p>
+            )}
 
             {/* legend */}
             <div className="flex flex-wrap gap-2">
@@ -522,19 +566,21 @@ export default function Calendario() {
           </div>
         )}
 
-        {tab === "personal" && centerId && workingQ.data && (
-          <StaffPanel centerId={centerId} workingDays={workingQ.data} />
+        {tab === "personal" && canEdit && workingQ.data && (
+          <StaffPanel centerId={effectiveCenterId!} workingDays={workingQ.data} />
         )}
-        {tab === "personal" && !centerId && (
-          <p className="text-center text-gray-400 py-12 text-sm">Seleccioná un centro primero</p>
+        {tab === "personal" && !canEdit && (
+          <p className="text-center text-gray-400 py-12 text-sm">
+            {isSuperAdmin ? "Seleccioná un centro arriba para ver el personal" : "Sin centro asignado"}
+          </p>
         )}
       </div>
 
       {/* day modal */}
-      {selectedDate && centerId && (
+      {selectedDate && canEdit && (
         <DayModal
           date={selectedDate}
-          centerId={centerId}
+          centerId={effectiveCenterId!}
           events={selectedEvents}
           onClose={() => setSelectedDate(null)}
           onRefresh={() => { refresh(); }}

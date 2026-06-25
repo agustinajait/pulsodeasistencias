@@ -1,6 +1,6 @@
 import { useAuth } from "@/lib/auth-context";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Users, ClipboardCheck, Briefcase, FolderOpen, TrendingUp } from "lucide-react";
+import { AlertTriangle, Users, ClipboardCheck, Briefcase, FolderOpen, TrendingUp, CalendarDays } from "lucide-react";
 
 const BASE = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -21,6 +21,7 @@ type CenterSummary = Summary & {
 };
 
 type MonthlyPoint = { mes: string; pct: number; present: number; total: number };
+type CalEvent = { id: number; fecha: string; tipo: string; titulo?: string };
 
 // Fetch helpers
 async function fetchSummary(centerId?: number | null): Promise<Summary> {
@@ -47,6 +48,16 @@ async function fetchServices(centerId?: number | null): Promise<{ status: string
   const r = await fetch(`${BASE}/services${qs}`);
   if (!r.ok) return [];
   return r.json();
+}
+
+async function fetchTodayEvents(centerId?: number | null): Promise<CalEvent[]> {
+  const today = new Date().toISOString().slice(0, 7); // YYYY-MM
+  const qs = centerId ? `?centerId=${centerId}&month=${today}` : `?month=${today}`;
+  const r = await fetch(`${BASE}/calendario/events${qs}`);
+  if (!r.ok) return [];
+  const all: CalEvent[] = await r.json();
+  const todayStr = new Date().toISOString().slice(0, 10);
+  return all.filter((e) => e.fecha === todayStr);
 }
 
 async function fetchMonthlyTrend(centerId?: number | null): Promise<MonthlyPoint[]> {
@@ -98,6 +109,14 @@ function mesLabel(ym: string) {
   return MES_ES[parseInt(m) - 1] ?? ym;
 }
 
+const EVENTOS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  FERIADO:      { label: "Feriado",      color: "text-red-700",    bg: "bg-red-100" },
+  VACACIONES:   { label: "Vacaciones",   color: "text-amber-700",  bg: "bg-amber-100" },
+  SUPERVISION:  { label: "Supervisión",  color: "text-blue-700",   bg: "bg-blue-100" },
+  CAPACITACION: { label: "Capacitación", color: "text-teal-700",   bg: "bg-teal-100" },
+  SUSPENSION:   { label: "Suspensión",   color: "text-orange-700", bg: "bg-orange-100" },
+};
+
 const TIPOS_LABEL: Record<string, string> = {
   violencia: "Violencia familiar",
   abuso: "Abuso/maltrato",
@@ -109,6 +128,19 @@ const TIPOS_LABEL: Record<string, string> = {
   trabajo_inf: "Trabajo infantil",
   otro: "Otro",
 };
+
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Buenos días";
+  if (h < 19) return "Buenas tardes";
+  return "Buenas noches";
+}
+
+function roleLabel(role: string | null) {
+  if (role === "superadmin") return "Super Admin";
+  if (role === "admin") return "Coordinación";
+  return "";
+}
 
 export default function Reportes() {
   const { role, centerId } = useAuth();
@@ -142,7 +174,14 @@ export default function Reportes() {
     queryFn: () => fetchMonthlyTrend(centerId),
   });
 
+  const todayEventsQ = useQuery({
+    queryKey: ["today-events", centerId],
+    queryFn: () => fetchTodayEvents(centerId),
+    refetchInterval: 60_000,
+  });
+
   const s = summaryQ.data;
+  const todayEvents = todayEventsQ.data ?? [];
 
   // Case breakdowns
   const cases = casesQ.data ?? [];
@@ -168,14 +207,34 @@ export default function Reportes() {
   const trend = trendQ.data ?? [];
   const maxPct = trend.length ? Math.max(...trend.map((t) => t.pct), 1) : 100;
 
-  const today = new Date().toLocaleDateString("es-AR", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const todayStr = new Date().toLocaleDateString("es-AR", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
   return (
     <div className="min-h-full bg-gray-50">
       {/* Page header */}
-      <div className="bg-[#1e1147] text-white px-5 pt-6 pb-7 lg:pt-8">
-        <div className="text-white/50 text-[11px] font-semibold uppercase tracking-widest capitalize">{today}</div>
-        <h1 className="text-2xl font-bold mt-1">Resumen general</h1>
+      <div className="bg-[#1e1147] text-white px-5 pt-6 pb-5 lg:pt-8">
+        <div className="text-white/50 text-[11px] font-semibold uppercase tracking-widest capitalize">{todayStr}</div>
+        <h1 className="text-2xl font-bold mt-1">{greeting()}, {roleLabel(role)}</h1>
+
+        {/* Today's events */}
+        {todayEvents.length > 0 && (
+          <div className="mt-4 space-y-1.5">
+            {todayEvents.map((e) => {
+              const cfg = EVENTOS_CONFIG[e.tipo] ?? { label: e.tipo, color: "text-white/80", bg: "bg-white/10" };
+              return (
+                <div key={e.id} className={`flex items-center gap-2 px-3 py-2 rounded-xl ${cfg.bg}`}>
+                  <CalendarDays className={`w-3.5 h-3.5 shrink-0 ${cfg.color}`} />
+                  <span className={`text-xs font-bold ${cfg.color}`}>{cfg.label}</span>
+                  {e.titulo && <span className="text-xs text-white/60">· {e.titulo}</span>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {todayEvents.length === 0 && (
+          <p className="text-white/30 text-xs mt-2">Sin eventos especiales hoy</p>
+        )}
       </div>
 
       <div className="px-4 py-6 space-y-8 max-w-2xl mx-auto lg:max-w-4xl">

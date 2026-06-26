@@ -56,7 +56,7 @@ const NAV_ITEMS: NavItem[] = [
     label: "Informes",
     path: "/informes",
     icon: <BarChart3 className="w-5 h-5" />,
-    roles: ["admin", "superadmin"],
+    roles: ["admin", "superadmin", "sala"],
   },
   {
     label: "Oportunai",

@@ -1,9 +1,11 @@
 import { useState, useMemo } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useListRooms } from "@workspace/api-client-react";
-import { Search, FileText, ChevronRight, X, Printer } from "lucide-react";
+import { Search, FileText, ChevronRight, X, Printer, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 const BASE = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -25,7 +27,14 @@ type Report = {
   createdAt: string;
 };
 
-// ── ECO templates (same as child-sheet) ───────────────────────────────────
+type Child = {
+  id: number;
+  nombre: string;
+  apellido: string;
+  ecoNumber?: number;
+};
+
+// ── ECO templates ─────────────────────────────────────────────────────────
 const ECO_TEMPLATES: Record<number, { eje: string; hitos: string[] }[]> = {
   0: [
     { eje: "Motricidad gruesa", hitos: ["Camina y corre solo","Se sube a su silla","Patea y lanza la pelota","Levanta objetos del suelo en cuclillas","Se agacha y se levanta sin apoyo","Empuja y arrastra objetos"] },
@@ -67,6 +76,7 @@ const HITO_COLOR: Record<string, string> = {
   N: "bg-red-100 text-red-700",
 };
 const HITO_LABEL: Record<string, string> = { L: "Logrado", P: "En proceso", N: "No logrado" };
+const PERIODS = ["1er trimestre","2do trimestre","3er trimestre","1er cuatrimestre","2do cuatrimestre","Anual"];
 
 // ── Fetch ──────────────────────────────────────────────────────────────────
 async function fetchReports(centerId: number | null, ecoNumber?: number | null, period?: string): Promise<Report[]> {
@@ -76,6 +86,212 @@ async function fetchReports(centerId: number | null, ecoNumber?: number | null, 
   if (period) qs += `&period=${period}`;
   const r = await fetch(`${BASE}/reports${qs}`);
   return r.ok ? r.json() : [];
+}
+
+async function fetchChildren(centerId: number | null): Promise<Child[]> {
+  if (!centerId) return [];
+  const r = await fetch(`${BASE}/children?centerId=${centerId}`);
+  if (!r.ok) return [];
+  const data = await r.json();
+  return (data.children ?? data ?? []).map((c: any) => ({
+    id: c.id,
+    nombre: c.nombre,
+    apellido: c.apellido,
+    ecoNumber: c.eco_number ?? c.ecoNumber,
+  }));
+}
+
+// ── NewReportModal ─────────────────────────────────────────────────────────
+function NewReportModal({
+  centerId,
+  defaultEco,
+  onClose,
+  onSaved,
+}: {
+  centerId: number;
+  defaultEco: number | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { toast } = useToast();
+  const childrenQ = useQuery({ queryKey: ["children-for-informe", centerId], queryFn: () => fetchChildren(centerId) });
+  const allChildren = childrenQ.data ?? [];
+
+  const [childSearch, setChildSearch] = useState("");
+  const [selectedChild, setSelectedChild] = useState<Child | null>(null);
+  const [period, setPeriod] = useState(PERIODS[0]);
+  const [eco, setEco] = useState<number>(defaultEco ?? 0);
+  const [lider, setLider] = useState("");
+  const [facilitadora, setFacilitadora] = useState("");
+  const [hitos, setHitos] = useState<Record<string, HitoVal>>({});
+  const [textos, setTextos] = useState<Record<string, string>>({});
+  const [observaciones, setObservaciones] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const template = ECO_TEMPLATES[eco] ?? [];
+
+  const filteredChildren = useMemo(() => {
+    const q = childSearch.toLowerCase();
+    let list = allChildren;
+    if (defaultEco != null) list = list.filter((c) => c.ecoNumber === defaultEco);
+    if (!q) return list.slice(0, 20);
+    return list.filter((c) => `${c.apellido} ${c.nombre}`.toLowerCase().includes(q)).slice(0, 20);
+  }, [allChildren, childSearch, defaultEco]);
+
+  function setHito(key: string, val: HitoVal) {
+    setHitos((h) => ({ ...h, [key]: val }));
+  }
+
+  function setTexto(eje: string, val: string) {
+    setTextos((t) => ({ ...t, [eje]: val }));
+  }
+
+  async function handleSave() {
+    if (!selectedChild) { toast({ title: "Seleccioná un niño/a", variant: "destructive" }); return; }
+    setSaving(true);
+    const res = await fetch(`${BASE}/children/${selectedChild.id}/reports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ period, ecoNumber: eco, lider: lider || null, facilitadora: facilitadora || null, hitos, textos, observaciones: observaciones || null }),
+    });
+    setSaving(false);
+    if (res.ok) {
+      toast({ title: "Informe guardado" });
+      onSaved();
+      onClose();
+    } else {
+      toast({ title: "Error al guardar", variant: "destructive" });
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex" onClick={onClose}>
+      <div className="flex-1 bg-black/30" />
+      <div className="w-full max-w-lg bg-white flex flex-col shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        {/* header */}
+        <div className="bg-[#1e1147] text-white px-5 pt-6 pb-5 shrink-0">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="text-white/50 text-[11px] font-semibold uppercase tracking-widest">Nuevo</div>
+              <h2 className="text-xl font-bold mt-0.5">Informe de desarrollo</h2>
+            </div>
+            <button onClick={onClose} className="text-white/60 hover:text-white p-1 mt-1"><X className="w-5 h-5" /></button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+          {/* child search */}
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Niño/a</p>
+            {selectedChild ? (
+              <div className="flex items-center justify-between bg-violet-50 border border-violet-200 rounded-lg px-3 py-2">
+                <span className="text-sm font-semibold text-violet-900">{selectedChild.apellido}, {selectedChild.nombre}</span>
+                <button onClick={() => setSelectedChild(null)} className="text-violet-400 hover:text-red-500 ml-2"><X className="w-4 h-4" /></button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input placeholder="Buscar por apellido..." value={childSearch} onChange={(e) => setChildSearch(e.target.value)} className="pl-9 text-sm" />
+                </div>
+                <div className="border border-gray-100 rounded-lg divide-y divide-gray-50 max-h-40 overflow-y-auto">
+                  {filteredChildren.length === 0 && <p className="text-xs text-gray-400 px-3 py-2">Sin resultados</p>}
+                  {filteredChildren.map((c) => (
+                    <button key={c.id} onClick={() => { setSelectedChild(c); setEco(c.ecoNumber ?? defaultEco ?? 0); }}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-violet-50 transition-colors">
+                      <span className="font-semibold">{c.apellido}, {c.nombre}</span>
+                      {c.ecoNumber != null && <span className="text-xs text-gray-400 ml-2">ECO {c.ecoNumber}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* meta */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Período</label>
+              <select value={period} onChange={(e) => setPeriod(e.target.value)} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
+                {PERIODS.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Sala ECO</label>
+              <select value={eco} onChange={(e) => setEco(Number(e.target.value))} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                disabled={defaultEco != null}>
+                {[0,1,2,3].map((n) => <option key={n} value={n}>ECO {n}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Líder</label>
+              <Input value={lider} onChange={(e) => setLider(e.target.value)} placeholder="Nombre" className="text-sm" />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Facilitadora</label>
+              <Input value={facilitadora} onChange={(e) => setFacilitadora(e.target.value)} placeholder="Nombre" className="text-sm" />
+            </div>
+          </div>
+
+          {/* hitos */}
+          {template.map(({ eje, hitos: hitoList }) => (
+            <div key={eje}>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">{eje}</p>
+              <div className="space-y-1.5">
+                {hitoList.map((h) => {
+                  const val = hitos[h] ?? null;
+                  return (
+                    <div key={h} className="flex items-center gap-2">
+                      <span className="text-xs text-gray-700 flex-1">{h}</span>
+                      <div className="flex gap-1 shrink-0">
+                        {(["L","P","N"] as HitoVal[]).map((v) => (
+                          <button key={v!} onClick={() => setHito(h, val === v ? null : v)}
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-colors ${
+                              val === v ? HITO_COLOR[v!] + " border-transparent" : "bg-white text-gray-300 border-gray-200 hover:border-gray-400"
+                            }`}>
+                            {v}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-2">
+                <textarea
+                  value={textos[eje] ?? ""}
+                  onChange={(e) => setTexto(eje, e.target.value)}
+                  placeholder={`Síntesis narrativa — ${eje}...`}
+                  rows={2}
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs resize-none text-gray-600"
+                />
+              </div>
+            </div>
+          ))}
+
+          {/* observaciones */}
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Observaciones generales</p>
+            <textarea
+              value={observaciones}
+              onChange={(e) => setObservaciones(e.target.value)}
+              placeholder="Observaciones adicionales..."
+              rows={3}
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm resize-none"
+            />
+          </div>
+        </div>
+
+        <div className="px-5 py-4 border-t border-gray-100 shrink-0">
+          <Button onClick={handleSave} disabled={saving || !selectedChild} className="w-full">
+            {saving ? "Guardando..." : "Guardar informe"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── Report detail modal ────────────────────────────────────────────────────
@@ -115,7 +331,6 @@ function ReportModal({ report, onClose }: { report: Report; onClose: () => void 
     w.print();
   }
 
-  const totalHitos = template.reduce((a, e) => a + e.hitos.length, 0);
   const logrados = Object.values(report.hitos).filter((v) => v === "L").length;
   const enProceso = Object.values(report.hitos).filter((v) => v === "P").length;
   const noLogrados = Object.values(report.hitos).filter((v) => v === "N").length;
@@ -124,7 +339,6 @@ function ReportModal({ report, onClose }: { report: Report; onClose: () => void 
     <div className="fixed inset-0 z-50 flex" onClick={onClose}>
       <div className="flex-1 bg-black/30" />
       <div className="w-full max-w-lg bg-white flex flex-col shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        {/* header */}
         <div className="bg-[#1e1147] text-white px-5 pt-6 pb-5 shrink-0">
           <div className="flex items-start justify-between">
             <div>
@@ -134,7 +348,6 @@ function ReportModal({ report, onClose }: { report: Report; onClose: () => void 
             </div>
             <button onClick={onClose} className="text-white/60 hover:text-white p-1 mt-1"><X className="w-5 h-5" /></button>
           </div>
-          {/* summary chips */}
           <div className="flex gap-2 mt-3">
             {[
               { label: `${logrados} Logrado`, color: "bg-green-500/20 text-green-200" },
@@ -146,7 +359,6 @@ function ReportModal({ report, onClose }: { report: Report; onClose: () => void 
           </div>
         </div>
 
-        {/* body */}
         <div className="flex-1 overflow-y-auto">
           <div className="flex justify-end px-5 py-3 border-b border-gray-100">
             <button onClick={handlePrint} className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-violet-600">
@@ -155,7 +367,6 @@ function ReportModal({ report, onClose }: { report: Report; onClose: () => void 
           </div>
 
           <div className="px-5 py-4 space-y-5">
-            {/* staff */}
             {(report.lider || report.facilitadora) && (
               <div className="text-sm text-gray-500">
                 {report.lider && <p>Líder: <span className="font-semibold text-gray-800">{report.lider}</span></p>}
@@ -163,7 +374,6 @@ function ReportModal({ report, onClose }: { report: Report; onClose: () => void 
               </div>
             )}
 
-            {/* hitos by area */}
             {template.map(({ eje, hitos }) => {
               const area = hitos.map((h) => ({ h, val: report.hitos[h] ?? null }));
               return (
@@ -183,7 +393,6 @@ function ReportModal({ report, onClose }: { report: Report; onClose: () => void 
                       </div>
                     ))}
                   </div>
-                  {/* texto narrativo */}
                   {report.textos?.[eje] && (
                     <div className="mt-2 bg-gray-50 rounded-lg px-3 py-2">
                       <p className="text-xs text-gray-600 italic">{report.textos[eje]}</p>
@@ -193,7 +402,6 @@ function ReportModal({ report, onClose }: { report: Report; onClose: () => void 
               );
             })}
 
-            {/* observaciones */}
             {report.observaciones && (
               <div>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Observaciones</p>
@@ -208,14 +416,16 @@ function ReportModal({ report, onClose }: { report: Report; onClose: () => void 
 }
 
 // ── Main ───────────────────────────────────────────────────────────────────
-const PERIODS = ["1er trimestre","2do trimestre","3er trimestre","1er cuatrimestre","2do cuatrimestre","Anual"];
-
 export default function Informes() {
-  const { centerId } = useAuth();
+  const { centerId, role } = useAuth();
+  const qc = useQueryClient();
+  const ecoNumber = role?.startsWith("sala") ? parseInt(role.slice(4)) : null;
+
   const [search, setSearch] = useState("");
-  const [filterEco, setFilterEco] = useState<string>("");
+  const [filterEco, setFilterEco] = useState<string>(ecoNumber != null ? String(ecoNumber) : "");
   const [filterPeriod, setFilterPeriod] = useState<string>("");
   const [selected, setSelected] = useState<Report | null>(null);
+  const [showNew, setShowNew] = useState(false);
 
   const roomsQ = useListRooms();
   const rooms = (roomsQ.data ?? []).filter((r: any) => !centerId || r.centerId === centerId);
@@ -237,7 +447,6 @@ export default function Informes() {
     );
   }, [reports, search]);
 
-  // group by child
   const byChild = useMemo(() => {
     const map: Record<number, { childId: number; nombre: string; apellido: string; reports: Report[] }> = {};
     filtered.forEach((r) => {
@@ -260,7 +469,13 @@ export default function Informes() {
         <div className="text-white/50 text-[11px] font-semibold uppercase tracking-widest">Centro</div>
         <div className="flex items-end justify-between mt-1">
           <h1 className="text-2xl font-bold">Informes de desarrollo</h1>
-          <span className="text-white/40 text-sm">{reports.length} informe{reports.length !== 1 ? "s" : ""}</span>
+          <button
+            onClick={() => setShowNew(true)}
+            className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 text-white text-sm font-semibold px-3 py-1.5 rounded-xl transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Nuevo
+          </button>
         </div>
       </div>
 
@@ -280,6 +495,7 @@ export default function Informes() {
             value={filterEco}
             onChange={(e) => setFilterEco(e.target.value)}
             className="rounded-lg border border-input bg-background px-3 py-2 text-sm"
+            disabled={ecoNumber != null}
           >
             <option value="">Todas las salas</option>
             {rooms.map((r: any) => (
@@ -306,6 +522,9 @@ export default function Informes() {
             <p className="text-gray-400 text-sm">
               {search || filterEco || filterPeriod ? "Sin resultados para ese filtro" : "Todavía no hay informes cargados"}
             </p>
+            <button onClick={() => setShowNew(true)} className="mt-4 text-violet-600 text-sm font-semibold hover:underline flex items-center gap-1 mx-auto">
+              <Plus className="w-4 h-4" />Crear el primer informe
+            </button>
           </div>
         )}
 
@@ -344,6 +563,14 @@ export default function Informes() {
       </div>
 
       {selected && <ReportModal report={selected} onClose={() => setSelected(null)} />}
+      {showNew && centerId && (
+        <NewReportModal
+          centerId={centerId}
+          defaultEco={ecoNumber}
+          onClose={() => setShowNew(false)}
+          onSaved={() => qc.invalidateQueries({ queryKey: ["all-reports"] })}
+        />
+      )}
     </div>
   );
 }

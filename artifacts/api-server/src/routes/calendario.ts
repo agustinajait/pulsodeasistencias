@@ -12,9 +12,11 @@ async function ensureTables() {
       tipo VARCHAR(30) NOT NULL,
       titulo VARCHAR(200),
       descripcion TEXT,
+      hora VARCHAR(5),
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  await pool.query(`ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS hora VARCHAR(5)`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS staff (
       id SERIAL PRIMARY KEY,
@@ -53,20 +55,21 @@ router.get("/calendario/events", async (req, res) => {
     tipo: r.tipo,
     titulo: r.titulo,
     descripcion: r.descripcion,
+    hora: r.hora,
   })));
 });
 
 // POST /calendario/events
 router.post("/calendario/events", async (req, res) => {
   await ensureTables();
-  const { centerId, fecha, tipo, titulo, descripcion } = req.body;
+  const { centerId, fecha, tipo, titulo, descripcion, hora } = req.body;
   const { rows } = await pool.query(
-    `INSERT INTO calendar_events (center_id, fecha, tipo, titulo, descripcion)
-     VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-    [centerId, fecha, tipo, titulo ?? null, descripcion ?? null]
+    `INSERT INTO calendar_events (center_id, fecha, tipo, titulo, descripcion, hora)
+     VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+    [centerId, fecha, tipo, titulo ?? null, descripcion ?? null, hora ?? null]
   );
   const r = rows[0];
-  res.status(201).json({ id: r.id, centerId: r.center_id, fecha: r.fecha.toISOString().slice(0, 10), tipo: r.tipo, titulo: r.titulo, descripcion: r.descripcion });
+  res.status(201).json({ id: r.id, centerId: r.center_id, fecha: r.fecha.toISOString().slice(0, 10), tipo: r.tipo, titulo: r.titulo, descripcion: r.descripcion, hora: r.hora });
 });
 
 // PUT /calendario/events/:id

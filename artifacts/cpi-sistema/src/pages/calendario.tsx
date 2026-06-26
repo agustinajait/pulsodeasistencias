@@ -20,6 +20,7 @@ type CalEvent = {
   tipo: EventTipo;
   titulo?: string;
   descripcion?: string;
+  hora?: string;
 };
 
 type Staff = {
@@ -156,6 +157,7 @@ function DayModal({
 }) {
   const [tipo, setTipo] = useState<EventTipo>("FERIADO");
   const [titulo, setTitulo] = useState("");
+  const [hora, setHora] = useState("");
   const [saving, setSaving] = useState(false);
 
   const d = new Date(date + "T12:00:00");
@@ -166,10 +168,11 @@ function DayModal({
     await fetch(`${BASE}/calendario/events`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ centerId, fecha: date, tipo, titulo: titulo || null }),
+      body: JSON.stringify({ centerId, fecha: date, tipo, titulo: titulo || null, hora: hora || null }),
     });
     setSaving(false);
     setTitulo("");
+    setHora("");
     onRefresh();
   }
 
@@ -197,6 +200,7 @@ function DayModal({
                 <div key={e.id} className={`flex items-center justify-between px-3 py-2 rounded-lg ${TIPOS[e.tipo].bg}`}>
                   <div>
                     <span className={`text-xs font-bold ${TIPOS[e.tipo].color}`}>{TIPOS[e.tipo].label}</span>
+                    {e.hora && <span className="text-xs text-gray-500 ml-2">{e.hora}</span>}
                     {e.titulo && <span className="text-xs text-gray-600 ml-2">{e.titulo}</span>}
                   </div>
                   <button onClick={() => handleDelete(e.id)} className="text-gray-300 hover:text-red-500 ml-2">
@@ -223,12 +227,21 @@ function DayModal({
                 </button>
               ))}
             </div>
-            <Input
-              placeholder="Descripción (opcional)"
-              value={titulo}
-              onChange={(e) => setTitulo(e.target.value)}
-              className="text-sm"
-            />
+            <div className="flex gap-2">
+              <Input
+                placeholder="Descripción (opcional)"
+                value={titulo}
+                onChange={(e) => setTitulo(e.target.value)}
+                className="text-sm flex-1"
+              />
+              <Input
+                type="time"
+                value={hora}
+                onChange={(e) => setHora(e.target.value)}
+                className="text-sm w-28"
+                title="Hora (opcional)"
+              />
+            </div>
             <Button onClick={handleAdd} disabled={saving} className="w-full" size="sm">
               {saving ? "Guardando..." : "Agregar"}
             </Button>
@@ -556,7 +569,8 @@ export default function Calendario() {
                         <span className="text-xs text-gray-500 ml-2 capitalize">
                           {d.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}
                         </span>
-                        {e.titulo && <span className="text-xs text-gray-600 ml-2">· {e.titulo}</span>}
+                        {e.hora && <span className="text-xs text-gray-500 ml-2">· {e.hora}</span>}
+                        {e.titulo && <span className="text-xs text-gray-600 ml-1">· {e.titulo}</span>}
                       </div>
                     </div>
                   );

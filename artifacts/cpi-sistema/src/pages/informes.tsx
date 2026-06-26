@@ -165,9 +165,8 @@ function NewReportModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex" onClick={onClose}>
-      <div className="flex-1 bg-black/30" />
-      <div className="w-full max-w-lg bg-white flex flex-col shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-white flex flex-col overflow-hidden">
+      <div className="flex flex-col h-full max-w-2xl mx-auto w-full">
         {/* header */}
         <div className="bg-[#1e1147] text-white px-5 pt-6 pb-5 shrink-0">
           <div className="flex items-start justify-between">
@@ -245,13 +244,13 @@ function NewReportModal({
                   return (
                     <div key={h} className="flex items-center gap-2">
                       <span className="text-xs text-gray-700 flex-1">{h}</span>
-                      <div className="flex gap-1 shrink-0">
+                      <div className="flex gap-1.5 shrink-0">
                         {(["L","P","N"] as HitoVal[]).map((v) => (
                           <button key={v!} onClick={() => setHito(h, val === v ? null : v)}
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-colors ${
+                            className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-colors ${
                               val === v ? HITO_COLOR[v!] + " border-transparent" : "bg-white text-gray-300 border-gray-200 hover:border-gray-400"
                             }`}>
-                            {v}
+                            {HITO_LABEL[v!]}
                           </button>
                         ))}
                       </div>

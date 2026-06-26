@@ -12,6 +12,7 @@ import {
   CalendarDays,
   BarChart3,
   Settings,
+  Stethoscope,
 } from "lucide-react";
 
 type NavItem = {
@@ -86,6 +87,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Planificaciones",
     path: "/planificaciones",
     icon: <BarChart3 className="w-5 h-5" />,
+    roles: ["admin", "superadmin"],
+  },
+  {
+    label: "Diagnóstico",
+    path: "/diagnostico",
+    icon: <Stethoscope className="w-5 h-5" />,
     roles: ["admin", "superadmin"],
   },
 ];

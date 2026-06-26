@@ -6,7 +6,7 @@ export default function Diagnostico() {
         <h1 className="text-2xl font-bold mt-1">Diagnóstico</h1>
       </div>
       <iframe
-        src="https://apple.korai.lat"
+        src="https://app.korai.lat"
         className="flex-1 w-full border-0"
         title="Diagnóstico"
         allow="fullscreen"

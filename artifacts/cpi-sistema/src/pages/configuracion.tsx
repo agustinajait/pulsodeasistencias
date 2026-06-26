@@ -14,6 +14,7 @@ type Profile = {
   logoBase64?: string;
   direccion?: string;
   directorNombre?: string;
+  coordinadorNombre?: string;
   telefono?: string;
   email?: string;
   descripcion?: string;
@@ -169,6 +170,16 @@ export default function Configuracion() {
                 <Input
                   value={form.directorNombre ?? ""}
                   onChange={(e) => update("directorNombre", e.target.value)}
+                  placeholder="Nombre completo"
+                  className="text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-500 block mb-1">Coordinador/a</label>
+                <Input
+                  value={form.coordinadorNombre ?? ""}
+                  onChange={(e) => update("coordinadorNombre", e.target.value)}
                   placeholder="Nombre completo"
                   className="text-sm"
                 />

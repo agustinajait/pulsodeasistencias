@@ -188,12 +188,14 @@ async function ensureCenterProfile() {
       logo_base64 TEXT,
       direccion VARCHAR(300),
       director_nombre VARCHAR(200),
+      coordinador_nombre VARCHAR(200),
       telefono VARCHAR(80),
       email VARCHAR(200),
       descripcion TEXT,
       updated_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  await pool.query(`ALTER TABLE center_profile ADD COLUMN IF NOT EXISTS coordinador_nombre VARCHAR(200)`);
 }
 
 // GET /centers/:id/profile
@@ -207,6 +209,7 @@ router.get("/centers/:id/profile", async (req, res) => {
     logoBase64: r.logo_base64,
     direccion: r.direccion,
     directorNombre: r.director_nombre,
+    coordinadorNombre: r.coordinador_nombre,
     telefono: r.telefono,
     email: r.email,
     descripcion: r.descripcion,
@@ -216,19 +219,20 @@ router.get("/centers/:id/profile", async (req, res) => {
 // PUT /centers/:id/profile
 router.put("/centers/:id/profile", async (req, res) => {
   await ensureCenterProfile();
-  const { logoBase64, direccion, directorNombre, telefono, email, descripcion } = req.body;
+  const { logoBase64, direccion, directorNombre, coordinadorNombre, telefono, email, descripcion } = req.body;
   await pool.query(
-    `INSERT INTO center_profile (center_id, logo_base64, direccion, director_nombre, telefono, email, descripcion, updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
+    `INSERT INTO center_profile (center_id, logo_base64, direccion, director_nombre, coordinador_nombre, telefono, email, descripcion, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())
      ON CONFLICT (center_id) DO UPDATE SET
        logo_base64=EXCLUDED.logo_base64,
        direccion=EXCLUDED.direccion,
        director_nombre=EXCLUDED.director_nombre,
+       coordinador_nombre=EXCLUDED.coordinador_nombre,
        telefono=EXCLUDED.telefono,
        email=EXCLUDED.email,
        descripcion=EXCLUDED.descripcion,
        updated_at=NOW()`,
-    [req.params.id, logoBase64 ?? null, direccion ?? null, directorNombre ?? null, telefono ?? null, email ?? null, descripcion ?? null]
+    [req.params.id, logoBase64 ?? null, direccion ?? null, directorNombre ?? null, coordinadorNombre ?? null, telefono ?? null, email ?? null, descripcion ?? null]
   );
   res.json({ ok: true });
 });

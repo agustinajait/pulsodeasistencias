@@ -321,7 +321,16 @@ function NewReportModal({
                 const nombre = selectedChild
                   ? `${selectedChild.nombre} ${selectedChild.apellido}`.trim()
                   : "El/la niño/a";
-                setTextos(autoGenerateTextos(template, hitos, nombre));
+                const generated = autoGenerateTextos(template, hitos, nombre);
+                setTextos((prev) => {
+                  const merged: Record<string, string> = { ...prev };
+                  for (const eje of Object.keys(generated)) {
+                    const existing = (prev[eje] ?? "").trim();
+                    const auto = generated[eje].trim();
+                    merged[eje] = existing ? `${existing} ${auto}` : auto;
+                  }
+                  return merged;
+                });
               }}
               className="shrink-0 text-[11px] font-bold text-violet-600 hover:text-violet-800 border border-violet-400 hover:border-violet-600 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors"
             >

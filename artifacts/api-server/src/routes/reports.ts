@@ -33,7 +33,7 @@ router.get("/reports", async (req, res) => {
   try {
     await ensureTable();
     const { centerId, ecoNumber, period } = req.query;
-    const conditions: string[] = ["ch.center_id = $1"];
+    const conditions: string[] = ["ro.center_id = $1"];
     const params: any[] = [Number(centerId)];
     if (ecoNumber) { params.push(Number(ecoNumber)); conditions.push(`r.eco_number = $${params.length}`); }
     if (period) { params.push(period); conditions.push(`r.period = $${params.length}`); }
@@ -44,6 +44,7 @@ router.get("/reports", async (req, res) => {
               r.observaciones, r.created_at AS "createdAt", r.updated_at AS "updatedAt"
        FROM child_reports r
        JOIN children ch ON ch.id = r.child_id
+       JOIN rooms ro ON ro.id = ch.room_id
        WHERE ${where}
        ORDER BY ch.apellido, ch.nombre, r.period DESC`,
       params

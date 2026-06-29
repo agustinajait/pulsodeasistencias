@@ -30,28 +30,16 @@ const NAV_ITEMS: NavItem[] = [
     roles: ["admin", "superadmin"],
   },
   {
+    label: "Calendario",
+    path: "/calendario",
+    icon: <CalendarDays className="w-5 h-5" />,
+    roles: ["admin", "superadmin"],
+  },
+  {
     label: "Asistencias",
     path: "/sala",
     icon: <ClipboardCheck className="w-5 h-5" />,
     roles: ["admin", "superadmin", "sala"],
-  },
-  {
-    label: "Coordinación",
-    path: "/admin",
-    icon: <Users className="w-5 h-5" />,
-    roles: ["admin", "superadmin"],
-  },
-  {
-    label: "Casos",
-    path: "/casos",
-    icon: <FolderOpen className="w-5 h-5" />,
-    roles: ["admin", "superadmin", "equipotecnico"],
-  },
-  {
-    label: "Servicios",
-    path: "/servicios",
-    icon: <Briefcase className="w-5 h-5" />,
-    roles: ["admin", "superadmin"],
   },
   {
     label: "Informes",
@@ -60,28 +48,10 @@ const NAV_ITEMS: NavItem[] = [
     roles: ["admin", "superadmin", "sala"],
   },
   {
-    label: "Oportunai",
-    path: "/oportunai",
-    icon: <Sparkles className="w-5 h-5" />,
-    roles: ["admin", "superadmin"],
-  },
-  {
-    label: "Red de talentos",
-    path: "/talentos",
-    icon: <Network className="w-5 h-5" />,
-    roles: ["admin", "superadmin"],
-  },
-  {
-    label: "Calendario",
-    path: "/calendario",
-    icon: <CalendarDays className="w-5 h-5" />,
-    roles: ["admin", "superadmin"],
-  },
-  {
-    label: "Configuración",
-    path: "/configuracion",
-    icon: <Settings className="w-5 h-5" />,
-    roles: ["admin", "superadmin"],
+    label: "Casos",
+    path: "/casos",
+    icon: <FolderOpen className="w-5 h-5" />,
+    roles: ["admin", "superadmin", "equipotecnico"],
   },
   {
     label: "Planificaciones",
@@ -90,9 +60,33 @@ const NAV_ITEMS: NavItem[] = [
     roles: ["admin", "superadmin"],
   },
   {
+    label: "Servicios",
+    path: "/servicios",
+    icon: <Briefcase className="w-5 h-5" />,
+    roles: ["admin", "superadmin"],
+  },
+  {
     label: "Diagnóstico",
     path: "/diagnostico",
     icon: <Stethoscope className="w-5 h-5" />,
+    roles: ["admin", "superadmin"],
+  },
+  {
+    label: "Oportunai",
+    path: "/oportunai",
+    icon: <Sparkles className="w-5 h-5" />,
+    roles: ["admin", "superadmin"],
+  },
+  {
+    label: "Coordinación",
+    path: "/admin",
+    icon: <Users className="w-5 h-5" />,
+    roles: ["admin", "superadmin"],
+  },
+  {
+    label: "Configuración",
+    path: "/configuracion",
+    icon: <Settings className="w-5 h-5" />,
     roles: ["admin", "superadmin"],
   },
 ];

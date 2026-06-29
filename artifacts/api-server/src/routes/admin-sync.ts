@@ -119,12 +119,11 @@ router.get("/sur", async (req, res) => {
 
   try {
     const allRooms = await db.select().from(roomsTable).where(eq(roomsTable.centerId, 2));
-    log.push(`Rooms found: ${allRooms.map((r) => `${r.id}:${r.nombre}`).join(", ")}`);
+    log.push(`Rooms found: ${allRooms.map((r) => `${r.id}:eco${r.ecoNumber}:${r.name}`).join(", ")}`);
 
     const roomByEco: Record<number, typeof allRooms[0]> = {};
     for (const room of allRooms) {
-      const m = room.nombre.match(/ECO\s*(\d)/i);
-      if (m) roomByEco[parseInt(m[1])] = room;
+      roomByEco[room.ecoNumber] = room;
     }
 
     for (const eco of [1, 2, 3]) {
@@ -132,7 +131,7 @@ router.get("/sur", async (req, res) => {
       if (!room) { log.push(`⚠ No room for ECO ${eco}`); continue; }
 
       const dbKids = await db.select().from(childrenTable).where(eq(childrenTable.roomId, room.id));
-      log.push(`\nECO ${eco} (roomId=${room.id}): DB=${dbKids.length}, Excel=${EXCEL[eco].length}`);
+      log.push(`\nECO ${eco} (roomId=${room.id}, name="${room.name}"): DB=${dbKids.length}, Excel=${EXCEL[eco].length}`);
 
       // Fix ALCALA LEON swap
       for (const kid of dbKids) {

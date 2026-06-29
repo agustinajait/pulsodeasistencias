@@ -123,6 +123,12 @@ async function fetchChildren(centerId: number | null): Promise<Child[]> {
   }));
 }
 
+async function fetchProfile(centerId: number | null): Promise<{ logoBase64?: string; directorNombre?: string } | null> {
+  if (!centerId) return null;
+  const r = await fetch(`${BASE}/centers/${centerId}/profile`);
+  return r.ok ? r.json() : null;
+}
+
 // ── NewReportModal ─────────────────────────────────────────────────────────
 function NewReportModal({
   centerId,
@@ -335,7 +341,7 @@ function NewReportModal({
 }
 
 // ── Report detail modal ────────────────────────────────────────────────────
-function ReportModal({ report, onClose }: { report: Report; onClose: () => void }) {
+function ReportModal({ report, onClose, logoBase64 }: { report: Report; onClose: () => void; logoBase64?: string }) {
   const template = ECO_TEMPLATES[report.ecoNumber ?? 0] ?? [];
   const childName = `${report.apellido}, ${report.nombre}`;
 
@@ -355,10 +361,11 @@ function ReportModal({ report, onClose }: { report: Report; onClose: () => void 
       .map(({ eje }) => `<p><strong>${eje}:</strong> ${report.textos[eje]}</p>`)
       .join("");
 
+    const logoHtml = logoBase64 ? `<img src="${logoBase64}" style="height:60px;object-fit:contain;margin-bottom:8px;display:block" alt="Logo"/>` : "";
     w.document.write(`<html><head><title>Informe ${childName}</title>
-      <style>body{font-family:sans-serif;font-size:12px;margin:20px}table{width:100%;border-collapse:collapse}th{background:#f3f4f6;padding:6px 8px;border:1px solid #e5e7eb;text-align:left}</style>
+      <style>body{font-family:sans-serif;font-size:12px;margin:20px}table{width:100%;border-collapse:collapse}th{background:#f3f4f6;padding:6px 8px;border:1px solid #e5e7eb;text-align:left}.header{display:flex;align-items:center;gap:16px;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e5e7eb}</style>
       </head><body>
-      <h2>Informe de Desarrollo</h2>
+      <div class="header">${logoHtml}<div><h2 style="margin:0 0 4px 0">Informe de Desarrollo</h2><p style="margin:0;color:#6b7280;font-size:11px">Koratic · Infraestructura de Gestión Social</p></div></div>
       <p><strong>Niño/a:</strong> ${childName}</p>
       <p><strong>Período:</strong> ${report.period}</p>
       ${report.lider ? `<p><strong>Líder:</strong> ${report.lider}</p>` : ""}
@@ -460,6 +467,8 @@ export default function Informes() {
   const { centerId, role } = useAuth();
   const qc = useQueryClient();
   const ecoNumber = role?.startsWith("sala") ? parseInt(role.slice(4)) : null;
+  const profileQ = useQuery({ queryKey: ["center-profile", centerId], queryFn: () => fetchProfile(centerId), enabled: !!centerId });
+  const logoBase64 = profileQ.data?.logoBase64;
 
   const [search, setSearch] = useState("");
   const [filterEco, setFilterEco] = useState<string>(ecoNumber != null ? String(ecoNumber) : "");
@@ -602,7 +611,7 @@ export default function Informes() {
         </div>
       </div>
 
-      {selected && <ReportModal report={selected} onClose={() => setSelected(null)} />}
+      {selected && <ReportModal report={selected} onClose={() => setSelected(null)} logoBase64={logoBase64} />}
       {showNew && centerId && (
         <NewReportModal
           centerId={centerId}

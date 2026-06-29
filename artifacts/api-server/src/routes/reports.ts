@@ -20,7 +20,12 @@ async function ensureTable() {
     )
   `);
   await pool.query(`ALTER TABLE child_reports ADD COLUMN IF NOT EXISTS textos JSONB NOT NULL DEFAULT '{}'`);
-  await pool.query(`ALTER TABLE child_reports ALTER COLUMN period TYPE VARCHAR(100)`);
+  await pool.query(`
+    DO $$ BEGIN
+      ALTER TABLE child_reports ALTER COLUMN period TYPE VARCHAR(100);
+    EXCEPTION WHEN others THEN NULL;
+    END $$
+  `);
 }
 
 // GET /reports?centerId=X&ecoNumber=Y&period=Z  — all reports for a center
@@ -44,9 +49,9 @@ router.get("/reports", async (req, res) => {
       params
     );
     res.json(rows);
-  } catch (err) {
+  } catch (err: any) {
     req.log.error(err, "Error listing all reports");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", detail: err?.message });
   }
 });
 

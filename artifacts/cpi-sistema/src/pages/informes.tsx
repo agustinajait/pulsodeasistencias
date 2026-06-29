@@ -107,7 +107,11 @@ async function fetchReports(centerId: number | null, ecoNumber?: number | null, 
   if (ecoNumber != null) qs += `&ecoNumber=${ecoNumber}`;
   if (period) qs += `&period=${period}`;
   const r = await fetch(`${BASE}/reports${qs}`);
-  return r.ok ? r.json() : [];
+  if (!r.ok) {
+    const body = await r.json().catch(() => ({}));
+    throw new Error(body?.detail ?? body?.error ?? `Error ${r.status}`);
+  }
+  return r.json();
 }
 
 async function fetchChildren(centerId: number | null): Promise<Child[]> {

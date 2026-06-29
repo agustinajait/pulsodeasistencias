@@ -262,12 +262,14 @@ function NewReportModal({
   periods,
   onClose,
   onSaved,
+  logoBase64,
 }: {
   centerId: number;
   defaultEco: number | null;
   periods: string[];
   onClose: () => void;
   onSaved: () => void;
+  logoBase64?: string;
 }) {
   const { toast } = useToast();
   const childrenQ = useQuery({ queryKey: ["children-for-informe", centerId], queryFn: () => fetchChildren(centerId) });
@@ -953,6 +955,7 @@ export default function Informes() {
           periods={periods}
           onClose={() => setShowNew(false)}
           onSaved={() => qc.invalidateQueries({ queryKey: ["all-reports"] })}
+          logoBase64={logoBase64}
         />
       )}
     </div>

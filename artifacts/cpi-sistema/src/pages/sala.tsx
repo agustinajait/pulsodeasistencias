@@ -429,7 +429,7 @@ export default function SalaPage() {
                           )}
                         </div>
                         {/* P/A toggle */}
-                        <div className="flex border border-border rounded-lg overflow-hidden shrink-0">
+                        <div className="flex border border-gray-400 rounded-lg overflow-hidden shrink-0">
                           <button
                             onClick={() => handleToggle(child.id, "P")}
                             className={`px-3 py-2 sm:py-1.5 text-sm font-bold transition-colors ${estado === "P" ? "bg-green-600 text-white" : "bg-background text-muted-foreground hover:bg-muted"}`}
@@ -439,7 +439,7 @@ export default function SalaPage() {
                           </button>
                           <button
                             onClick={() => handleToggle(child.id, "A")}
-                            className={`px-3 py-2 sm:py-1.5 text-sm font-bold transition-colors border-l border-border ${estado === "A" ? "bg-red-600 text-white" : "bg-background text-muted-foreground hover:bg-muted"}`}
+                            className={`px-3 py-2 sm:py-1.5 text-sm font-bold transition-colors border-l border-gray-400 ${estado === "A" ? "bg-red-600 text-white" : "bg-background text-muted-foreground hover:bg-muted"}`}
                             data-testid={`btn-ausente-${child.id}`}
                           >
                             A
@@ -663,7 +663,7 @@ export default function SalaPage() {
                           >
                             M
                           </button>
-                          <div className="flex border border-border rounded-lg overflow-hidden shrink-0">
+                          <div className="flex border border-gray-400 rounded-lg overflow-hidden shrink-0">
                             <button
                               onClick={() => markCalDay("P")}
                               className={`px-3 py-1.5 text-sm font-bold transition-colors ${estado === "P" ? "bg-green-600 text-white" : "bg-background text-muted-foreground hover:bg-muted"}`}
@@ -672,7 +672,7 @@ export default function SalaPage() {
                             </button>
                             <button
                               onClick={() => markCalDay("A")}
-                              className={`px-3 py-1.5 text-sm font-bold transition-colors border-l border-border ${estado === "A" ? "bg-red-600 text-white" : "bg-background text-muted-foreground hover:bg-muted"}`}
+                              className={`px-3 py-1.5 text-sm font-bold transition-colors border-l border-gray-400 ${estado === "A" ? "bg-red-600 text-white" : "bg-background text-muted-foreground hover:bg-muted"}`}
                             >
                               A
                             </button>

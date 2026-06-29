@@ -270,7 +270,7 @@ function NewReportModal({
                         {(["L","P","N"] as HitoVal[]).map((v) => (
                           <button key={v!} onClick={() => setHito(h, val === v ? null : v)}
                             className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-colors ${
-                              val === v ? HITO_COLOR[v!] + " border-transparent" : "bg-white text-gray-300 border-gray-200 hover:border-gray-400"
+                              val === v ? HITO_COLOR[v!] + " border-transparent" : "bg-white text-gray-600 border-gray-400 hover:border-gray-700 hover:text-gray-800"
                             }`}>
                             {HITO_LABEL[v!]}
                           </button>

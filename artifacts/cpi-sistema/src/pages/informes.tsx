@@ -289,7 +289,12 @@ function NewReportModal({
           </div>
 
           {/* hitos */}
-          {template.map(({ eje, hitos: hitoList }) => (
+          {!selectedChild && (
+            <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700 font-medium text-center">
+              Seleccioná un niño/a para completar los hitos de desarrollo
+            </div>
+          )}
+          {selectedChild && template.map(({ eje, hitos: hitoList }) => (
             <div key={eje}>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">{eje}</p>
               <div className="space-y-1.5">
@@ -365,7 +370,10 @@ function NewReportModal({
           </div>
         </div>
 
-        <div className="px-5 py-4 border-t border-gray-100 shrink-0 max-w-2xl w-full mx-auto">
+        <div className="px-5 py-4 border-t border-gray-100 shrink-0 max-w-2xl w-full mx-auto space-y-2">
+          {!selectedChild && (
+            <p className="text-xs text-center text-amber-600 font-semibold">⚠ Primero buscá y seleccioná un niño/a arriba</p>
+          )}
           <Button onClick={handleSave} disabled={saving || !selectedChild} className="w-full">
             {saving ? "Guardando..." : "Guardar informe"}
           </Button>

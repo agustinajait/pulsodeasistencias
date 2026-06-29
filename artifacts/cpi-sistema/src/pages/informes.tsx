@@ -359,9 +359,16 @@ function NewReportModal({
           <div>
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Niño/a</p>
             {selectedChild ? (
-              <div className="flex items-center justify-between bg-violet-50 border border-violet-200 rounded-lg px-3 py-2">
-                <span className="text-sm font-semibold text-violet-900">{selectedChild.apellido}, {selectedChild.nombre}</span>
-                <button onClick={() => setSelectedChild(null)} className="text-violet-400 hover:text-red-500 ml-2"><X className="w-4 h-4" /></button>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between bg-violet-50 border border-violet-200 rounded-lg px-3 py-2">
+                  <span className="text-sm font-semibold text-violet-900">{selectedChild.apellido}, {selectedChild.nombre}</span>
+                  <button onClick={() => setSelectedChild(null)} className="text-violet-400 hover:text-red-500 ml-2"><X className="w-4 h-4" /></button>
+                </div>
+                {childrenWithReport.has(selectedChild.id) && (
+                  <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700 font-medium">
+                    ⚠ {selectedChild.nombre} ya tiene un informe para <strong>{period}</strong>. Si guardás, se creará uno duplicado.
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-2">

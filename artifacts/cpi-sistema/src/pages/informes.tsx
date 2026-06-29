@@ -769,6 +769,8 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
 export default function Informes() {
   const { centerId, role } = useAuth();
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const isCoord = role === "admin" || role === "superadmin" || role === "coordinacion";
   const ecoNumber = role?.startsWith("sala") ? parseInt(role.slice(4)) : null;
   const profileQ = useQuery({ queryKey: ["center-profile", centerId], queryFn: () => fetchProfile(centerId), enabled: !!centerId });
   const logoBase64 = profileQ.data?.logoBase64;
@@ -809,9 +811,6 @@ export default function Informes() {
     });
     return Object.values(map).sort((a, b) => a.apellido.localeCompare(b.apellido));
   }, [filtered]);
-
-  const isCoord = role === "admin" || role === "superadmin" || role === "coordinacion";
-  const { toast } = useToast();
 
   function hitoSummary(r: Report) {
     const L = Object.values(r.hitos).filter((v) => v === "L").length;

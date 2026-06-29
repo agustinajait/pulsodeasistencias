@@ -37,6 +37,30 @@ function calcConsecAbsences(
   return consec;
 }
 
+// GET /children/birthdays-today?centerId=X
+router.get("/children/birthdays-today", async (req, res) => {
+  try {
+    const { centerId } = req.query as { centerId?: string };
+    const today = TODAY(); // YYYY-MM-DD
+    const mmdd = today.slice(5); // MM-DD
+    let roomIds: number[] = [];
+    if (centerId && !isNaN(parseInt(centerId))) {
+      const rooms = await db.select().from(roomsTable).where(eq(roomsTable.centerId, parseInt(centerId)));
+      roomIds = rooms.map((r) => r.id);
+    }
+    if (roomIds.length === 0) { res.json([]); return; }
+    const kids = await db.select({
+      id: childrenTable.id, nombre: childrenTable.nombre, apellido: childrenTable.apellido,
+      fnac: childrenTable.fnac, roomId: childrenTable.roomId,
+    }).from(childrenTable).where(and(inArray(childrenTable.roomId, roomIds), eq(childrenTable.activo, true)));
+    const birthdays = kids.filter((k) => k.fnac && k.fnac.slice(5) === mmdd);
+    res.json(birthdays.map((k) => ({ id: k.id, nombre: k.nombre, apellido: k.apellido, fnac: k.fnac })));
+  } catch (err: any) {
+    req.log.error(err, "Error fetching birthdays");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // GET /children/duplicates?centerId=X — find children with matching nombre+apellido within a center
 router.get("/children/duplicates", async (req, res) => {
   try {

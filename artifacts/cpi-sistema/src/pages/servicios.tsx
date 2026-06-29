@@ -36,7 +36,9 @@ type ServiceType =
   | "SIMULACRO"
   | "LIMPIEZA_TANQUES"
   | "CAPACITACION"
-  | "SUPERVISION";
+  | "SUPERVISION"
+  | "PANIALERA"
+  | "LIBRERIA";
 
 const SERVICE_TYPES: { value: ServiceType; label: string; emoji: string }[] = [
   { value: "MATAFUEGOS", label: "Matafuegos", emoji: "🧯" },
@@ -45,6 +47,8 @@ const SERVICE_TYPES: { value: ServiceType; label: string; emoji: string }[] = [
   { value: "LIMPIEZA_TANQUES", label: "Limpieza de tanques", emoji: "💧" },
   { value: "CAPACITACION", label: "Capacitación", emoji: "📚" },
   { value: "SUPERVISION", label: "Supervisión", emoji: "🔍" },
+  { value: "PANIALERA", label: "Pañalera", emoji: "🛒" },
+  { value: "LIBRERIA", label: "Librería", emoji: "✏️" },
 ];
 
 function typeInfo(type: string) {

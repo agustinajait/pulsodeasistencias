@@ -806,6 +806,17 @@ export default function AdminPage() {
   const deleteChild = useDeleteChild();
   const updateChild = useUpdateChild();
 
+  // Cumpleaños hoy
+  const birthdaysQuery = useQuery<{ id: number; nombre: string; apellido: string; fnac: string }[]>({
+    queryKey: ["birthdays-today", activeCenterId],
+    queryFn: async () => {
+      const qs = activeCenterId != null ? `?centerId=${activeCenterId}` : "";
+      const res = await fetch(`/api/children/birthdays-today${qs}`);
+      return res.ok ? res.json() : [];
+    },
+    staleTime: 60_000 * 60,
+  });
+
   // Casos data
   const casosQuery = useQuery<any[]>({
     queryKey: ["cases", activeCenterId],
@@ -1268,6 +1279,18 @@ export default function AdminPage() {
 
           {/* TABLERO */}
           <TabsContent value="tablero">
+            {/* Cumpleaños hoy */}
+            {birthdaysQuery.data && birthdaysQuery.data.length > 0 && (
+              <div className="mb-4 rounded-xl bg-pink-50 border border-pink-200 px-4 py-3 flex items-start gap-3">
+                <span className="text-2xl shrink-0">🎂</span>
+                <div>
+                  <p className="font-bold text-sm text-pink-800">¡Hoy es el cumpleaños de {birthdaysQuery.data.length === 1 ? "un niño/a" : `${birthdaysQuery.data.length} niños/as`}!</p>
+                  <p className="text-sm text-pink-700 mt-0.5">
+                    {birthdaysQuery.data.map((k) => `${k.nombre} ${k.apellido}`).join(" · ")}
+                  </p>
+                </div>
+              </div>
+            )}
             {dashboard.data && (
               <>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4" data-testid="dashboard-stats">

@@ -12,6 +12,8 @@ const BASE = import.meta.env.VITE_API_URL ?? "/api";
 // ── Types ──────────────────────────────────────────────────────────────────
 type HitoVal = "L" | "P" | "N" | null;
 
+type ReportStatus = "borrador" | "en_revision" | "aprobado";
+
 type Report = {
   id: number;
   childId: number;
@@ -24,7 +26,15 @@ type Report = {
   hitos: Record<string, HitoVal>;
   textos: Record<string, string>;
   observaciones?: string;
+  status?: ReportStatus;
   createdAt: string;
+};
+
+const STATUS_LABEL: Record<string, string> = { borrador: "Borrador", en_revision: "En revisión", aprobado: "Aprobado" };
+const STATUS_CLASS: Record<string, string> = {
+  borrador: "bg-gray-100 text-gray-500",
+  en_revision: "bg-amber-100 text-amber-700",
+  aprobado: "bg-green-100 text-green-700",
 };
 
 type Child = {
@@ -418,7 +428,7 @@ function NewReportModal({
 }
 
 // ── Report edit/detail modal ───────────────────────────────────────────────
-function ReportModal({ report, onClose, onSaved, logoBase64 }: { report: Report; onClose: () => void; onSaved: () => void; logoBase64?: string }) {
+function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { report: Report; onClose: () => void; onSaved: () => void; logoBase64?: string; userRole?: string | null }) {
   const { toast } = useToast();
   const template = ECO_TEMPLATES[report.ecoNumber ?? 0] ?? [];
   const childName = `${report.apellido}, ${report.nombre}`;
@@ -428,21 +438,27 @@ function ReportModal({ report, onClose, onSaved, logoBase64 }: { report: Report;
   const [lider, setLider] = useState(report.lider ?? "");
   const [facilitadora, setFacilitadora] = useState(report.facilitadora ?? "");
   const [observaciones, setObservaciones] = useState(report.observaciones ?? "");
+  const [status, setStatus] = useState<ReportStatus>(report.status ?? "borrador");
   const [saving, setSaving] = useState(false);
+
+  const isCoord = userRole === "admin" || userRole === "superadmin" || userRole === "coordinacion";
+  const isSala = !isCoord;
 
   function setHito(h: string, val: HitoVal) { setHitos((hh) => ({ ...hh, [h]: val })); }
   function setTexto(eje: string, val: string) { setTextos((t) => ({ ...t, [eje]: val })); }
 
-  async function handleSave() {
+  async function saveWithStatus(newStatus: ReportStatus) {
     setSaving(true);
     try {
       const res = await fetch(`${BASE}/children/${report.childId}/reports/${report.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ period: report.period, ecoNumber: report.ecoNumber, lider: lider || null, facilitadora: facilitadora || null, hitos, textos, observaciones: observaciones || null }),
+        body: JSON.stringify({ period: report.period, ecoNumber: report.ecoNumber, lider: lider || null, facilitadora: facilitadora || null, hitos, textos, observaciones: observaciones || null, status: newStatus }),
       });
       if (res.ok) {
-        toast({ title: "Informe guardado" });
+        setStatus(newStatus);
+        const msg = newStatus === "en_revision" ? "Informe enviado para validación" : newStatus === "aprobado" ? "Informe aprobado" : "Informe guardado";
+        toast({ title: msg });
         onSaved();
       } else {
         const body = await res.json().catch(() => ({}));
@@ -454,6 +470,8 @@ function ReportModal({ report, onClose, onSaved, logoBase64 }: { report: Report;
       setSaving(false);
     }
   }
+
+  async function handleSave() { await saveWithStatus(status); }
 
   function handlePrint() {
     const w = window.open("", "_blank");
@@ -489,7 +507,10 @@ function ReportModal({ report, onClose, onSaved, logoBase64 }: { report: Report;
       <div className="bg-[#1e1147] text-white px-5 pt-5 pb-4 shrink-0">
         <div className="flex items-start justify-between max-w-7xl mx-auto">
           <div>
-            <div className="text-white/50 text-[11px] font-semibold uppercase tracking-widest">Informe de desarrollo</div>
+            <div className="flex items-center gap-2">
+              <div className="text-white/50 text-[11px] font-semibold uppercase tracking-widest">Informe de desarrollo</div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_CLASS[status] ?? STATUS_CLASS.borrador}`}>{STATUS_LABEL[status] ?? status}</span>
+            </div>
             <h2 className="text-xl font-bold mt-0.5">{childName}</h2>
             <p className="text-white/60 text-sm mt-0.5">Período: {report.period} · Sala ECO {report.ecoNumber ?? 0}</p>
           </div>
@@ -582,9 +603,30 @@ function ReportModal({ report, onClose, onSaved, logoBase64 }: { report: Report;
             <button onClick={handlePrint} className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-violet-600 border border-gray-200 rounded-lg px-3 py-2">
               <Printer className="w-3.5 h-3.5" />Imprimir / PDF
             </button>
-            <Button onClick={handleSave} disabled={saving} className="flex-1">
-              {saving ? "Guardando..." : "Guardar cambios"}
-            </Button>
+            {isSala && (
+              <>
+                <Button variant="outline" onClick={handleSave} disabled={saving} className="flex-1">
+                  {saving ? "Guardando..." : "Guardar borrador"}
+                </Button>
+                {status !== "aprobado" && (
+                  <Button onClick={() => saveWithStatus("en_revision")} disabled={saving} className="flex-1 bg-amber-500 hover:bg-amber-600 text-white">
+                    {saving ? "Enviando..." : "Enviar para validar"}
+                  </Button>
+                )}
+              </>
+            )}
+            {isCoord && (
+              <>
+                <Button variant="outline" onClick={handleSave} disabled={saving} className="flex-1">
+                  {saving ? "Guardando..." : "Guardar cambios"}
+                </Button>
+                {status !== "aprobado" && (
+                  <Button onClick={() => saveWithStatus("aprobado")} disabled={saving} className="flex-1 bg-green-600 hover:bg-green-700 text-white">
+                    {saving ? "Aprobando..." : "Aprobar informe"}
+                  </Button>
+                )}
+              </>
+            )}
           </div>
         </div>
 
@@ -646,6 +688,7 @@ export default function Informes() {
   const [search, setSearch] = useState("");
   const [filterEco, setFilterEco] = useState<string>(ecoNumber != null ? String(ecoNumber) : "");
   const [filterPeriod, setFilterPeriod] = useState<string>("");
+  const [filterStatus, setFilterStatus] = useState<string>("");
   const [selected, setSelected] = useState<Report | null>(null);
   const [showNew, setShowNew] = useState(false);
 
@@ -661,13 +704,13 @@ export default function Informes() {
   const reports = reportsQ.data ?? [];
 
   const filtered = useMemo(() => {
-    if (!search) return reports;
-    const q = search.toLowerCase();
-    return reports.filter((r) =>
-      `${r.nombre} ${r.apellido}`.toLowerCase().includes(q) ||
-      r.apellido.toLowerCase().includes(q)
-    );
-  }, [reports, search]);
+    return reports.filter((r) => {
+      if (filterStatus && (r.status ?? "borrador") !== filterStatus) return false;
+      if (!search) return true;
+      const q = search.toLowerCase();
+      return `${r.nombre} ${r.apellido}`.toLowerCase().includes(q) || r.apellido.toLowerCase().includes(q);
+    });
+  }, [reports, search, filterStatus]);
 
   const byChild = useMemo(() => {
     const map: Record<number, { childId: number; nombre: string; apellido: string; reports: Report[] }> = {};
@@ -732,6 +775,16 @@ export default function Informes() {
             <option value="">Todos los períodos</option>
             {periods.map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="rounded-lg border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="">Todos los estados</option>
+            <option value="borrador">Borrador</option>
+            <option value="en_revision">En revisión</option>
+            <option value="aprobado">Aprobado</option>
+          </select>
         </div>
 
         {reportsQ.isPending && (
@@ -767,7 +820,10 @@ export default function Informes() {
                   >
                     <FileText className="w-4 h-4 text-violet-400 shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-800">{r.period}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-gray-800">{r.period}</p>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${STATUS_CLASS[r.status ?? "borrador"]}`}>{STATUS_LABEL[r.status ?? "borrador"]}</span>
+                      </div>
                       <div className="flex gap-2 mt-0.5">
                         {L > 0 && <span className="text-[10px] font-bold text-green-600">{L}L</span>}
                         {P > 0 && <span className="text-[10px] font-bold text-amber-600">{P}P</span>}
@@ -784,7 +840,7 @@ export default function Informes() {
         </div>
       </div>
 
-      {selected && <ReportModal report={selected} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); qc.invalidateQueries({ queryKey: ["all-reports"] }); }} logoBase64={logoBase64} />}
+      {selected && <ReportModal report={selected} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); qc.invalidateQueries({ queryKey: ["all-reports"] }); }} logoBase64={logoBase64} userRole={role} />}
       {showNew && centerId && (
         <NewReportModal
           centerId={centerId}

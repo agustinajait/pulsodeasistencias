@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Save, Upload, X, Building2 } from "lucide-react";
+import { Save, Upload, X, Building2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +18,7 @@ type Profile = {
   telefono?: string;
   email?: string;
   descripcion?: string;
+  reportPeriods?: string[];
 };
 
 async function fetchProfile(centerId: number): Promise<Profile> {
@@ -44,6 +45,7 @@ export default function Configuracion() {
 
   const [form, setForm] = useState<Omit<Profile, "centerId">>({});
   const [dirty, setDirty] = useState(false);
+  const [newPeriod, setNewPeriod] = useState("");
 
   useEffect(() => {
     if (profileQ.data) {
@@ -216,6 +218,56 @@ export default function Configuracion() {
                   rows={3}
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm resize-none"
                 />
+              </div>
+            </div>
+
+            {/* Report periods */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Períodos de informes</p>
+              <p className="text-xs text-gray-400">Configurá los períodos del año en que se generan informes (ej: "Julio 2025", "Diciembre 2025").</p>
+              <div className="space-y-2">
+                {(form.reportPeriods ?? []).map((p, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="flex-1 text-sm bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">{p}</span>
+                    <button
+                      onClick={() => {
+                        const next = (form.reportPeriods ?? []).filter((_, j) => j !== i);
+                        setForm(f => ({ ...f, reportPeriods: next }));
+                        setDirty(true);
+                      }}
+                      className="text-red-400 hover:text-red-600 p-1"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  value={newPeriod}
+                  onChange={(e) => setNewPeriod(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newPeriod.trim()) {
+                      setForm(f => ({ ...f, reportPeriods: [...(f.reportPeriods ?? []), newPeriod.trim()] }));
+                      setNewPeriod("");
+                      setDirty(true);
+                    }
+                  }}
+                  placeholder="Ej: Julio 2025"
+                  className="text-sm"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (!newPeriod.trim()) return;
+                    setForm(f => ({ ...f, reportPeriods: [...(f.reportPeriods ?? []), newPeriod.trim()] }));
+                    setNewPeriod("");
+                    setDirty(true);
+                  }}
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
               </div>
             </div>
 

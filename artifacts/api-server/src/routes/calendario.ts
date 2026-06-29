@@ -199,6 +199,7 @@ async function ensureCenterProfile() {
     )
   `);
   await pool.query(`ALTER TABLE center_profile ADD COLUMN IF NOT EXISTS coordinador_nombre VARCHAR(200)`);
+  await pool.query(`ALTER TABLE center_profile ADD COLUMN IF NOT EXISTS report_periods JSONB DEFAULT '[]'`);
 }
 
 // GET /centers/:id/profile
@@ -216,16 +217,17 @@ router.get("/centers/:id/profile", async (req, res) => {
     telefono: r.telefono,
     email: r.email,
     descripcion: r.descripcion,
+    reportPeriods: r.report_periods ?? [],
   });
 });
 
 // PUT /centers/:id/profile
 router.put("/centers/:id/profile", async (req, res) => {
   await ensureCenterProfile();
-  const { logoBase64, direccion, directorNombre, coordinadorNombre, telefono, email, descripcion } = req.body;
+  const { logoBase64, direccion, directorNombre, coordinadorNombre, telefono, email, descripcion, reportPeriods } = req.body;
   await pool.query(
-    `INSERT INTO center_profile (center_id, logo_base64, direccion, director_nombre, coordinador_nombre, telefono, email, descripcion, updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())
+    `INSERT INTO center_profile (center_id, logo_base64, direccion, director_nombre, coordinador_nombre, telefono, email, descripcion, report_periods, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW())
      ON CONFLICT (center_id) DO UPDATE SET
        logo_base64=EXCLUDED.logo_base64,
        direccion=EXCLUDED.direccion,
@@ -234,8 +236,9 @@ router.put("/centers/:id/profile", async (req, res) => {
        telefono=EXCLUDED.telefono,
        email=EXCLUDED.email,
        descripcion=EXCLUDED.descripcion,
+       report_periods=EXCLUDED.report_periods,
        updated_at=NOW()`,
-    [req.params.id, logoBase64 ?? null, direccion ?? null, directorNombre ?? null, coordinadorNombre ?? null, telefono ?? null, email ?? null, descripcion ?? null]
+    [req.params.id, logoBase64 ?? null, direccion ?? null, directorNombre ?? null, coordinadorNombre ?? null, telefono ?? null, email ?? null, descripcion ?? null, JSON.stringify(reportPeriods ?? [])]
   );
   res.json({ ok: true });
 });

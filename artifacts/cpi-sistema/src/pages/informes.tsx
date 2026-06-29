@@ -123,7 +123,7 @@ async function fetchChildren(centerId: number | null): Promise<Child[]> {
   }));
 }
 
-async function fetchProfile(centerId: number | null): Promise<{ logoBase64?: string; directorNombre?: string } | null> {
+async function fetchProfile(centerId: number | null): Promise<{ logoBase64?: string; directorNombre?: string; reportPeriods?: string[] } | null> {
   if (!centerId) return null;
   const r = await fetch(`${BASE}/centers/${centerId}/profile`);
   return r.ok ? r.json() : null;
@@ -133,11 +133,13 @@ async function fetchProfile(centerId: number | null): Promise<{ logoBase64?: str
 function NewReportModal({
   centerId,
   defaultEco,
+  periods,
   onClose,
   onSaved,
 }: {
   centerId: number;
   defaultEco: number | null;
+  periods: string[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -147,7 +149,7 @@ function NewReportModal({
 
   const [childSearch, setChildSearch] = useState("");
   const [selectedChild, setSelectedChild] = useState<Child | null>(null);
-  const [period, setPeriod] = useState(PERIODS[0]);
+  const [period, setPeriod] = useState(periods[0] ?? PERIODS[0]);
   const [eco, setEco] = useState<number>(defaultEco ?? 0);
   const [lider, setLider] = useState("");
   const [facilitadora, setFacilitadora] = useState("");
@@ -240,7 +242,7 @@ function NewReportModal({
             <div>
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Período</label>
               <select value={period} onChange={(e) => setPeriod(e.target.value)} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
-                {PERIODS.map((p) => <option key={p} value={p}>{p}</option>)}
+                {periods.map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
             <div>
@@ -469,6 +471,7 @@ export default function Informes() {
   const ecoNumber = role?.startsWith("sala") ? parseInt(role.slice(4)) : null;
   const profileQ = useQuery({ queryKey: ["center-profile", centerId], queryFn: () => fetchProfile(centerId), enabled: !!centerId });
   const logoBase64 = profileQ.data?.logoBase64;
+  const periods = (profileQ.data?.reportPeriods?.length ? profileQ.data.reportPeriods : null) ?? PERIODS;
 
   const [search, setSearch] = useState("");
   const [filterEco, setFilterEco] = useState<string>(ecoNumber != null ? String(ecoNumber) : "");
@@ -557,7 +560,7 @@ export default function Informes() {
             className="rounded-lg border border-input bg-background px-3 py-2 text-sm"
           >
             <option value="">Todos los períodos</option>
-            {PERIODS.map((p) => <option key={p} value={p}>{p}</option>)}
+            {periods.map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
         </div>
 
@@ -616,6 +619,7 @@ export default function Informes() {
         <NewReportModal
           centerId={centerId}
           defaultEco={ecoNumber}
+          periods={periods}
           onClose={() => setShowNew(false)}
           onSaved={() => qc.invalidateQueries({ queryKey: ["all-reports"] })}
         />

@@ -178,16 +178,13 @@ function ReportPreview({
         </table>
       </div>
 
-      {/* síntesis narrativa */}
+      {/* síntesis narrativa — texto corrido sin encabezados de área */}
       {template.some(({ eje }) => textos[eje]) && (
-        <div className="px-5 py-4 border-b border-gray-100 space-y-3">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Síntesis narrativa</p>
-          {template.filter(({ eje }) => textos[eje]).map(({ eje }) => (
-            <div key={eje}>
-              <p className="text-[10px] font-bold text-[#1e1147] uppercase tracking-wide mb-0.5">{eje}</p>
-              <p className="text-xs text-gray-700 leading-relaxed">{textos[eje]}</p>
-            </div>
-          ))}
+        <div className="px-5 py-4 border-b border-gray-100">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Síntesis de desarrollo</p>
+          <p className="text-xs text-gray-700 leading-relaxed">
+            {template.filter(({ eje }) => textos[eje]).map(({ eje }) => textos[eje].trim()).join(" ")}
+          </p>
         </div>
       )}
 
@@ -554,7 +551,7 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
         return `<tr><td style="padding:4px 8px;border:1px solid #e5e7eb">${eje}</td><td style="padding:4px 8px;border:1px solid #e5e7eb">${h}</td><td style="padding:4px 8px;border:1px solid #e5e7eb;background:${color}">${val ? HITO_LABEL[val] : "—"}</td></tr>`;
       })
     ).join("");
-    const textoSections = template.filter(({ eje }) => textos[eje]).map(({ eje }) => `<p><strong>${eje}:</strong> ${textos[eje]}</p>`).join("");
+    const textoSections = template.filter(({ eje }) => textos[eje]).map(({ eje }) => textos[eje].trim()).join(" ");
     const logoHtml = logoBase64 ? `<img src="${logoBase64}" style="height:60px;object-fit:contain;margin-bottom:8px;display:block" alt="Logo"/>` : "";
     w.document.write(`<html><head><title>Informe ${childName}</title>
       <style>body{font-family:sans-serif;font-size:12px;margin:20px}table{width:100%;border-collapse:collapse}th{background:#f3f4f6;padding:6px 8px;border:1px solid #e5e7eb;text-align:left}.header{display:flex;align-items:center;gap:16px;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e5e7eb}</style>
@@ -565,7 +562,7 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
       ${lider ? `<p><strong>Líder:</strong> ${lider}</p>` : ""}
       ${facilitadora ? `<p><strong>Facilitadora:</strong> ${facilitadora}</p>` : ""}
       <table><thead><tr><th>Área</th><th>Hito</th><th>Estado</th></tr></thead><tbody>${hitoRows}</tbody></table>
-      ${textoSections ? `<div style="margin-top:16px"><h3>Síntesis narrativa</h3>${textoSections}</div>` : ""}
+      ${textoSections ? `<div style="margin-top:16px"><h3 style="margin-bottom:6px">Síntesis de desarrollo</h3><p style="line-height:1.7;color:#374151">${textoSections}</p></div>` : ""}
       ${observaciones ? `<div style="margin-top:12px"><strong>Observaciones:</strong> ${observaciones}</div>` : ""}
       </body></html>`);
     w.document.close();

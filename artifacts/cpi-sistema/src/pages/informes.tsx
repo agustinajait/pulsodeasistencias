@@ -300,12 +300,12 @@ function NewReportModal({
             </div>
             <button
               onClick={() => {
-                if (!selectedChild) return;
-                const nombre = `${selectedChild.nombre} ${selectedChild.apellido}`.trim();
+                const nombre = selectedChild
+                  ? `${selectedChild.nombre} ${selectedChild.apellido}`.trim()
+                  : "El/la niño/a";
                 setTextos(autoGenerateTextos(template, hitos, nombre));
               }}
-              disabled={!selectedChild}
-              className="shrink-0 text-[11px] font-bold text-violet-600 hover:text-violet-800 border border-violet-300 hover:border-violet-500 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="shrink-0 text-[11px] font-bold text-violet-600 hover:text-violet-800 border border-violet-400 hover:border-violet-600 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors"
             >
               Generar
             </button>

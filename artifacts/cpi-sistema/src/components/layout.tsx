@@ -134,7 +134,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Nav */}
-        <nav className="px-3 space-y-0.5 py-2">
+        <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
           {visible.map((item) => {
             const active = isActive(item.path);
             return (
@@ -152,15 +152,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </button>
             );
           })}
-          {/* Logout — always visible below nav items */}
+        </nav>
+        {/* Logout — pinned at bottom */}
+        <div className="px-3 pb-4 shrink-0">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-white/40 hover:text-white hover:bg-white/8 transition-all mt-2"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-white/40 hover:text-white hover:bg-white/8 transition-all"
           >
             <LogOut className="w-5 h-5" />
             Salir
           </button>
-        </nav>
+        </div>
       </aside>
 
       {/* ── Main area ── */}

@@ -179,18 +179,24 @@ function NewReportModal({
   async function handleSave() {
     if (!selectedChild) { toast({ title: "Seleccioná un niño/a", variant: "destructive" }); return; }
     setSaving(true);
-    const res = await fetch(`${BASE}/children/${selectedChild.id}/reports`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ period, ecoNumber: eco, lider: lider || null, facilitadora: facilitadora || null, hitos, textos, observaciones: observaciones || null }),
-    });
-    setSaving(false);
-    if (res.ok) {
-      toast({ title: "Informe guardado" });
-      onSaved();
-      onClose();
-    } else {
-      toast({ title: "Error al guardar", variant: "destructive" });
+    try {
+      const res = await fetch(`${BASE}/children/${selectedChild.id}/reports`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ period, ecoNumber: eco, lider: lider || null, facilitadora: facilitadora || null, hitos, textos, observaciones: observaciones || null }),
+      });
+      if (res.ok) {
+        toast({ title: "Informe guardado" });
+        onSaved();
+        onClose();
+      } else {
+        const body = await res.json().catch(() => ({}));
+        toast({ title: "Error al guardar", description: body?.error ?? `Error ${res.status}`, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error de conexión", description: "No se pudo contactar al servidor", variant: "destructive" });
+    } finally {
+      setSaving(false);
     }
   }
 

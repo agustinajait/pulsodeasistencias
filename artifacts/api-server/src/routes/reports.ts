@@ -8,7 +8,7 @@ async function ensureTable() {
     CREATE TABLE IF NOT EXISTS child_reports (
       id SERIAL PRIMARY KEY,
       child_id INTEGER NOT NULL,
-      period VARCHAR(20) NOT NULL,
+      period VARCHAR(100) NOT NULL,
       eco_number INTEGER,
       lider VARCHAR(200),
       facilitadora VARCHAR(200),
@@ -20,6 +20,7 @@ async function ensureTable() {
     )
   `);
   await pool.query(`ALTER TABLE child_reports ADD COLUMN IF NOT EXISTS textos JSONB NOT NULL DEFAULT '{}'`);
+  await pool.query(`ALTER TABLE child_reports ALTER COLUMN period TYPE VARCHAR(100)`);
 }
 
 // GET /reports?centerId=X&ecoNumber=Y&period=Z  — all reports for a center

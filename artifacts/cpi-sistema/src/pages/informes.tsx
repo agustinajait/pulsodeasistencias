@@ -83,11 +83,11 @@ function autoGenerateTextos(template: { eje: string; hitos: string[]; inf: strin
     const logra = hitos.map((h, i) => hitosMap[h] === "L" ? inf[i] : null).filter(Boolean) as string[];
     const proceso = hitos.map((h, i) => hitosMap[h] === "P" ? inf[i] : null).filter(Boolean) as string[];
     const noLogra = hitos.map((h, i) => hitosMap[h] === "N" ? inf[i] : null).filter(Boolean) as string[];
-    let text = "";
-    if (logra.length) text += `${first} logra ${joinList(logra)}. `;
-    if (proceso.length) text += `Se encuentra en proceso de ${joinList(proceso)}. `;
-    if (noLogra.length) text += `Aún no logra ${joinList(noLogra)}. `;
-    result[eje] = text.trim() || `Sin observaciones registradas para ${eje}.`;
+    const parts: string[] = [];
+    if (logra.length) parts.push(`${first} logra ${joinList(logra)}, lo que refleja un avance muy valioso en su desarrollo.`);
+    if (proceso.length) parts.push(`Se encuentra avanzando hacia ${joinList(proceso)}, y desde el equipo acompañamos ese proceso con mucho entusiasmo.`);
+    if (noLogra.length) parts.push(`Continuamos trabajando junto a ${first} en el camino hacia ${joinList(noLogra)}, brindando el acompañamiento necesario y confiando plenamente en sus posibilidades.`);
+    result[eje] = parts.join(" ").trim() || `Área en observación. Continuamos acompañando el desarrollo de ${first} en ${eje.toLowerCase()}.`;
   }
   return result;
 }

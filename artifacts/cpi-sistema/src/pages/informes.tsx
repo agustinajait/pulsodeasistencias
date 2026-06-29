@@ -274,6 +274,8 @@ function NewReportModal({
   const { toast } = useToast();
   const childrenQ = useQuery({ queryKey: ["children-for-informe", centerId], queryFn: () => fetchChildren(centerId) });
   const allChildren = childrenQ.data ?? [];
+  const existingQ = useQuery({ queryKey: ["all-reports", centerId, null, null], queryFn: () => fetchReports(centerId) });
+  const existingReports = existingQ.data ?? [];
 
   const [childSearch, setChildSearch] = useState("");
   const [selectedChild, setSelectedChild] = useState<Child | null>(null);
@@ -288,12 +290,18 @@ function NewReportModal({
 
   const template = ECO_TEMPLATES[eco] ?? [];
 
+  const childrenWithReport = useMemo(() => {
+    const ids = new Set<number>();
+    existingReports.forEach((r) => { if (r.period === period) ids.add(r.childId); });
+    return ids;
+  }, [existingReports, period]);
+
   const filteredChildren = useMemo(() => {
     const q = childSearch.toLowerCase();
     let list = allChildren;
     if (defaultEco != null) list = list.filter((c) => c.ecoNumber === defaultEco);
-    if (!q) return list.slice(0, 20);
-    return list.filter((c) => `${c.apellido} ${c.nombre}`.toLowerCase().includes(q)).slice(0, 20);
+    if (!q) return list.slice(0, 30);
+    return list.filter((c) => `${c.apellido} ${c.nombre}`.toLowerCase().includes(q)).slice(0, 30);
   }, [allChildren, childSearch, defaultEco]);
 
   function setHito(key: string, val: HitoVal) {
@@ -361,15 +369,28 @@ function NewReportModal({
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <Input placeholder="Buscar por apellido..." value={childSearch} onChange={(e) => setChildSearch(e.target.value)} className="pl-9 text-sm" />
                 </div>
-                <div className="border border-gray-100 rounded-lg divide-y divide-gray-50 max-h-40 overflow-y-auto">
+                <div className="border border-gray-100 rounded-lg divide-y divide-gray-50 max-h-48 overflow-y-auto">
                   {filteredChildren.length === 0 && <p className="text-xs text-gray-400 px-3 py-2">Sin resultados</p>}
-                  {filteredChildren.map((c) => (
-                    <button key={c.id} onClick={() => { setSelectedChild(c); setEco(c.ecoNumber ?? defaultEco ?? 0); }}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-violet-50 transition-colors">
-                      <span className="font-semibold">{c.apellido}, {c.nombre}</span>
-                      {c.ecoNumber != null && <span className="text-xs text-gray-400 ml-2">ECO {c.ecoNumber}</span>}
-                    </button>
-                  ))}
+                  {[...filteredChildren].sort((a, b) => {
+                    const aHas = childrenWithReport.has(a.id) ? 1 : 0;
+                    const bHas = childrenWithReport.has(b.id) ? 1 : 0;
+                    return aHas - bHas;
+                  }).map((c) => {
+                    const tieneInforme = childrenWithReport.has(c.id);
+                    return (
+                      <button key={c.id} onClick={() => { setSelectedChild(c); setEco(c.ecoNumber ?? defaultEco ?? 0); }}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-violet-50 transition-colors flex items-center justify-between ${tieneInforme ? "opacity-50" : ""}`}>
+                        <span>
+                          <span className="font-semibold">{c.apellido}, {c.nombre}</span>
+                          {c.ecoNumber != null && <span className="text-xs text-gray-400 ml-2">ECO {c.ecoNumber}</span>}
+                        </span>
+                        {tieneInforme
+                          ? <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 shrink-0 ml-2">Ya tiene</span>
+                          : <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 shrink-0 ml-2">Pendiente</span>
+                        }
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}

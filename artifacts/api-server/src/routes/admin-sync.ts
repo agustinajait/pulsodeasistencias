@@ -198,4 +198,34 @@ router.get("/sur", async (req, res) => {
   }
 });
 
+// GET /admin-sync/norte-eco2?key=koratic2026
+// Shows all active children in ECO 2 of CAIPLI Norte (centerId=1) grouped by estado
+router.get("/norte-eco2", async (req, res) => {
+  if (req.query.key !== "koratic2026") { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const rooms = await db.select().from(roomsTable).where(eq(roomsTable.centerId, 1));
+    const eco2 = rooms.find((r) => r.ecoNumber === 2);
+    if (!eco2) { res.json({ error: "ECO 2 not found for centerId=1", rooms: rooms.map(r => `${r.id}:eco${r.ecoNumber}:${r.name}`) }); return; }
+
+    const kids = await db.select({
+      id: childrenTable.id,
+      apellido: childrenTable.apellido,
+      nombre: childrenTable.nombre,
+      estado: childrenTable.estado,
+      activo: childrenTable.activo,
+    }).from(childrenTable).where(eq(childrenTable.roomId, eco2.id));
+
+    const byEstado: Record<string, string[]> = {};
+    for (const k of kids) {
+      const key = `${k.estado}|activo=${k.activo}`;
+      if (!byEstado[key]) byEstado[key] = [];
+      byEstado[key].push(`${k.apellido} ${k.nombre}`);
+    }
+
+    res.json({ roomId: eco2.id, roomName: eco2.name, total: kids.length, byEstado });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

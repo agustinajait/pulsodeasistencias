@@ -87,7 +87,7 @@ function autoGenerateTextos(template: { eje: string; hitos: string[]; inf: strin
     if (logra.length) parts.push(`${first} logra ${joinList(logra)}, lo que refleja un avance muy valioso en su desarrollo.`);
     if (proceso.length) parts.push(`Se encuentra avanzando hacia ${joinList(proceso)}, y desde el equipo acompañamos ese proceso con mucho entusiasmo.`);
     if (noLogra.length) parts.push(`Continuamos trabajando junto a ${first} en el camino hacia ${joinList(noLogra)}, brindando el acompañamiento necesario y confiando plenamente en sus posibilidades.`);
-    result[eje] = parts.join(" ").trim() || `Área en observación. Continuamos acompañando el desarrollo de ${first} en ${eje.toLowerCase()}.`;
+    result[eje] = parts.join(" ").trim();
   }
   return result;
 }
@@ -331,7 +331,7 @@ function NewReportModal({
                   for (const eje of Object.keys(generated)) {
                     const existing = (prev[eje] ?? "").trim();
                     const auto = generated[eje].trim();
-                    merged[eje] = existing ? `${existing} ${auto}` : auto;
+                    merged[eje] = auto ? (existing ? `${existing} ${auto}` : auto) : existing;
                   }
                   return merged;
                 });
@@ -417,27 +417,55 @@ function NewReportModal({
   );
 }
 
-// ── Report detail modal ────────────────────────────────────────────────────
-function ReportModal({ report, onClose, logoBase64 }: { report: Report; onClose: () => void; logoBase64?: string }) {
+// ── Report edit/detail modal ───────────────────────────────────────────────
+function ReportModal({ report, onClose, onSaved, logoBase64 }: { report: Report; onClose: () => void; onSaved: () => void; logoBase64?: string }) {
+  const { toast } = useToast();
   const template = ECO_TEMPLATES[report.ecoNumber ?? 0] ?? [];
   const childName = `${report.apellido}, ${report.nombre}`;
+
+  const [hitos, setHitos] = useState<Record<string, HitoVal>>(report.hitos ?? {});
+  const [textos, setTextos] = useState<Record<string, string>>(report.textos ?? {});
+  const [lider, setLider] = useState(report.lider ?? "");
+  const [facilitadora, setFacilitadora] = useState(report.facilitadora ?? "");
+  const [observaciones, setObservaciones] = useState(report.observaciones ?? "");
+  const [saving, setSaving] = useState(false);
+
+  function setHito(h: string, val: HitoVal) { setHitos((hh) => ({ ...hh, [h]: val })); }
+  function setTexto(eje: string, val: string) { setTextos((t) => ({ ...t, [eje]: val })); }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const res = await fetch(`${BASE}/children/${report.childId}/reports/${report.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ period: report.period, ecoNumber: report.ecoNumber, lider: lider || null, facilitadora: facilitadora || null, hitos, textos, observaciones: observaciones || null }),
+      });
+      if (res.ok) {
+        toast({ title: "Informe guardado" });
+        onSaved();
+      } else {
+        const body = await res.json().catch(() => ({}));
+        toast({ title: "Error al guardar", description: body?.error ?? `Error ${res.status}`, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error de conexión", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  }
 
   function handlePrint() {
     const w = window.open("", "_blank");
     if (!w) return;
-    const hitoRows = template.flatMap(({ eje, hitos }) =>
-      hitos.map((h) => {
-        const val = report.hitos[h] ?? null;
+    const hitoRows = template.flatMap(({ eje, hitos: hitoList }) =>
+      hitoList.map((h) => {
+        const val = hitos[h] ?? null;
         const color = val === "L" ? "#dcfce7" : val === "P" ? "#fef9c3" : val === "N" ? "#fee2e2" : "#f9fafb";
         return `<tr><td style="padding:4px 8px;border:1px solid #e5e7eb">${eje}</td><td style="padding:4px 8px;border:1px solid #e5e7eb">${h}</td><td style="padding:4px 8px;border:1px solid #e5e7eb;background:${color}">${val ? HITO_LABEL[val] : "—"}</td></tr>`;
       })
     ).join("");
-
-    const textoSections = template
-      .filter(({ eje }) => report.textos?.[eje])
-      .map(({ eje }) => `<p><strong>${eje}:</strong> ${report.textos[eje]}</p>`)
-      .join("");
-
+    const textoSections = template.filter(({ eje }) => textos[eje]).map(({ eje }) => `<p><strong>${eje}:</strong> ${textos[eje]}</p>`).join("");
     const logoHtml = logoBase64 ? `<img src="${logoBase64}" style="height:60px;object-fit:contain;margin-bottom:8px;display:block" alt="Logo"/>` : "";
     w.document.write(`<html><head><title>Informe ${childName}</title>
       <style>body{font-family:sans-serif;font-size:12px;margin:20px}table{width:100%;border-collapse:collapse}th{background:#f3f4f6;padding:6px 8px;border:1px solid #e5e7eb;text-align:left}.header{display:flex;align-items:center;gap:16px;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e5e7eb}</style>
@@ -445,93 +473,160 @@ function ReportModal({ report, onClose, logoBase64 }: { report: Report; onClose:
       <div class="header">${logoHtml}<div><h2 style="margin:0 0 4px 0">Informe de Desarrollo</h2><p style="margin:0;color:#6b7280;font-size:11px">Koratic · Infraestructura de Gestión Social</p></div></div>
       <p><strong>Niño/a:</strong> ${childName}</p>
       <p><strong>Período:</strong> ${report.period}</p>
-      ${report.lider ? `<p><strong>Líder:</strong> ${report.lider}</p>` : ""}
-      ${report.facilitadora ? `<p><strong>Facilitadora:</strong> ${report.facilitadora}</p>` : ""}
+      ${lider ? `<p><strong>Líder:</strong> ${lider}</p>` : ""}
+      ${facilitadora ? `<p><strong>Facilitadora:</strong> ${facilitadora}</p>` : ""}
       <table><thead><tr><th>Área</th><th>Hito</th><th>Estado</th></tr></thead><tbody>${hitoRows}</tbody></table>
       ${textoSections ? `<div style="margin-top:16px"><h3>Síntesis narrativa</h3>${textoSections}</div>` : ""}
-      ${report.observaciones ? `<div style="margin-top:12px"><strong>Observaciones:</strong> ${report.observaciones}</div>` : ""}
+      ${observaciones ? `<div style="margin-top:12px"><strong>Observaciones:</strong> ${observaciones}</div>` : ""}
       </body></html>`);
     w.document.close();
     w.print();
   }
 
-  const logrados = Object.values(report.hitos).filter((v) => v === "L").length;
-  const enProceso = Object.values(report.hitos).filter((v) => v === "P").length;
-  const noLogrados = Object.values(report.hitos).filter((v) => v === "N").length;
-
   return (
-    <div className="fixed inset-0 z-50 flex" onClick={onClose}>
-      <div className="flex-1 bg-black/30" />
-      <div className="w-full max-w-lg bg-white flex flex-col shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        <div className="bg-[#1e1147] text-white px-5 pt-6 pb-5 shrink-0">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="text-white/50 text-[11px] font-semibold uppercase tracking-widest">Informe de desarrollo</div>
-              <h2 className="text-xl font-bold mt-0.5">{childName}</h2>
-              <p className="text-white/60 text-sm mt-0.5">Período: {report.period} · Sala ECO {report.ecoNumber ?? 0}</p>
-            </div>
-            <button onClick={onClose} className="text-white/60 hover:text-white p-1 mt-1"><X className="w-5 h-5" /></button>
+    <div className="fixed inset-0 z-50 bg-white flex flex-col overflow-hidden">
+      {/* header */}
+      <div className="bg-[#1e1147] text-white px-5 pt-5 pb-4 shrink-0">
+        <div className="flex items-start justify-between max-w-7xl mx-auto">
+          <div>
+            <div className="text-white/50 text-[11px] font-semibold uppercase tracking-widest">Informe de desarrollo</div>
+            <h2 className="text-xl font-bold mt-0.5">{childName}</h2>
+            <p className="text-white/60 text-sm mt-0.5">Período: {report.period} · Sala ECO {report.ecoNumber ?? 0}</p>
           </div>
-          <div className="flex gap-2 mt-3">
-            {[
-              { label: `${logrados} Logrado`, color: "bg-green-500/20 text-green-200" },
-              { label: `${enProceso} En proceso`, color: "bg-amber-500/20 text-amber-200" },
-              { label: `${noLogrados} No logrado`, color: "bg-red-500/20 text-red-200" },
-            ].map(({ label, color }) => (
-              <span key={label} className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${color}`}>{label}</span>
+          <button onClick={onClose} className="text-white/60 hover:text-white p-1 mt-1"><X className="w-5 h-5" /></button>
+        </div>
+      </div>
+
+      <div className="flex-1 flex overflow-hidden">
+        {/* ── Formulario (izquierda) ── */}
+        <div className="flex flex-col flex-1 min-w-0 border-r border-gray-100">
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 max-w-2xl w-full mx-auto">
+            {/* líder / facilitadora */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Líder</label>
+                <Input value={lider} onChange={(e) => setLider(e.target.value)} placeholder="Nombre" className="text-sm" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Facilitadora</label>
+                <Input value={facilitadora} onChange={(e) => setFacilitadora(e.target.value)} placeholder="Nombre" className="text-sm" />
+              </div>
+            </div>
+
+            {/* hitos por eje */}
+            {template.map(({ eje, hitos: hitoList }) => (
+              <div key={eje}>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">{eje}</p>
+                <div className="space-y-1.5">
+                  {hitoList.map((h) => {
+                    const val = hitos[h] ?? null;
+                    return (
+                      <div key={h} className="flex items-center gap-2">
+                        <span className="text-xs text-gray-700 flex-1">{h}</span>
+                        <div className="flex gap-1.5 shrink-0">
+                          {(["L","P","N"] as HitoVal[]).map((v) => (
+                            <button key={v!} onClick={() => setHito(h, val === v ? null : v)}
+                              className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-colors ${val === v ? HITO_COLOR[v!] + " border-transparent" : "bg-white text-gray-600 border-gray-400 hover:border-gray-700 hover:text-gray-800"}`}>
+                              {HITO_LABEL[v!]}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-2">
+                  <textarea value={textos[eje] ?? ""} onChange={(e) => setTexto(eje, e.target.value)}
+                    placeholder={`Síntesis narrativa — ${eje}...`} rows={2}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs resize-none text-gray-600" />
+                </div>
+              </div>
             ))}
+
+            {/* generar automático */}
+            <div className="flex items-center justify-between py-2 border-t border-dashed border-violet-200">
+              <div>
+                <p className="text-xs font-semibold text-violet-700">✦ Generar descripciones automáticamente</p>
+                <p className="text-[10px] text-gray-400">Basado en los hitos marcados. Podés editar antes de guardar.</p>
+              </div>
+              <button
+                onClick={() => {
+                  const generated = autoGenerateTextos(template, hitos, `${report.nombre} ${report.apellido}`.trim());
+                  setTextos((prev) => {
+                    const merged: Record<string, string> = { ...prev };
+                    for (const eje of Object.keys(generated)) {
+                      const existing = (prev[eje] ?? "").trim();
+                      const auto = generated[eje].trim();
+                      merged[eje] = auto ? (existing ? `${existing} ${auto}` : auto) : existing;
+                    }
+                    return merged;
+                  });
+                }}
+                className="shrink-0 text-[11px] font-bold text-violet-600 hover:text-violet-800 border border-violet-400 hover:border-violet-600 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                Generar
+              </button>
+            </div>
+
+            {/* observaciones */}
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Observaciones generales</p>
+              <textarea value={observaciones} onChange={(e) => setObservaciones(e.target.value)}
+                placeholder="Observaciones adicionales..." rows={3}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm resize-none" />
+            </div>
+          </div>
+
+          {/* footer */}
+          <div className="px-5 py-4 border-t border-gray-100 shrink-0 max-w-2xl w-full mx-auto flex gap-2">
+            <button onClick={handlePrint} className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-violet-600 border border-gray-200 rounded-lg px-3 py-2">
+              <Printer className="w-3.5 h-3.5" />Imprimir / PDF
+            </button>
+            <Button onClick={handleSave} disabled={saving} className="flex-1">
+              {saving ? "Guardando..." : "Guardar cambios"}
+            </Button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
-          <div className="flex justify-end px-5 py-3 border-b border-gray-100">
-            <button onClick={handlePrint} className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-violet-600">
-              <Printer className="w-3.5 h-3.5" />Imprimir / PDF
-            </button>
+        {/* ── Vista previa (derecha) ── */}
+        <div className="hidden lg:flex flex-col w-[420px] xl:w-[500px] shrink-0 bg-gray-50 overflow-y-auto">
+          <div className="px-5 py-3 border-b border-gray-200 bg-white shrink-0">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Vista previa</p>
           </div>
-
-          <div className="px-5 py-4 space-y-5">
-            {(report.lider || report.facilitadora) && (
-              <div className="text-sm text-gray-500">
-                {report.lider && <p>Líder: <span className="font-semibold text-gray-800">{report.lider}</span></p>}
-                {report.facilitadora && <p>Facilitadora: <span className="font-semibold text-gray-800">{report.facilitadora}</span></p>}
-              </div>
-            )}
-
-            {template.map(({ eje, hitos }) => {
-              const area = hitos.map((h) => ({ h, val: report.hitos[h] ?? null }));
-              return (
-                <div key={eje}>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">{eje}</p>
-                  <div className="space-y-1">
-                    {area.map(({ h, val }) => (
-                      <div key={h} className="flex items-center justify-between gap-2">
-                        <span className="text-sm text-gray-700 flex-1">{h}</span>
-                        {val ? (
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${HITO_COLOR[val]}`}>
-                            {HITO_LABEL[val]}
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-gray-300 shrink-0">—</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  {report.textos?.[eje] && (
-                    <div className="mt-2 bg-gray-50 rounded-lg px-3 py-2">
-                      <p className="text-xs text-gray-600 italic">{report.textos[eje]}</p>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            {report.observaciones && (
+          <div className="flex-1 overflow-y-auto p-5">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-4 text-sm">
               <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Observaciones</p>
-                <p className="text-sm text-gray-700">{report.observaciones}</p>
+                <p className="font-bold text-base text-gray-900">{childName}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{report.period} · ECO {report.ecoNumber ?? 0}</p>
+                {lider && <p className="text-xs text-gray-400 mt-0.5">Líder: {lider}{facilitadora ? ` · Facilitadora: ${facilitadora}` : ""}</p>}
               </div>
-            )}
+              {template.map(({ eje, hitos: hitoList }) => {
+                const vals = hitoList.map(h => ({ h, v: hitos[h] ?? null }));
+                const hasAny = vals.some(x => x.v !== null);
+                return (
+                  <div key={eje}>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">{eje}</p>
+                    {hasAny ? (
+                      <div className="space-y-1">
+                        {vals.filter(x => x.v !== null).map(({ h, v }) => (
+                          <div key={h} className="flex items-start gap-2">
+                            <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${v === "L" ? "bg-green-100 text-green-700" : v === "P" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"}`}>{HITO_LABEL[v!]}</span>
+                            <span className="text-xs text-gray-600">{h}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : <p className="text-xs text-gray-300 italic">Sin hitos marcados</p>}
+                    {textos[eje] && <p className="text-xs text-gray-600 mt-2 border-l-2 border-violet-200 pl-2 leading-relaxed">{textos[eje]}</p>}
+                  </div>
+                );
+              })}
+              {observaciones && (
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Observaciones</p>
+                  <p className="text-xs text-gray-600 leading-relaxed">{observaciones}</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -689,7 +784,7 @@ export default function Informes() {
         </div>
       </div>
 
-      {selected && <ReportModal report={selected} onClose={() => setSelected(null)} logoBase64={logoBase64} />}
+      {selected && <ReportModal report={selected} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); qc.invalidateQueries({ queryKey: ["all-reports"] }); }} logoBase64={logoBase64} />}
       {showNew && centerId && (
         <NewReportModal
           centerId={centerId}

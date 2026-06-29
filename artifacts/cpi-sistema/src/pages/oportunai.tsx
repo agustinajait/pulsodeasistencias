@@ -6,7 +6,7 @@ export default function Oportunai() {
         <h1 className="text-2xl font-bold mt-1">Oportunai</h1>
       </div>
       <iframe
-        src="https://oportunai.korai.lat/"
+        src="https://oportunai.korai.lat/empresa/asociacion-civil-camino-a-la-educacion-9upy"
         className="flex-1 w-full border-0"
         title="Oportunai"
         allow="fullscreen"

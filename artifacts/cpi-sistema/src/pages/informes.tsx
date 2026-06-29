@@ -204,21 +204,25 @@ function NewReportModal({
     }
   }
 
+  const childName = selectedChild ? `${selectedChild.apellido}, ${selectedChild.nombre}` : null;
+
   return (
     <div className="fixed inset-0 z-50 bg-white flex flex-col overflow-hidden">
-      <div className="flex flex-col h-full max-w-2xl mx-auto w-full">
-        {/* header */}
-        <div className="bg-[#1e1147] text-white px-5 pt-6 pb-5 shrink-0">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="text-white/50 text-[11px] font-semibold uppercase tracking-widest">Nuevo</div>
-              <h2 className="text-xl font-bold mt-0.5">Informe de desarrollo</h2>
-            </div>
-            <button onClick={onClose} className="text-white/60 hover:text-white p-1 mt-1"><X className="w-5 h-5" /></button>
+      {/* header */}
+      <div className="bg-[#1e1147] text-white px-5 pt-5 pb-4 shrink-0">
+        <div className="flex items-start justify-between max-w-7xl mx-auto">
+          <div>
+            <div className="text-white/50 text-[11px] font-semibold uppercase tracking-widest">Nuevo</div>
+            <h2 className="text-xl font-bold mt-0.5">Informe de desarrollo</h2>
           </div>
+          <button onClick={onClose} className="text-white/60 hover:text-white p-1 mt-1"><X className="w-5 h-5" /></button>
         </div>
+      </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+      <div className="flex-1 flex overflow-hidden">
+        {/* ── Formulario (izquierda) ── */}
+        <div className="flex flex-col flex-1 min-w-0 border-r border-gray-100">
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 max-w-2xl w-full mx-auto">
           {/* child search */}
           <div>
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Niño/a</p>
@@ -351,12 +355,64 @@ function NewReportModal({
           </div>
         </div>
 
-        <div className="px-5 py-4 border-t border-gray-100 shrink-0">
+        <div className="px-5 py-4 border-t border-gray-100 shrink-0 max-w-2xl w-full mx-auto">
           <Button onClick={handleSave} disabled={saving || !selectedChild} className="w-full">
             {saving ? "Guardando..." : "Guardar informe"}
           </Button>
         </div>
-      </div>
+        </div>{/* end left col */}
+
+        {/* ── Vista previa (derecha) ── */}
+        <div className="hidden lg:flex flex-col w-[420px] xl:w-[500px] shrink-0 bg-gray-50 overflow-y-auto">
+          <div className="px-5 py-3 border-b border-gray-200 bg-white shrink-0">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Vista previa</p>
+          </div>
+          <div className="flex-1 overflow-y-auto p-5">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-4 text-sm">
+              {/* header previa */}
+              <div>
+                <p className="font-bold text-base text-gray-900">{childName ?? <span className="text-gray-300 italic">Niño/a no seleccionado</span>}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{period} {eco != null ? `· ECO ${eco}` : ""}</p>
+                {lider && <p className="text-xs text-gray-400 mt-0.5">Líder: {lider}{facilitadora ? ` · Facilitadora: ${facilitadora}` : ""}</p>}
+              </div>
+              {/* hitos por eje */}
+              {template.map(({ eje, hitos: hitoList }) => {
+                const vals = hitoList.map(h => ({ h, v: hitos[h] ?? null }));
+                const hasAny = vals.some(x => x.v !== null);
+                return (
+                  <div key={eje}>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">{eje}</p>
+                    {hasAny ? (
+                      <div className="space-y-1">
+                        {vals.filter(x => x.v !== null).map(({ h, v }) => (
+                          <div key={h} className="flex items-start gap-2">
+                            <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${v === "L" ? "bg-green-100 text-green-700" : v === "P" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"}`}>{HITO_LABEL[v!]}</span>
+                            <span className="text-xs text-gray-600">{h}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-300 italic">Sin hitos marcados</p>
+                    )}
+                    {textos[eje] && (
+                      <p className="text-xs text-gray-600 mt-2 border-l-2 border-violet-200 pl-2 leading-relaxed">{textos[eje]}</p>
+                    )}
+                  </div>
+                );
+              })}
+              {observaciones && (
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Observaciones</p>
+                  <p className="text-xs text-gray-600 leading-relaxed">{observaciones}</p>
+                </div>
+              )}
+              {!childName && !Object.values(hitos).some(Boolean) && (
+                <p className="text-xs text-gray-300 italic text-center py-4">Completá el formulario para ver la vista previa</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>{/* end flex body */}
     </div>
   );
 }

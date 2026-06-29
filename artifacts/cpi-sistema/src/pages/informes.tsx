@@ -108,6 +108,99 @@ const HITO_COLOR: Record<string, string> = {
   N: "bg-red-100 text-red-700",
 };
 const HITO_LABEL: Record<string, string> = { L: "Logrado", P: "En proceso", N: "No logrado" };
+
+// ── Shared report preview (mirrors the printed output) ────────────────────
+function ReportPreview({
+  childName, period, ecoNumber, lider, facilitadora, hitos, textos, observaciones, template, logoBase64,
+}: {
+  childName: string | null; period: string; ecoNumber: number; lider: string; facilitadora: string;
+  hitos: Record<string, HitoVal>; textos: Record<string, string>; observaciones: string;
+  template: { eje: string; hitos: string[]; inf: string[] }[]; logoBase64?: string;
+}) {
+  const hasContent = childName || Object.values(hitos).some(Boolean);
+  if (!hasContent) return (
+    <p className="text-xs text-gray-300 italic text-center py-8">Completá el formulario para ver la vista previa</p>
+  );
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm text-sm overflow-hidden">
+      {/* header del informe */}
+      <div className="px-5 pt-5 pb-4 border-b border-gray-100">
+        {logoBase64 && <img src={logoBase64} alt="Logo" className="h-10 object-contain mb-3" />}
+        <div className="flex items-start justify-between">
+          <div>
+            <h3 className="font-bold text-base text-gray-900">{childName ?? "—"}</h3>
+            <p className="text-xs text-gray-500 mt-0.5">{period} · Sala ECO {ecoNumber}</p>
+            {(lider || facilitadora) && (
+              <p className="text-xs text-gray-400 mt-0.5">
+                {lider && `Líder: ${lider}`}{lider && facilitadora && " · "}{facilitadora && `Facilitadora: ${facilitadora}`}
+              </p>
+            )}
+          </div>
+          <div className="text-right shrink-0 ml-4">
+            <p className="text-[10px] font-bold text-[#1e1147] uppercase tracking-widest">Informe de Desarrollo</p>
+            <p className="text-[9px] text-gray-400 mt-0.5">Koratic</p>
+          </div>
+        </div>
+      </div>
+
+      {/* tabla de hitos */}
+      <div className="px-5 py-4 border-b border-gray-100">
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Hitos de desarrollo</p>
+        <table className="w-full text-xs border-collapse">
+          <thead>
+            <tr className="bg-gray-50">
+              <th className="text-left px-2 py-1.5 border border-gray-200 font-semibold text-gray-600 w-1/3">Área</th>
+              <th className="text-left px-2 py-1.5 border border-gray-200 font-semibold text-gray-600">Hito</th>
+              <th className="text-center px-2 py-1.5 border border-gray-200 font-semibold text-gray-600 w-20">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {template.flatMap(({ eje, hitos: hitoList }) =>
+              hitoList.map((h, i) => {
+                const val = hitos[h] ?? null;
+                return (
+                  <tr key={h} className={i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}>
+                    <td className="px-2 py-1 border border-gray-100 text-gray-500 align-top">{i === 0 ? eje : ""}</td>
+                    <td className="px-2 py-1 border border-gray-100 text-gray-700">{h}</td>
+                    <td className="px-2 py-1 border border-gray-100 text-center">
+                      {val ? (
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${HITO_COLOR[val]}`}>{HITO_LABEL[val]}</span>
+                      ) : (
+                        <span className="text-gray-300 text-[10px]">—</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* síntesis narrativa */}
+      {template.some(({ eje }) => textos[eje]) && (
+        <div className="px-5 py-4 border-b border-gray-100 space-y-3">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Síntesis narrativa</p>
+          {template.filter(({ eje }) => textos[eje]).map(({ eje }) => (
+            <div key={eje}>
+              <p className="text-[10px] font-bold text-[#1e1147] uppercase tracking-wide mb-0.5">{eje}</p>
+              <p className="text-xs text-gray-700 leading-relaxed">{textos[eje]}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* observaciones */}
+      {observaciones && (
+        <div className="px-5 py-4">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Observaciones generales</p>
+          <p className="text-xs text-gray-700 leading-relaxed">{observaciones}</p>
+        </div>
+      )}
+    </div>
+  );
+}
 const PERIODS = ["1er trimestre","2do trimestre","3er trimestre","1er cuatrimestre","2do cuatrimestre","Anual"];
 
 // ── Fetch ──────────────────────────────────────────────────────────────────
@@ -383,51 +476,21 @@ function NewReportModal({
         {/* ── Vista previa (derecha) ── */}
         <div className="hidden lg:flex flex-col w-[420px] xl:w-[500px] shrink-0 bg-gray-50 overflow-y-auto">
           <div className="px-5 py-3 border-b border-gray-200 bg-white shrink-0">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Vista previa</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Vista previa · Informe para la familia</p>
           </div>
           <div className="flex-1 overflow-y-auto p-5">
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-4 text-sm">
-              {/* header previa */}
-              <div>
-                <p className="font-bold text-base text-gray-900">{childName ?? <span className="text-gray-300 italic">Niño/a no seleccionado</span>}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{period} {eco != null ? `· ECO ${eco}` : ""}</p>
-                {lider && <p className="text-xs text-gray-400 mt-0.5">Líder: {lider}{facilitadora ? ` · Facilitadora: ${facilitadora}` : ""}</p>}
-              </div>
-              {/* hitos por eje */}
-              {template.map(({ eje, hitos: hitoList }) => {
-                const vals = hitoList.map(h => ({ h, v: hitos[h] ?? null }));
-                const hasAny = vals.some(x => x.v !== null);
-                return (
-                  <div key={eje}>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">{eje}</p>
-                    {hasAny ? (
-                      <div className="space-y-1">
-                        {vals.filter(x => x.v !== null).map(({ h, v }) => (
-                          <div key={h} className="flex items-start gap-2">
-                            <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${v === "L" ? "bg-green-100 text-green-700" : v === "P" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"}`}>{HITO_LABEL[v!]}</span>
-                            <span className="text-xs text-gray-600">{h}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-gray-300 italic">Sin hitos marcados</p>
-                    )}
-                    {textos[eje] && (
-                      <p className="text-xs text-gray-600 mt-2 border-l-2 border-violet-200 pl-2 leading-relaxed">{textos[eje]}</p>
-                    )}
-                  </div>
-                );
-              })}
-              {observaciones && (
-                <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Observaciones</p>
-                  <p className="text-xs text-gray-600 leading-relaxed">{observaciones}</p>
-                </div>
-              )}
-              {!childName && !Object.values(hitos).some(Boolean) && (
-                <p className="text-xs text-gray-300 italic text-center py-4">Completá el formulario para ver la vista previa</p>
-              )}
-            </div>
+            <ReportPreview
+              childName={childName}
+              period={period}
+              ecoNumber={eco}
+              lider={lider}
+              facilitadora={facilitadora}
+              hitos={hitos}
+              textos={textos}
+              observaciones={observaciones}
+              template={template}
+              logoBase64={logoBase64}
+            />
           </div>
         </div>
       </div>{/* end flex body */}
@@ -641,42 +704,21 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
         {/* ── Vista previa (derecha) ── */}
         <div className="hidden lg:flex flex-col w-[420px] xl:w-[500px] shrink-0 bg-gray-50 overflow-y-auto">
           <div className="px-5 py-3 border-b border-gray-200 bg-white shrink-0">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Vista previa</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Vista previa · Informe para la familia</p>
           </div>
           <div className="flex-1 overflow-y-auto p-5">
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-4 text-sm">
-              <div>
-                <p className="font-bold text-base text-gray-900">{childName}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{report.period} · ECO {report.ecoNumber ?? 0}</p>
-                {lider && <p className="text-xs text-gray-400 mt-0.5">Líder: {lider}{facilitadora ? ` · Facilitadora: ${facilitadora}` : ""}</p>}
-              </div>
-              {template.map(({ eje, hitos: hitoList }) => {
-                const vals = hitoList.map(h => ({ h, v: hitos[h] ?? null }));
-                const hasAny = vals.some(x => x.v !== null);
-                return (
-                  <div key={eje}>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">{eje}</p>
-                    {hasAny ? (
-                      <div className="space-y-1">
-                        {vals.filter(x => x.v !== null).map(({ h, v }) => (
-                          <div key={h} className="flex items-start gap-2">
-                            <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${v === "L" ? "bg-green-100 text-green-700" : v === "P" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"}`}>{HITO_LABEL[v!]}</span>
-                            <span className="text-xs text-gray-600">{h}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : <p className="text-xs text-gray-300 italic">Sin hitos marcados</p>}
-                    {textos[eje] && <p className="text-xs text-gray-600 mt-2 border-l-2 border-violet-200 pl-2 leading-relaxed">{textos[eje]}</p>}
-                  </div>
-                );
-              })}
-              {observaciones && (
-                <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Observaciones</p>
-                  <p className="text-xs text-gray-600 leading-relaxed">{observaciones}</p>
-                </div>
-              )}
-            </div>
+            <ReportPreview
+              childName={childName}
+              period={report.period}
+              ecoNumber={report.ecoNumber ?? 0}
+              lider={lider}
+              facilitadora={facilitadora}
+              hitos={hitos}
+              textos={textos}
+              observaciones={observaciones}
+              template={template}
+              logoBase64={logoBase64}
+            />
           </div>
         </div>
       </div>

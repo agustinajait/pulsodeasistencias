@@ -117,7 +117,7 @@ export default function Login() {
       {/* ── Panel izquierdo — branding ── */}
       <div
         className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 relative overflow-hidden"
-        style={{ background: "linear-gradient(150deg, #0f0a2e 0%, #1e1147 40%, #2d1b6e 100%)" }}
+        style={{ background: "linear-gradient(135deg, #3b0764 0%, #6d28d9 50%, #7c3aed 100%)" }}
       >
         {/* Decoración */}
         <div className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full opacity-[0.06]"

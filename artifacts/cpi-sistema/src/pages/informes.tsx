@@ -190,9 +190,31 @@ function ReportPreview({
 
       {/* observaciones */}
       {observaciones && (
-        <div className="px-5 py-4">
+        <div className="px-5 py-4 border-b border-gray-100">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Observaciones generales</p>
           <p className="text-xs text-gray-700 leading-relaxed">{observaciones}</p>
+        </div>
+      )}
+
+      {/* firmas */}
+      {(lider || facilitadora) && (
+        <div className="px-5 py-5 flex gap-6">
+          {lider && (
+            <div className="flex-1 text-center">
+              <div className="border-t border-gray-400 pt-2 mt-8">
+                <p className="text-xs font-semibold text-gray-700">{lider}</p>
+                <p className="text-[10px] text-gray-400">Líder pedagógica</p>
+              </div>
+            </div>
+          )}
+          {facilitadora && (
+            <div className="flex-1 text-center">
+              <div className="border-t border-gray-400 pt-2 mt-8">
+                <p className="text-xs font-semibold text-gray-700">{facilitadora}</p>
+                <p className="text-[10px] text-gray-400">Facilitadora</p>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -552,18 +574,22 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
       })
     ).join("");
     const textoSections = template.filter(({ eje }) => textos[eje]).map(({ eje }) => textos[eje].trim()).join(" ");
-    const logoHtml = logoBase64 ? `<img src="${logoBase64}" style="height:60px;object-fit:contain;margin-bottom:8px;display:block" alt="Logo"/>` : "";
+    const logoHtml = logoBase64 ? `<img src="${logoBase64}" style="height:60px;object-fit:contain" alt="Logo"/>` : "";
+    const firmaLider = lider ? `<div style="flex:1;text-align:center"><div style="border-top:1px solid #374151;padding-top:6px;margin-top:40px;font-size:11px;color:#374151">${lider}<br/><span style="color:#6b7280">Líder pedagógica</span></div></div>` : "";
+    const firmaFacilitadora = facilitadora ? `<div style="flex:1;text-align:center"><div style="border-top:1px solid #374151;padding-top:6px;margin-top:40px;font-size:11px;color:#374151">${facilitadora}<br/><span style="color:#6b7280">Facilitadora</span></div></div>` : "";
+    const firmas = (firmaLider || firmaFacilitadora) ? `<div style="display:flex;gap:40px;margin-top:40px;padding-top:16px;border-top:1px solid #e5e7eb">${firmaLider}${firmaFacilitadora}</div>` : "";
     w.document.write(`<html><head><title>Informe ${childName}</title>
-      <style>body{font-family:sans-serif;font-size:12px;margin:20px}table{width:100%;border-collapse:collapse}th{background:#f3f4f6;padding:6px 8px;border:1px solid #e5e7eb;text-align:left}.header{display:flex;align-items:center;gap:16px;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e5e7eb}</style>
+      <style>body{font-family:sans-serif;font-size:12px;margin:32px}table{width:100%;border-collapse:collapse}th{background:#f3f4f6;padding:6px 8px;border:1px solid #e5e7eb;text-align:left}.header{display:flex;align-items:center;gap:16px;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #1e1147}@media print{body{margin:20px}}</style>
       </head><body>
-      <div class="header">${logoHtml}<div><h2 style="margin:0 0 4px 0">Informe de Desarrollo</h2><p style="margin:0;color:#6b7280;font-size:11px">Koratic · Infraestructura de Gestión Social</p></div></div>
-      <p><strong>Niño/a:</strong> ${childName}</p>
-      <p><strong>Período:</strong> ${report.period}</p>
-      ${lider ? `<p><strong>Líder:</strong> ${lider}</p>` : ""}
-      ${facilitadora ? `<p><strong>Facilitadora:</strong> ${facilitadora}</p>` : ""}
-      <table><thead><tr><th>Área</th><th>Hito</th><th>Estado</th></tr></thead><tbody>${hitoRows}</tbody></table>
-      ${textoSections ? `<div style="margin-top:16px"><h3 style="margin-bottom:6px">Síntesis de desarrollo</h3><p style="line-height:1.7;color:#374151">${textoSections}</p></div>` : ""}
-      ${observaciones ? `<div style="margin-top:12px"><strong>Observaciones:</strong> ${observaciones}</div>` : ""}
+      <div class="header">${logoHtml}<div style="margin-left:${logoBase64 ? "0" : "0"}"><h2 style="margin:0 0 2px 0;color:#1e1147">Informe de Desarrollo</h2><p style="margin:0;color:#6b7280;font-size:11px">Período: ${report.period}</p></div></div>
+      <p style="margin:4px 0"><strong>Niño/a:</strong> ${childName}</p>
+      ${lider ? `<p style="margin:4px 0;color:#6b7280;font-size:11px">Líder: ${lider}${facilitadora ? ` · Facilitadora: ${facilitadora}` : ""}</p>` : ""}
+      <div style="margin-top:16px">
+      <table><thead><tr><th>Área</th><th>Hito</th><th style="width:100px">Estado</th></tr></thead><tbody>${hitoRows}</tbody></table>
+      </div>
+      ${textoSections ? `<div style="margin-top:20px"><h3 style="margin-bottom:8px;color:#1e1147">Síntesis de desarrollo</h3><p style="line-height:1.8;color:#374151">${textoSections}</p></div>` : ""}
+      ${observaciones ? `<div style="margin-top:16px;padding:12px;background:#f9fafb;border-radius:6px"><strong>Observaciones generales:</strong><br/>${observaciones}</div>` : ""}
+      ${firmas}
       </body></html>`);
     w.document.close();
     w.print();

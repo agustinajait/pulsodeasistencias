@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useListRooms } from "@workspace/api-client-react";
-import { Search, FileText, ChevronRight, X, Printer, Plus } from "lucide-react";
+import { Search, FileText, ChevronRight, X, Printer, Plus, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -808,6 +808,9 @@ export default function Informes() {
     return Object.values(map).sort((a, b) => a.apellido.localeCompare(b.apellido));
   }, [filtered]);
 
+  const isCoord = role === "admin" || role === "superadmin" || role === "coordinacion";
+  const { toast } = useToast();
+
   function hitoSummary(r: Report) {
     const L = Object.values(r.hitos).filter((v) => v === "L").length;
     const P = Object.values(r.hitos).filter((v) => v === "P").length;
@@ -900,26 +903,41 @@ export default function Informes() {
               {childReports.map((r) => {
                 const { L, P, N } = hitoSummary(r);
                 return (
-                  <button
-                    key={r.id}
-                    onClick={() => setSelected(r)}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-violet-50/50 transition-colors border-b border-gray-50 last:border-0 text-left"
-                  >
-                    <FileText className="w-4 h-4 text-violet-400 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-gray-800">{r.period}</p>
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${STATUS_CLASS[r.status ?? "borrador"]}`}>{STATUS_LABEL[r.status ?? "borrador"]}</span>
+                  <div key={r.id} className="flex items-center border-b border-gray-50 last:border-0 group">
+                    <button
+                      onClick={() => setSelected(r)}
+                      className="flex-1 flex items-center gap-3 px-4 py-3 hover:bg-violet-50/50 transition-colors text-left min-w-0"
+                    >
+                      <FileText className="w-4 h-4 text-violet-400 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-gray-800">{r.period}</p>
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${STATUS_CLASS[r.status ?? "borrador"]}`}>{STATUS_LABEL[r.status ?? "borrador"]}</span>
+                        </div>
+                        <div className="flex gap-2 mt-0.5">
+                          {L > 0 && <span className="text-[10px] font-bold text-green-600">{L}L</span>}
+                          {P > 0 && <span className="text-[10px] font-bold text-amber-600">{P}P</span>}
+                          {N > 0 && <span className="text-[10px] font-bold text-red-500">{N}N</span>}
+                          {r.lider && <span className="text-[10px] text-gray-400">· {r.lider}</span>}
+                        </div>
                       </div>
-                      <div className="flex gap-2 mt-0.5">
-                        {L > 0 && <span className="text-[10px] font-bold text-green-600">{L}L</span>}
-                        {P > 0 && <span className="text-[10px] font-bold text-amber-600">{P}P</span>}
-                        {N > 0 && <span className="text-[10px] font-bold text-red-500">{N}N</span>}
-                        {r.lider && <span className="text-[10px] text-gray-400">· {r.lider}</span>}
-                      </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
-                  </button>
+                      <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
+                    </button>
+                    {isCoord && (
+                      <button
+                        onClick={async () => {
+                          if (!confirm(`¿Eliminar informe de ${nombre} ${apellido} (${r.period})?`)) return;
+                          const res = await fetch(`${BASE}/children/${r.childId}/reports/${r.id}`, { method: "DELETE" });
+                          if (res.ok) { toast({ title: "Informe eliminado" }); qc.invalidateQueries({ queryKey: ["all-reports"] }); }
+                          else toast({ title: "Error al eliminar", variant: "destructive" });
+                        }}
+                        className="px-3 py-3 text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
+                        title="Eliminar informe"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 );
               })}
             </div>

@@ -563,6 +563,17 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
 
   async function handleSave() { await saveWithStatus(status); }
 
+  async function handleDelete() {
+    if (!confirm(`¿Eliminár el informe de ${childName} (${report.period})? Esta acción no se puede deshacer.`)) return;
+    try {
+      const res = await fetch(`${BASE}/children/${report.childId}/reports/${report.id}`, { method: "DELETE" });
+      if (res.ok) { toast({ title: "Informe eliminado" }); onSaved(); }
+      else toast({ title: "Error al eliminar", variant: "destructive" });
+    } catch {
+      toast({ title: "Error de conexión", variant: "destructive" });
+    }
+  }
+
   function handlePrint() {
     const w = window.open("", "_blank");
     if (!w) return;
@@ -711,6 +722,9 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
             )}
             {isCoord && (
               <>
+                <button onClick={handleDelete} className="text-xs font-semibold text-red-400 hover:text-red-600 px-2 py-2 rounded-lg hover:bg-red-50 transition-colors shrink-0">
+                  Eliminar
+                </button>
                 <Button variant="outline" onClick={handleSave} disabled={saving} className="flex-1">
                   {saving ? "Guardando..." : "Guardar cambios"}
                 </Button>

@@ -910,29 +910,6 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
               </div>
             </div>
 
-            {/* firmas */}
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Firmas</p>
-              <SignatureBlock
-                label="Líder"
-                name={lider}
-                data={firmaLiderData}
-                at={firmaLiderAt}
-                canSign={isSala}
-                onSign={(d) => sign("lider", d)}
-                onClear={() => clearSign("lider")}
-              />
-              <SignatureBlock
-                label="Facilitadora"
-                name={facilitadora}
-                data={firmaFacilitadoraData}
-                at={firmaFacilitadoraAt}
-                canSign={isSala}
-                onSign={(d) => sign("facilitadora", d)}
-                onClear={() => clearSign("facilitadora")}
-              />
-            </div>
-
             {/* hitos por eje */}
             {template.map(({ eje, hitos: hitoList }) => (
               <div key={eje}>
@@ -994,6 +971,29 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
               <textarea value={observaciones} onChange={(e) => setObservaciones(e.target.value)}
                 placeholder="Observaciones adicionales..." rows={3}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm resize-none" />
+            </div>
+
+            {/* firmas */}
+            <div className="space-y-2 pt-2 border-t border-gray-100">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Firmas</p>
+              <SignatureBlock
+                label="Líder"
+                name={lider}
+                data={firmaLiderData}
+                at={firmaLiderAt}
+                canSign={isSala}
+                onSign={(d) => sign("lider", d)}
+                onClear={() => clearSign("lider")}
+              />
+              <SignatureBlock
+                label="Facilitadora"
+                name={facilitadora}
+                data={firmaFacilitadoraData}
+                at={firmaFacilitadoraAt}
+                canSign={isSala}
+                onSign={(d) => sign("facilitadora", d)}
+                onClear={() => clearSign("facilitadora")}
+              />
             </div>
           </div>
 

@@ -177,7 +177,8 @@ router.get("/dashboard/alerts", async (req, res) => {
       ? await db.select().from(childrenTable).where(and(eq(childrenTable.activo, true), inArray(childrenTable.roomId, roomIds)))
       : await db.select().from(childrenTable).where(eq(childrenTable.activo, true));
     const roomMap: Record<number, number> = {};
-    rooms.forEach((r) => (roomMap[r.id] = r.ecoNumber));
+    const centerMap: Record<number, number> = {};
+    rooms.forEach((r) => { roomMap[r.id] = r.ecoNumber; centerMap[r.id] = r.centerId; });
 
     if (!active.length) {
       res.json([]);
@@ -213,7 +214,9 @@ router.get("/dashboard/alerts", async (req, res) => {
         childId: kid.id,
         apellido: kid.apellido,
         nombre: kid.nombre,
+        roomId: kid.roomId,
         ecoNumber: roomMap[kid.roomId] ?? 0,
+        centerId: centerMap[kid.roomId] ?? null,
         celular: kid.celular ?? null,
         famNombre: kid.famNombre ?? null,
         famApellido: kid.famApellido ?? null,

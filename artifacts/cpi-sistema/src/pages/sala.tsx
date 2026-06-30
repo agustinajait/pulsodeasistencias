@@ -50,7 +50,7 @@ function dayColor(att: AttendanceRecord[], total: number) {
 }
 
 export default function SalaPage() {
-  const { role, ecoNumber, logout } = useAuth();
+  const { role, ecoNumber, centerId: authCenterId, logout } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -79,7 +79,7 @@ export default function SalaPage() {
   // Resolve actual DB roomId by matching ecoNumber — robust against re-seeds
   const roomInfo = isCoord
     ? rooms.data?.find((r: Room) => r.id === superRoomId) ?? null
-    : rooms.data?.find((r: Room) => r.ecoNumber === ecoNumber);
+    : rooms.data?.find((r: Room) => r.ecoNumber === ecoNumber && r.centerId === authCenterId);
   // urlRoomId tiene prioridad (viene del admin al hacer click en tarjeta de sala)
   const roomId = urlRoomId ?? (isCoord ? superRoomId : (roomInfo?.id ?? null));
 
@@ -110,7 +110,7 @@ export default function SalaPage() {
   const salaAlerts = useMemo(
     () => isCoord
       ? (allAlerts.data ?? []).filter((a: Alert) => a.roomId === roomId)
-      : (allAlerts.data ?? []).filter((a: Alert) => a.ecoNumber === ecoNumber),
+      : (allAlerts.data ?? []).filter((a: Alert) => a.ecoNumber === ecoNumber && a.centerId === authCenterId),
     [allAlerts.data, ecoNumber, roomId, isCoord]
   );
 

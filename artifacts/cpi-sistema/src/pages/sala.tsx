@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useListChildren, useListAttendance, useMarkAttendance, getListChildrenQueryKey, getListAttendanceQueryKey, useGetRoomsSummary, getGetRoomsSummaryQueryKey, useListRooms, useGetAlerts, useListCenters } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -50,10 +50,20 @@ function dayColor(att: AttendanceRecord[], total: number) {
 }
 
 export default function SalaPage() {
-  const { role, ecoNumber, centerId: authCenterId, logout } = useAuth();
+  const { role, ecoNumber, centerId: authCenterId, centerName, logout } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const profileQ = useQuery({
+    queryKey: ["center-profile", authCenterId],
+    queryFn: async () => {
+      const r = await fetch(`/api/centers/${authCenterId}/profile`);
+      return r.ok ? r.json() : null;
+    },
+    enabled: !!authCenterId,
+  });
+  const coordinadorNombre: string = profileQ.data?.coordinadorNombre ?? "";
 
   const [search, setSearch] = useState("");
   const [calMonth, setCalMonth] = useState(MES_ACTUAL);
@@ -129,8 +139,11 @@ export default function SalaPage() {
     if (!phone) return null;
     // Argentina: prefijo 549 para celulares (54 + 9 + número sin 0 inicial)
     const fullPhone = phone.startsWith("54") ? phone : `549${phone}`;
+    const primerNombreNino = (alert.nombre ?? "").split(" ")[0];
+    const primerNombreFam = (alert.famNombre ?? "familia").split(" ")[0];
+    const firma = coordinadorNombre ? `\n\n${coordinadorNombre}${centerName ? ` — ${centerName}` : ""}` : (centerName ? `\n\n${centerName}` : "");
     const msg = encodeURIComponent(
-      `Hola ${alert.famNombre ?? "familia"}, le contactamos del CPI Norte. Notamos que ${alert.apellido} ${alert.nombre} lleva ${alert.consecutiveAbsences} día${alert.consecutiveAbsences !== 1 ? "s" : ""} sin asistir. ¿Todo bien?`
+      `Hola ${primerNombreFam}, notamos que ${primerNombreNino} no vino hace ${alert.consecutiveAbsences} día${alert.consecutiveAbsences !== 1 ? "s" : ""} y queríamos saber cómo estaba y qué había pasado.${firma}`
     );
     return `https://wa.me/${fullPhone}?text=${msg}`;
   }

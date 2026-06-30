@@ -98,17 +98,19 @@ function RoomCard({ room, onNavigate }: { room: RoomSummary; onNavigate?: (roomI
   );
 }
 
-function AlertCard({ alert }: { alert: Alert }) {
+function AlertCard({ alert, coordinadorNombre, centerName }: { alert: Alert; coordinadorNombre?: string; centerName?: string }) {
+  const primerNombreNino = (alert.nombre ?? "").split(" ")[0];
+  const primerNombreFam = (alert.famNombre ?? "familia").split(" ")[0];
+  const firma = coordinadorNombre ? `\n\n${coordinadorNombre}${centerName ? ` — ${centerName}` : ""}` : (centerName ? `\n\n${centerName}` : "");
+  const msgText = `Hola ${primerNombreFam}, notamos que ${primerNombreNino} no vino hace ${alert.consecutiveAbsences} día${alert.consecutiveAbsences !== 1 ? "s" : ""} y queríamos saber cómo estaba y qué había pasado.${firma}`;
+
   function waLink() {
     if (!alert.celular) return null;
     const firstNumber = alert.celular.split(/[\/,;\s]+/)[0];
     const phone = firstNumber.replace(/\D/g, "").replace(/^0+/, "");
     if (!phone) return null;
     const fullPhone = phone.startsWith("54") ? phone : `549${phone}`;
-    const msg = encodeURIComponent(
-      `Hola ${alert.famNombre ?? "familia"}, le contactamos del CPI Norte, sala ECO ${alert.ecoNumber}. Notamos que ${alert.apellido} ${alert.nombre} lleva ${alert.consecutiveAbsences} día${alert.consecutiveAbsences !== 1 ? "s" : ""} sin asistir. ¿Podemos ponernos en contacto?`
-    );
-    return `https://wa.me/${fullPhone}?text=${msg}`;
+    return `https://wa.me/${fullPhone}?text=${encodeURIComponent(msgText)}`;
   }
   const urgency = alert.consecutiveAbsences >= 5 ? "border-red-500" : alert.consecutiveAbsences >= 3 ? "border-amber-500" : "border-yellow-400";
   return (
@@ -138,8 +140,8 @@ function AlertCard({ alert }: { alert: Alert }) {
         )}
       </div>
       {alert.celular && (
-        <div className="mt-3 bg-green-50 border border-green-200 rounded-lg p-2.5 text-xs text-green-900 leading-relaxed">
-          Hola {alert.famNombre ?? "familia"}, le contactamos del CPI Norte, sala ECO {alert.ecoNumber}. Notamos que {alert.apellido} {alert.nombre} lleva {alert.consecutiveAbsences} días sin asistir. ¿Podemos ponernos en contacto?
+        <div className="mt-3 bg-green-50 border border-green-200 rounded-lg p-2.5 text-xs text-green-900 leading-relaxed whitespace-pre-line">
+          {msgText}
         </div>
       )}
     </div>
@@ -797,6 +799,23 @@ export default function AdminPage() {
     staleTime: 30_000,
   });
   const alerts = useGetAlerts(centerParam);
+  const centerProfilesQ = useQuery<Record<number, { coordinadorNombre?: string; centerName?: string }>>({
+    queryKey: ["center-profiles-all"],
+    queryFn: async () => {
+      const res = await fetch("/api/centers");
+      if (!res.ok) return {};
+      const centers: Array<{ id: number; name: string }> = await res.json();
+      const profiles: Record<number, { coordinadorNombre?: string; centerName?: string }> = {};
+      await Promise.all(centers.map(async (c) => {
+        const r = await fetch(`/api/centers/${c.id}/profile`);
+        const p = r.ok ? await r.json() : {};
+        profiles[c.id] = { coordinadorNombre: p.coordinadorNombre, centerName: c.name };
+      }));
+      return profiles;
+    },
+    staleTime: 60_000,
+  });
+  const centerProfiles = centerProfilesQ.data ?? {};
   const recentContacts = useGetRecentContacts();
   const roomSummary = useGetRoomsSummary(centerParam);
   const allChildren = useListChildren({ ...centerParam, active: true });
@@ -1406,7 +1425,12 @@ export default function AdminPage() {
             )}
             <div className="space-y-3">
               {(alerts.data ?? []).map((alert: Alert) => (
-                <AlertCard key={alert.childId} alert={alert} />
+                <AlertCard
+                  key={alert.childId}
+                  alert={alert}
+                  coordinadorNombre={centerProfiles[alert.centerId ?? 0]?.coordinadorNombre}
+                  centerName={centerProfiles[alert.centerId ?? 0]?.centerName}
+                />
               ))}
             </div>
           </TabsContent>

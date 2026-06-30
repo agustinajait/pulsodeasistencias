@@ -339,7 +339,7 @@ function NewReportModal({
   const childName = selectedChild ? `${selectedChild.apellido}, ${selectedChild.nombre}` : null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-white flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-white flex flex-col" style={{height: '100dvh'}}>
       {/* header */}
       <div className="bg-[#1e1147] text-white px-5 pt-5 pb-4 shrink-0">
         <div className="flex items-start justify-between max-w-7xl mx-auto">
@@ -351,9 +351,9 @@ function NewReportModal({
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden min-h-0">
         {/* ── Formulario (izquierda) ── */}
-        <div className="flex flex-col flex-1 min-w-0 border-r border-gray-100">
+        <div className="flex flex-col flex-1 min-w-0 min-h-0 border-r border-gray-100">
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 max-w-2xl w-full mx-auto">
           {/* child search */}
           <div>
@@ -637,7 +637,7 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-white flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-white flex flex-col" style={{height: '100dvh'}}>
       {/* header */}
       <div className="bg-[#1e1147] text-white px-5 pt-5 pb-4 shrink-0">
         <div className="flex items-start justify-between max-w-7xl mx-auto">
@@ -653,9 +653,9 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden min-h-0">
         {/* ── Formulario (izquierda) ── */}
-        <div className="flex flex-col flex-1 min-w-0 border-r border-gray-100">
+        <div className="flex flex-col flex-1 min-w-0 min-h-0 border-r border-gray-100">
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 max-w-2xl w-full mx-auto">
             {/* líder / facilitadora */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

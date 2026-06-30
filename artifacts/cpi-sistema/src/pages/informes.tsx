@@ -287,6 +287,7 @@ function NewReportModal({
   const [textos, setTextos] = useState<Record<string, string>>({});
   const [observaciones, setObservaciones] = useState("");
   const [saving, setSaving] = useState(false);
+  const [mobilePreview, setMobilePreview] = useState(false);
 
   const template = ECO_TEMPLATES[eco] ?? [];
 
@@ -348,13 +349,21 @@ function NewReportModal({
             <div className="text-white/50 text-[11px] font-semibold uppercase tracking-widest">Nuevo</div>
             <h2 className="text-xl font-bold mt-0.5">Informe de desarrollo</h2>
           </div>
-          <button onClick={onClose} className="text-white/60 hover:text-white p-1 mt-1"><X className="w-5 h-5" /></button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setMobilePreview((v) => !v)}
+              className="lg:hidden text-xs font-semibold text-white/70 hover:text-white border border-white/30 rounded-lg px-2.5 py-1 transition-colors"
+            >
+              {mobilePreview ? "← Editar" : "Vista previa"}
+            </button>
+            <button onClick={onClose} className="text-white/60 hover:text-white p-1 mt-1"><X className="w-5 h-5" /></button>
+          </div>
         </div>
       </div>
 
       <div className="flex-1 flex overflow-hidden min-h-0">
-        {/* ── Formulario (izquierda) ── */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 max-w-2xl w-full mx-auto">
+        {/* ── Formulario (izquierda) — oculto en mobile cuando se muestra preview ── */}
+        <div className={`${mobilePreview ? "hidden lg:flex" : "flex"} flex-1 overflow-y-auto px-5 py-4 space-y-5 max-w-2xl w-full mx-auto flex-col`}>
           {/* child search */}
           <div>
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Niño/a</p>
@@ -512,8 +521,8 @@ function NewReportModal({
           </div>
         </div>
 
-        {/* ── Vista previa (derecha) ── */}
-        <div className="hidden lg:flex flex-col w-[420px] xl:w-[500px] shrink-0 bg-gray-50 overflow-y-auto">
+        {/* ── Vista previa — desktop siempre, mobile cuando mobilePreview=true ── */}
+        <div className={`${mobilePreview ? "flex" : "hidden lg:flex"} flex-col lg:w-[420px] xl:w-[500px] flex-1 lg:flex-none shrink-0 bg-gray-50 overflow-y-auto`}>
           <div className="px-5 py-3 border-b border-gray-200 bg-white shrink-0">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Vista previa · Informe para la familia</p>
           </div>
@@ -566,6 +575,7 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
 
   const isCoord = userRole === "admin" || userRole === "superadmin" || userRole === "coordinacion";
   const isSala = !isCoord;
+  const [mobilePreview, setMobilePreview] = useState(false);
 
   function setHito(h: string, val: HitoVal) { setHitos((hh) => ({ ...hh, [h]: val })); }
   function setTexto(eje: string, val: string) { setTextos((t) => ({ ...t, [eje]: val })); }
@@ -693,13 +703,21 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
             <h2 className="text-xl font-bold mt-0.5">{childName}</h2>
             <p className="text-white/60 text-sm mt-0.5">Período: {report.period} · Sala ECO {report.ecoNumber ?? 0}</p>
           </div>
-          <button onClick={onClose} className="text-white/60 hover:text-white p-1 mt-1"><X className="w-5 h-5" /></button>
+          <div className="flex items-center gap-2 mt-1">
+            <button
+              onClick={() => setMobilePreview((v) => !v)}
+              className="lg:hidden text-xs font-semibold text-white/70 hover:text-white border border-white/30 rounded-lg px-2.5 py-1 transition-colors"
+            >
+              {mobilePreview ? "← Editar" : "Vista previa"}
+            </button>
+            <button onClick={onClose} className="text-white/60 hover:text-white p-1"><X className="w-5 h-5" /></button>
+          </div>
         </div>
       </div>
 
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* ── Formulario (izquierda) ── */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 max-w-2xl w-full mx-auto">
+        <div className={`${mobilePreview ? "hidden lg:flex lg:flex-col" : "flex flex-col"} flex-1 overflow-y-auto px-5 py-4 space-y-5 max-w-2xl w-full mx-auto`}>
             {/* líder / facilitadora */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -777,7 +795,7 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
           </div>
 
         {/* ── Vista previa (derecha) ── */}
-        <div className="hidden lg:flex flex-col w-[420px] xl:w-[500px] shrink-0 bg-gray-50 overflow-y-auto">
+        <div className={`${mobilePreview ? "flex" : "hidden lg:flex"} flex-col lg:w-[420px] xl:w-[500px] w-full shrink-0 bg-gray-50 overflow-y-auto`}>
           <div className="px-5 py-3 border-b border-gray-200 bg-white shrink-0">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Vista previa · Informe para la familia</p>
           </div>

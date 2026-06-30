@@ -312,14 +312,14 @@ function NewReportModal({
     setTextos((t) => ({ ...t, [eje]: val }));
   }
 
-  async function handleSave() {
+  async function handleSave(statusOverride?: string) {
     if (!selectedChild) { toast({ title: "Seleccioná un niño/a", variant: "destructive" }); return; }
     setSaving(true);
     try {
       const res = await fetch(`${BASE}/children/${selectedChild.id}/reports`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ period, ecoNumber: eco, lider: lider || null, facilitadora: facilitadora || null, hitos, textos, observaciones: observaciones || null }),
+        body: JSON.stringify({ period, ecoNumber: eco, lider: lider || null, facilitadora: facilitadora || null, hitos, textos, observaciones: observaciones || null, status: statusOverride ?? "borrador" }),
       });
       if (res.ok) {
         toast({ title: "Informe guardado" });
@@ -353,7 +353,6 @@ function NewReportModal({
 
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* ── Formulario (izquierda) ── */}
-        <div className="flex flex-col flex-1 min-w-0 min-h-0 border-r border-gray-100">
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 max-w-2xl w-full mx-auto">
           {/* child search */}
           <div>
@@ -512,16 +511,6 @@ function NewReportModal({
           </div>
         </div>
 
-        <div className="px-5 py-4 border-t border-gray-100 shrink-0 max-w-2xl w-full mx-auto space-y-2">
-          {!selectedChild && (
-            <p className="text-xs text-center text-amber-600 font-semibold">⚠ Primero buscá y seleccioná un niño/a arriba</p>
-          )}
-          <Button onClick={handleSave} disabled={saving || !selectedChild} className="w-full">
-            {saving ? "Guardando..." : "Guardar informe"}
-          </Button>
-        </div>
-        </div>{/* end left col */}
-
         {/* ── Vista previa (derecha) ── */}
         <div className="hidden lg:flex flex-col w-[420px] xl:w-[500px] shrink-0 bg-gray-50 overflow-y-auto">
           <div className="px-5 py-3 border-b border-gray-200 bg-white shrink-0">
@@ -543,6 +532,19 @@ function NewReportModal({
           </div>
         </div>
       </div>{/* end flex body */}
+
+      {/* footer — fixed at bottom, always visible */}
+      <div className="px-4 py-4 border-t border-gray-100 bg-white shrink-0 space-y-2">
+        {!selectedChild && (
+          <p className="text-xs text-center text-amber-600 font-semibold">⚠ Primero buscá y seleccioná un niño/a arriba</p>
+        )}
+        <Button onClick={handleSave} disabled={saving || !selectedChild} className="w-full">
+          {saving ? "Guardando..." : "Guardar borrador"}
+        </Button>
+        <Button onClick={() => handleSave("en_revision")} disabled={saving || !selectedChild} className="w-full bg-amber-500 hover:bg-amber-600 text-white">
+          {saving ? "Enviando..." : "Enviar para validar"}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -655,8 +657,7 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
 
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* ── Formulario (izquierda) ── */}
-        <div className="flex flex-col flex-1 min-w-0 min-h-0 border-r border-gray-100">
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 max-w-2xl w-full mx-auto">
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 max-w-2xl w-full mx-auto">
             {/* líder / facilitadora */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -733,50 +734,6 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
             </div>
           </div>
 
-          {/* footer */}
-          <div className="px-4 py-4 border-t border-gray-100 shrink-0 max-w-2xl w-full mx-auto space-y-2">
-            {isSala && (
-              <>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={handleSave} disabled={saving} className="flex-1">
-                    {saving ? "Guardando..." : "Guardar borrador"}
-                  </Button>
-                  {status !== "aprobado" && (
-                    <Button onClick={() => saveWithStatus("en_revision")} disabled={saving} className="flex-1 bg-amber-500 hover:bg-amber-600 text-white">
-                      {saving ? "Enviando..." : "Enviar para validar"}
-                    </Button>
-                  )}
-                </div>
-                <button onClick={handlePrint} className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-violet-600 border border-gray-200 rounded-lg px-3 py-2">
-                  <Printer className="w-3.5 h-3.5" />Imprimir / PDF
-                </button>
-              </>
-            )}
-            {isCoord && (
-              <>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={handleSave} disabled={saving} className="flex-1">
-                    {saving ? "Guardando..." : "Guardar cambios"}
-                  </Button>
-                  {status !== "aprobado" && (
-                    <Button onClick={() => saveWithStatus("aprobado")} disabled={saving} className="flex-1 bg-green-600 hover:bg-green-700 text-white">
-                      {saving ? "Aprobando..." : "Aprobar informe"}
-                    </Button>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={handlePrint} className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-violet-600 border border-gray-200 rounded-lg px-3 py-2">
-                    <Printer className="w-3.5 h-3.5" />Imprimir / PDF
-                  </button>
-                  <button onClick={handleDelete} className="text-xs font-semibold text-red-400 hover:text-red-600 px-4 py-2 rounded-lg border border-red-200 hover:bg-red-50 transition-colors">
-                    Eliminar
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
         {/* ── Vista previa (derecha) ── */}
         <div className="hidden lg:flex flex-col w-[420px] xl:w-[500px] shrink-0 bg-gray-50 overflow-y-auto">
           <div className="px-5 py-3 border-b border-gray-200 bg-white shrink-0">
@@ -797,6 +754,49 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
             />
           </div>
         </div>
+      </div>
+
+      {/* footer — siempre visible, fuera del scroll */}
+      <div className="px-4 py-4 border-t border-gray-100 bg-white shrink-0 space-y-2">
+        {isSala && (
+          <>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleSave} disabled={saving} className="flex-1">
+                {saving ? "Guardando..." : "Guardar borrador"}
+              </Button>
+              {status !== "aprobado" && (
+                <Button onClick={() => saveWithStatus("en_revision")} disabled={saving} className="flex-1 bg-amber-500 hover:bg-amber-600 text-white">
+                  {saving ? "Enviando..." : "Enviar para validar"}
+                </Button>
+              )}
+            </div>
+            <button onClick={handlePrint} className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-violet-600 border border-gray-200 rounded-lg px-3 py-2">
+              <Printer className="w-3.5 h-3.5" />Imprimir / PDF
+            </button>
+          </>
+        )}
+        {isCoord && (
+          <>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleSave} disabled={saving} className="flex-1">
+                {saving ? "Guardando..." : "Guardar cambios"}
+              </Button>
+              {status !== "aprobado" && (
+                <Button onClick={() => saveWithStatus("aprobado")} disabled={saving} className="flex-1 bg-green-600 hover:bg-green-700 text-white">
+                  {saving ? "Aprobando..." : "Aprobar informe"}
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={handlePrint} className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-violet-600 border border-gray-200 rounded-lg px-3 py-2">
+                <Printer className="w-3.5 h-3.5" />Imprimir / PDF
+              </button>
+              <button onClick={handleDelete} className="text-xs font-semibold text-red-400 hover:text-red-600 px-4 py-2 rounded-lg border border-red-200 hover:bg-red-50 transition-colors">
+                Eliminar
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

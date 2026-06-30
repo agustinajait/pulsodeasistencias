@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, childrenTable, attendanceTable, contactsTable, roomsTable } from "@workspace/db";
-import { eq, desc, gte, and, inArray } from "drizzle-orm";
+import { eq, desc, gte, and, inArray, ne } from "drizzle-orm";
 
 const router = Router();
 
@@ -35,7 +35,7 @@ router.get("/dashboard/summary", async (req, res) => {
       ? await db.select().from(childrenTable).where(inArray(childrenTable.roomId, roomIds))
       : await db.select().from(childrenTable);
     const allChildren = allChildrenQ;
-    const active = allChildren.filter((c) => c.activo);
+    const active = allChildren.filter((c) => c.activo && c.estado !== "EN REVISION");
     const discharged = allChildren.filter((c) => !c.activo);
 
     const todayAtt = await db
@@ -136,7 +136,7 @@ router.get("/dashboard/summary-by-center", async (req, res) => {
       const rooms = allRooms.filter((r) => r.centerId === cid);
       const roomIds = new Set(rooms.map((r) => r.id));
       const children = allChildren.filter((c) => roomIds.has(c.roomId));
-      const active = children.filter((c) => c.activo);
+      const active = children.filter((c) => c.activo && c.estado !== "EN REVISION");
       const discharged = children.filter((c) => !c.activo);
       const present = active.filter((c) => attByChild[c.id] === "P").length;
       const absent = active.filter((c) => attByChild[c.id] === "A").length;
@@ -174,8 +174,8 @@ router.get("/dashboard/alerts", async (req, res) => {
     const roomIds = rooms.map((r) => r.id);
 
     const active = roomIds.length > 0
-      ? await db.select().from(childrenTable).where(and(eq(childrenTable.activo, true), inArray(childrenTable.roomId, roomIds)))
-      : await db.select().from(childrenTable).where(eq(childrenTable.activo, true));
+      ? await db.select().from(childrenTable).where(and(eq(childrenTable.activo, true), ne(childrenTable.estado, "EN REVISION"), inArray(childrenTable.roomId, roomIds)))
+      : await db.select().from(childrenTable).where(and(eq(childrenTable.activo, true), ne(childrenTable.estado, "EN REVISION")));
     const roomMap: Record<number, number> = {};
     const centerMap: Record<number, number> = {};
     rooms.forEach((r) => { roomMap[r.id] = r.ecoNumber; centerMap[r.id] = r.centerId; });
@@ -249,7 +249,7 @@ router.get("/dashboard/monthly-trend", async (req, res) => {
     const allChildren = roomIds.length > 0
       ? await db.select().from(childrenTable).where(inArray(childrenTable.roomId, roomIds))
       : await db.select().from(childrenTable);
-    const activeIds = allChildren.filter((c) => c.activo).map((c) => c.id);
+    const activeIds = allChildren.filter((c) => c.activo && c.estado !== "EN REVISION").map((c) => c.id);
 
     const cutoff = months[0] + "-01";
     const attRows = activeIds.length > 0

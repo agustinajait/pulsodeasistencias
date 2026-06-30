@@ -224,6 +224,32 @@ router.get("/norte-eco2-fix", async (req, res) => {
   }
 });
 
+// GET /admin-sync/norte-eco2-reactivate?key=koratic2026
+// Reactivates EN REVISION children in ECO 2 of Norte (they were deactivated by mistake)
+router.get("/norte-eco2-reactivate", async (req, res) => {
+  if (req.query.key !== "koratic2026") { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const rooms = await db.select().from(roomsTable).where(eq(roomsTable.centerId, 1));
+    const eco2 = rooms.find((r) => r.ecoNumber === 2);
+    if (!eco2) { res.json({ error: "ECO 2 not found for centerId=1" }); return; }
+
+    const kids = await db.select().from(childrenTable).where(eq(childrenTable.roomId, eco2.id));
+    const toReactivate = kids.filter((k) => !k.activo && k.estado === "EN REVISION");
+
+    for (const k of toReactivate) {
+      await db.update(childrenTable).set({ activo: true }).where(eq(childrenTable.id, k.id));
+    }
+
+    res.json({
+      ok: true,
+      reactivated: toReactivate.length,
+      names: toReactivate.map((k) => `${k.apellido} ${k.nombre}`),
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /admin-sync/norte-eco2?key=koratic2026
 // Shows all active children in ECO 2 of CAIPLI Norte (centerId=1) grouped by estado
 router.get("/norte-eco2", async (req, res) => {

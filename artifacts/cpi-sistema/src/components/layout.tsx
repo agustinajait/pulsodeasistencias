@@ -100,7 +100,7 @@ function roleType(role: string | null): "admin" | "superadmin" | "sala" | "equip
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location, navigate] = useLocation();
-  const { role, logout } = useAuth();
+  const { role, centerName, logout } = useAuth();
   const rt = roleType(role);
 
   const visible = NAV_ITEMS.filter((i) => i.roles.includes(rt));
@@ -125,6 +125,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="text-white/40 text-[10px] font-semibold uppercase tracking-widest mt-0.5">
             {rt === "superadmin" ? "Super Admin" : rt === "admin" ? "Coordinación" : rt === "equipotecnico" ? "Equipo Técnico" : "Sala"}
           </div>
+          {centerName && (
+            <div className="text-white/70 text-xs font-semibold mt-2 truncate">{centerName}</div>
+          )}
         </div>
 
         {/* Nav */}
@@ -168,6 +171,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div className="text-white/40 text-[10px] font-semibold uppercase tracking-widest">
               {rt === "superadmin" ? "Super Admin" : rt === "admin" ? "Coordinación" : rt === "equipotecnico" ? "Equipo Técnico" : "Sala"}
             </div>
+            {centerName && (
+              <div className="text-white/70 text-xs font-semibold mt-0.5">{centerName}</div>
+            )}
           </div>
           <button onClick={handleLogout} className="text-white/60 hover:text-white p-1.5">
             <LogOut className="w-5 h-5" />

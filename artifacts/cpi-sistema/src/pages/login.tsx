@@ -97,7 +97,7 @@ export default function Login() {
 
   const handleLogin = (role: Role) => {
     if (!selectedCenter) return;
-    login(selectedCenter.id, role);
+    login(selectedCenter.id, role, selectedCenter.name);
     if (role === "admin") {
       setLocation("/reportes");
     } else if (role === "equipotecnico") {

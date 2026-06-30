@@ -5,10 +5,11 @@ export type Role = 'superadmin' | 'admin' | 'sala0' | 'sala1' | 'sala2' | 'sala3
 interface AuthContextType {
   role: Role;
   centerId: number | null;
+  centerName: string | null;
   setRole: (role: Role) => void;
   setCenterId: (id: number | null) => void;
   ecoNumber: number | null;
-  login: (centerId: number, role: Role) => void;
+  login: (centerId: number, role: Role, centerName?: string) => void;
   logout: () => void;
 }
 
@@ -25,6 +26,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return saved ? parseInt(saved) : null;
   });
 
+  const [centerName, setCenterNameState] = useState<string | null>(() => {
+    return localStorage.getItem('cpi_center_name');
+  });
+
   const setRole = (newRole: Role) => {
     setRoleState(newRole);
     if (newRole) localStorage.setItem('cpi_role', newRole);
@@ -37,14 +42,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     else localStorage.removeItem('cpi_center_id');
   };
 
-  const login = (cid: number, newRole: Role) => {
+  const setCenterName = (name: string | null) => {
+    setCenterNameState(name);
+    if (name) localStorage.setItem('cpi_center_name', name);
+    else localStorage.removeItem('cpi_center_name');
+  };
+
+  const login = (cid: number, newRole: Role, name?: string) => {
     setCenterId(cid);
     setRole(newRole);
+    if (name) setCenterName(name);
   };
 
   const logout = () => {
     setRole(null);
     setCenterId(null);
+    setCenterName(null);
   };
 
   const ecoNumber: number | null = role && role.startsWith('sala')
@@ -52,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     : null;
 
   return (
-    <AuthContext.Provider value={{ role, centerId, setRole, setCenterId, ecoNumber, login, logout }}>
+    <AuthContext.Provider value={{ role, centerId, centerName, setRole, setCenterId, ecoNumber, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

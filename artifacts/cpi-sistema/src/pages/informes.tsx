@@ -28,6 +28,10 @@ type Report = {
   observaciones?: string;
   status?: ReportStatus;
   createdAt: string;
+  firmaLiderData?: string | null;
+  firmaLiderAt?: string | null;
+  firmaFacilitadoraData?: string | null;
+  firmaFacilitadoraAt?: string | null;
 };
 
 const STATUS_LABEL: Record<string, string> = { borrador: "Borrador", en_revision: "En revisión", aprobado: "Aprobado" };
@@ -110,12 +114,142 @@ const HITO_COLOR: Record<string, string> = {
 const HITO_LABEL: Record<string, string> = { L: "Logrado", P: "En proceso", N: "No logrado" };
 
 // ── Shared report preview (mirrors the printed output) ────────────────────
+function fmtFirmaFecha(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }) + " " + d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+}
+
+function SignaturePad({ onSave, onCancel }: { onSave: (dataUrl: string) => void; onCancel: () => void }) {
+  const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  const drawingRef = React.useRef(false);
+  const hasDrawnRef = React.useRef(false);
+
+  function getPos(e: React.PointerEvent<HTMLCanvasElement>) {
+    const rect = (e.target as HTMLCanvasElement).getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+
+  function start(e: React.PointerEvent<HTMLCanvasElement>) {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    drawingRef.current = true;
+    hasDrawnRef.current = true;
+    const ctx = canvas.getContext("2d");
+    const { x, y } = getPos(e);
+    ctx?.beginPath();
+    ctx?.moveTo(x, y);
+  }
+
+  function move(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (!drawingRef.current) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const { x, y } = getPos(e);
+    if (ctx) { ctx.lineWidth = 2.2; ctx.lineCap = "round"; ctx.strokeStyle = "#1e1147"; ctx.lineTo(x, y); ctx.stroke(); }
+  }
+
+  function end() { drawingRef.current = false; }
+
+  function clear() {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    hasDrawnRef.current = false;
+  }
+
+  function save() {
+    const canvas = canvasRef.current;
+    if (!canvas || !hasDrawnRef.current) return;
+    onSave(canvas.toDataURL("image/png"));
+  }
+
+  return (
+    <div className="border border-gray-200 rounded-lg p-3 bg-gray-50 space-y-2">
+      <canvas
+        ref={canvasRef}
+        width={400}
+        height={140}
+        className="w-full h-[140px] bg-white rounded-md border border-dashed border-gray-300 touch-none cursor-crosshair"
+        onPointerDown={start}
+        onPointerMove={move}
+        onPointerUp={end}
+        onPointerLeave={end}
+      />
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" size="sm" onClick={save} className="flex-1 min-w-[100px]">Guardar firma</Button>
+        <Button type="button" size="sm" variant="outline" onClick={clear} className="flex-1 min-w-[100px]">Limpiar</Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onCancel} className="flex-1 min-w-[100px]">Cancelar</Button>
+      </div>
+    </div>
+  );
+}
+
+function SignatureBlock({
+  label, name, data, at, canSign, onSign, onClear,
+}: {
+  label: string;
+  name: string;
+  data?: string | null;
+  at?: string | null;
+  canSign: boolean;
+  onSign: (dataUrl: string | null) => void;
+  onClear: () => void;
+}) {
+  const [drawing, setDrawing] = useState(false);
+
+  if (!name) return null;
+
+  if (at) {
+    return (
+      <div className="border border-green-200 bg-green-50 rounded-lg px-3 py-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <p className="text-[10px] font-bold text-green-700 uppercase tracking-widest">✓ Firmado por {label}</p>
+            <p className="text-xs text-gray-600 mt-0.5">{name} · {fmtFirmaFecha(at)}</p>
+          </div>
+          {canSign && (
+            <button onClick={onClear} className="text-[11px] font-semibold text-gray-400 hover:text-red-500 shrink-0">Volver a firmar</button>
+          )}
+        </div>
+        {data && data !== "CONFIRMADO" && (
+          <img src={data} alt={`Firma ${label}`} className="h-12 mt-2 object-contain" />
+        )}
+      </div>
+    );
+  }
+
+  if (!canSign) {
+    return (
+      <div className="border border-dashed border-gray-200 rounded-lg px-3 py-2.5">
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{label} sin firmar</p>
+      </div>
+    );
+  }
+
+  if (drawing) {
+    return <SignaturePad onSave={(d) => { onSign(d); setDrawing(false); }} onCancel={() => setDrawing(false)} />;
+  }
+
+  return (
+    <div className="border border-dashed border-violet-300 rounded-lg px-3 py-2.5 flex items-center justify-between gap-2">
+      <p className="text-[11px] font-semibold text-violet-700">Firmar como {label} ({name})</p>
+      <div className="flex gap-2 shrink-0">
+        <button onClick={() => setDrawing(true)} className="text-[11px] font-bold text-violet-600 hover:text-violet-800 border border-violet-400 hover:border-violet-600 bg-violet-50 hover:bg-violet-100 px-2.5 py-1 rounded-lg transition-colors">Dibujar firma</button>
+        <button onClick={() => onSign(null)} className="text-[11px] font-bold text-gray-500 hover:text-gray-700 border border-gray-300 hover:border-gray-500 bg-white px-2.5 py-1 rounded-lg transition-colors">Confirmar</button>
+      </div>
+    </div>
+  );
+}
+
 function ReportPreview({
   childName, period, ecoNumber, lider, facilitadora, hitos, textos, observaciones, template, logoBase64,
+  firmaLiderData, firmaFacilitadoraData,
 }: {
   childName: string | null; period: string; ecoNumber: number; lider: string; facilitadora: string;
   hitos: Record<string, HitoVal>; textos: Record<string, string>; observaciones: string;
   template: { eje: string; hitos: string[]; inf: string[] }[]; logoBase64?: string;
+  firmaLiderData?: string | null; firmaFacilitadoraData?: string | null;
 }) {
   const hasContent = childName || Object.values(hitos).some(Boolean);
   if (!hasContent) return (
@@ -201,6 +335,9 @@ function ReportPreview({
         <div className="px-5 py-5 flex gap-6">
           {lider && (
             <div className="flex-1 text-center">
+              {firmaLiderData && firmaLiderData !== "CONFIRMADO" && (
+                <img src={firmaLiderData} alt="Firma líder" className="h-10 object-contain mx-auto mb-1" />
+              )}
               <div className="border-t border-gray-400 pt-2 mt-8">
                 <p className="text-xs font-semibold text-gray-700">{lider}</p>
                 <p className="text-[10px] text-gray-400">Líder pedagógica</p>
@@ -209,6 +346,9 @@ function ReportPreview({
           )}
           {facilitadora && (
             <div className="flex-1 text-center">
+              {firmaFacilitadoraData && firmaFacilitadoraData !== "CONFIRMADO" && (
+                <img src={firmaFacilitadoraData} alt="Firma facilitadora" className="h-10 object-contain mx-auto mb-1" />
+              )}
               <div className="border-t border-gray-400 pt-2 mt-8">
                 <p className="text-xs font-semibold text-gray-700">{facilitadora}</p>
                 <p className="text-[10px] text-gray-400">Facilitadora</p>
@@ -572,10 +712,48 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
   const [observaciones, setObservaciones] = useState(report.observaciones ?? "");
   const [status, setStatus] = useState<ReportStatus>(report.status ?? "borrador");
   const [saving, setSaving] = useState(false);
+  const [firmaLiderData, setFirmaLiderData] = useState<string | null | undefined>(report.firmaLiderData);
+  const [firmaLiderAt, setFirmaLiderAt] = useState<string | null | undefined>(report.firmaLiderAt);
+  const [firmaFacilitadoraData, setFirmaFacilitadoraData] = useState<string | null | undefined>(report.firmaFacilitadoraData);
+  const [firmaFacilitadoraAt, setFirmaFacilitadoraAt] = useState<string | null | undefined>(report.firmaFacilitadoraAt);
 
   const isCoord = userRole === "admin" || userRole === "superadmin" || userRole === "coordinacion";
   const isSala = !isCoord;
   const [mobilePreview, setMobilePreview] = useState(false);
+
+  async function sign(role: "lider" | "facilitadora", data: string | null) {
+    try {
+      const res = await fetch(`${BASE}/children/${report.childId}/reports/${report.id}/sign`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role, data }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        if (role === "lider") { setFirmaLiderData(updated.firmaLiderData); setFirmaLiderAt(updated.firmaLiderAt); }
+        else { setFirmaFacilitadoraData(updated.firmaFacilitadoraData); setFirmaFacilitadoraAt(updated.firmaFacilitadoraAt); }
+        toast({ title: "Firma guardada" });
+        onSaved();
+      } else {
+        toast({ title: "Error al firmar", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error de conexión", variant: "destructive" });
+    }
+  }
+
+  async function clearSign(role: "lider" | "facilitadora") {
+    try {
+      const res = await fetch(`${BASE}/children/${report.childId}/reports/${report.id}/sign?role=${role}`, { method: "DELETE" });
+      if (res.ok) {
+        if (role === "lider") { setFirmaLiderData(null); setFirmaLiderAt(null); }
+        else { setFirmaFacilitadoraData(null); setFirmaFacilitadoraAt(null); }
+        onSaved();
+      }
+    } catch {
+      toast({ title: "Error de conexión", variant: "destructive" });
+    }
+  }
 
   function setHito(h: string, val: HitoVal) { setHitos((hh) => ({ ...hh, [h]: val })); }
   function setTexto(eje: string, val: string) { setTextos((t) => ({ ...t, [eje]: val })); }
@@ -629,8 +807,10 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
       })
     ).join("");
     const textoSections = template.filter(({ eje }) => textos[eje]).map(({ eje }) => textos[eje].trim()).join(" ");
-    const firmaLider = lider ? `<div class="firma"><div class="firma-linea"></div><div class="firma-nombre">${lider}</div><div class="firma-rol">Líder pedagógica</div></div>` : "";
-    const firmaFacilitadora = facilitadora ? `<div class="firma"><div class="firma-linea"></div><div class="firma-nombre">${facilitadora}</div><div class="firma-rol">Facilitadora</div></div>` : "";
+    const firmaLiderImg = firmaLiderData && firmaLiderData !== "CONFIRMADO" ? `<img src="${firmaLiderData}" style="height:40px;object-fit:contain;display:block;margin:0 auto"/>` : "";
+    const firmaFacilitadoraImg = firmaFacilitadoraData && firmaFacilitadoraData !== "CONFIRMADO" ? `<img src="${firmaFacilitadoraData}" style="height:40px;object-fit:contain;display:block;margin:0 auto"/>` : "";
+    const firmaLider = lider ? `<div class="firma">${firmaLiderImg}<div class="firma-linea"></div><div class="firma-nombre">${lider}</div><div class="firma-rol">Líder pedagógica${firmaLiderAt ? ` · Firmado ${fmtFirmaFecha(firmaLiderAt)}` : ""}</div></div>` : "";
+    const firmaFacilitadora = facilitadora ? `<div class="firma">${firmaFacilitadoraImg}<div class="firma-linea"></div><div class="firma-nombre">${facilitadora}</div><div class="firma-rol">Facilitadora${firmaFacilitadoraAt ? ` · Firmado ${fmtFirmaFecha(firmaFacilitadoraAt)}` : ""}</div></div>` : "";
     const firmas = (firmaLider || firmaFacilitadora) ? `<div class="firmas">${firmaLider}${firmaFacilitadora}</div>` : "";
     const logoHtml = logoBase64
       ? `<img id="logo" src="${logoBase64}" style="height:64px;object-fit:contain;display:block" alt="Logo"/>`
@@ -730,6 +910,29 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
               </div>
             </div>
 
+            {/* firmas */}
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Firmas</p>
+              <SignatureBlock
+                label="Líder"
+                name={lider}
+                data={firmaLiderData}
+                at={firmaLiderAt}
+                canSign={isSala}
+                onSign={(d) => sign("lider", d)}
+                onClear={() => clearSign("lider")}
+              />
+              <SignatureBlock
+                label="Facilitadora"
+                name={facilitadora}
+                data={firmaFacilitadoraData}
+                at={firmaFacilitadoraAt}
+                canSign={isSala}
+                onSign={(d) => sign("facilitadora", d)}
+                onClear={() => clearSign("facilitadora")}
+              />
+            </div>
+
             {/* hitos por eje */}
             {template.map(({ eje, hitos: hitoList }) => (
               <div key={eje}>
@@ -811,6 +1014,8 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
               observaciones={observaciones}
               template={template}
               logoBase64={logoBase64}
+              firmaLiderData={firmaLiderData}
+              firmaFacilitadoraData={firmaFacilitadoraData}
             />
           </div>
         </div>

@@ -22,6 +22,10 @@ async function ensureTable() {
   `);
   await pool.query(`ALTER TABLE child_reports ADD COLUMN IF NOT EXISTS textos JSONB NOT NULL DEFAULT '{}'`);
   await pool.query(`ALTER TABLE child_reports ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'borrador'`).catch(() => {});
+  await pool.query(`ALTER TABLE child_reports ADD COLUMN IF NOT EXISTS firma_lider_data TEXT`).catch(() => {});
+  await pool.query(`ALTER TABLE child_reports ADD COLUMN IF NOT EXISTS firma_lider_at TIMESTAMPTZ`).catch(() => {});
+  await pool.query(`ALTER TABLE child_reports ADD COLUMN IF NOT EXISTS firma_facilitadora_data TEXT`).catch(() => {});
+  await pool.query(`ALTER TABLE child_reports ADD COLUMN IF NOT EXISTS firma_facilitadora_at TIMESTAMPTZ`).catch(() => {});
   await pool.query(`
     DO $$ BEGIN
       ALTER TABLE child_reports ALTER COLUMN period TYPE VARCHAR(100);
@@ -43,7 +47,9 @@ router.get("/reports", async (req, res) => {
     const { rows } = await pool.query(
       `SELECT r.id, r.child_id AS "childId", ch.nombre, ch.apellido, r.period,
               r.eco_number AS "ecoNumber", r.lider, r.facilitadora, r.hitos, r.textos,
-              r.observaciones, r.status, r.created_at AS "createdAt", r.updated_at AS "updatedAt"
+              r.observaciones, r.status, r.created_at AS "createdAt", r.updated_at AS "updatedAt",
+              r.firma_lider_data AS "firmaLiderData", r.firma_lider_at AS "firmaLiderAt",
+              r.firma_facilitadora_data AS "firmaFacilitadoraData", r.firma_facilitadora_at AS "firmaFacilitadoraAt"
        FROM child_reports r
        JOIN children ch ON ch.id = r.child_id
        JOIN rooms ro ON ro.id = ch.room_id
@@ -65,7 +71,9 @@ router.get("/children/:id/reports", async (req, res) => {
     const childId = parseInt(req.params.id);
     if (isNaN(childId)) { res.status(400).json({ error: "Invalid id" }); return; }
     const result = await pool.query(
-      `SELECT id, child_id AS "childId", period, eco_number AS "ecoNumber", lider, facilitadora, hitos, textos, observaciones, status, created_at AS "createdAt", updated_at AS "updatedAt"
+      `SELECT id, child_id AS "childId", period, eco_number AS "ecoNumber", lider, facilitadora, hitos, textos, observaciones, status, created_at AS "createdAt", updated_at AS "updatedAt",
+              firma_lider_data AS "firmaLiderData", firma_lider_at AS "firmaLiderAt",
+              firma_facilitadora_data AS "firmaFacilitadoraData", firma_facilitadora_at AS "firmaFacilitadoraAt"
        FROM child_reports WHERE child_id = $1 ORDER BY created_at DESC`,
       [childId]
     );
@@ -87,7 +95,9 @@ router.post("/children/:id/reports", async (req, res) => {
     const result = await pool.query(
       `INSERT INTO child_reports (child_id, period, eco_number, lider, facilitadora, hitos, textos, observaciones, status)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'borrador')
-       RETURNING id, child_id AS "childId", period, eco_number AS "ecoNumber", lider, facilitadora, hitos, textos, observaciones, status, created_at AS "createdAt", updated_at AS "updatedAt"`,
+       RETURNING id, child_id AS "childId", period, eco_number AS "ecoNumber", lider, facilitadora, hitos, textos, observaciones, status, created_at AS "createdAt", updated_at AS "updatedAt",
+                 firma_lider_data AS "firmaLiderData", firma_lider_at AS "firmaLiderAt",
+                 firma_facilitadora_data AS "firmaFacilitadoraData", firma_facilitadora_at AS "firmaFacilitadoraAt"`,
       [childId, period, ecoNumber ?? null, lider ?? null, facilitadora ?? null, JSON.stringify(hitos ?? {}), JSON.stringify(textos ?? {}), observaciones ?? null]
     );
     res.status(201).json(result.rows[0]);
@@ -115,15 +125,77 @@ router.put("/children/:id/reports/:reportId", async (req, res) => {
            textos = COALESCE($7::jsonb, textos),
            observaciones = $8,
            status = COALESCE($9, status),
+           firma_lider_data = CASE WHEN lider IS DISTINCT FROM $4 THEN NULL ELSE firma_lider_data END,
+           firma_lider_at = CASE WHEN lider IS DISTINCT FROM $4 THEN NULL ELSE firma_lider_at END,
+           firma_facilitadora_data = CASE WHEN facilitadora IS DISTINCT FROM $5 THEN NULL ELSE firma_facilitadora_data END,
+           firma_facilitadora_at = CASE WHEN facilitadora IS DISTINCT FROM $5 THEN NULL ELSE firma_facilitadora_at END,
            updated_at = NOW()
        WHERE id = $1
-       RETURNING id, child_id AS "childId", period, eco_number AS "ecoNumber", lider, facilitadora, hitos, textos, observaciones, status, created_at AS "createdAt", updated_at AS "updatedAt"`,
+       RETURNING id, child_id AS "childId", period, eco_number AS "ecoNumber", lider, facilitadora, hitos, textos, observaciones, status, created_at AS "createdAt", updated_at AS "updatedAt",
+                 firma_lider_data AS "firmaLiderData", firma_lider_at AS "firmaLiderAt",
+                 firma_facilitadora_data AS "firmaFacilitadoraData", firma_facilitadora_at AS "firmaFacilitadoraAt"`,
       [reportId, period ?? null, ecoNumber ?? null, lider ?? null, facilitadora ?? null, hitos ? JSON.stringify(hitos) : null, textos ? JSON.stringify(textos) : null, observaciones ?? null, newStatus]
     );
     if (!result.rows.length) { res.status(404).json({ error: "Report not found" }); return; }
     res.json(result.rows[0]);
   } catch (err) {
     req.log.error(err, "Error updating report");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// PUT /children/:id/reports/:reportId/sign
+router.put("/children/:id/reports/:reportId/sign", async (req, res) => {
+  try {
+    const reportId = parseInt(req.params.reportId);
+    if (isNaN(reportId)) { res.status(400).json({ error: "Invalid reportId" }); return; }
+    const { role, data } = req.body as { role?: string; data?: string | null };
+    if (role !== "lider" && role !== "facilitadora") {
+      res.status(400).json({ error: "role must be 'lider' or 'facilitadora'" });
+      return;
+    }
+    const column = role === "lider" ? "firma_lider" : "firma_facilitadora";
+    const result = await pool.query(
+      `UPDATE child_reports
+       SET ${column}_data = $2, ${column}_at = NOW(), updated_at = NOW()
+       WHERE id = $1
+       RETURNING id, child_id AS "childId", period, eco_number AS "ecoNumber", lider, facilitadora, hitos, textos, observaciones, status, created_at AS "createdAt", updated_at AS "updatedAt",
+                 firma_lider_data AS "firmaLiderData", firma_lider_at AS "firmaLiderAt",
+                 firma_facilitadora_data AS "firmaFacilitadoraData", firma_facilitadora_at AS "firmaFacilitadoraAt"`,
+      [reportId, data ?? "CONFIRMADO"]
+    );
+    if (!result.rows.length) { res.status(404).json({ error: "Report not found" }); return; }
+    res.json(result.rows[0]);
+  } catch (err) {
+    req.log.error(err, "Error signing report");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// DELETE /children/:id/reports/:reportId/sign?role=lider|facilitadora
+router.delete("/children/:id/reports/:reportId/sign", async (req, res) => {
+  try {
+    const reportId = parseInt(req.params.reportId);
+    if (isNaN(reportId)) { res.status(400).json({ error: "Invalid reportId" }); return; }
+    const role = req.query.role;
+    if (role !== "lider" && role !== "facilitadora") {
+      res.status(400).json({ error: "role must be 'lider' or 'facilitadora'" });
+      return;
+    }
+    const column = role === "lider" ? "firma_lider" : "firma_facilitadora";
+    const result = await pool.query(
+      `UPDATE child_reports
+       SET ${column}_data = NULL, ${column}_at = NULL, updated_at = NOW()
+       WHERE id = $1
+       RETURNING id, child_id AS "childId", period, eco_number AS "ecoNumber", lider, facilitadora, hitos, textos, observaciones, status, created_at AS "createdAt", updated_at AS "updatedAt",
+                 firma_lider_data AS "firmaLiderData", firma_lider_at AS "firmaLiderAt",
+                 firma_facilitadora_data AS "firmaFacilitadoraData", firma_facilitadora_at AS "firmaFacilitadoraAt"`,
+      [reportId]
+    );
+    if (!result.rows.length) { res.status(404).json({ error: "Report not found" }); return; }
+    res.json(result.rows[0]);
+  } catch (err) {
+    req.log.error(err, "Error clearing signature");
     res.status(500).json({ error: "Internal server error" });
   }
 });

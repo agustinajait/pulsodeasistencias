@@ -611,32 +611,73 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
     const w = window.open("", "_blank");
     if (!w) return;
     const hitoRows = template.flatMap(({ eje, hitos: hitoList }) =>
-      hitoList.map((h) => {
-        const val = hitos[h] ?? null;
-        const color = val === "L" ? "#dcfce7" : val === "P" ? "#fef9c3" : val === "N" ? "#fee2e2" : "#f9fafb";
-        return `<tr><td style="padding:4px 8px;border:1px solid #e5e7eb">${eje}</td><td style="padding:4px 8px;border:1px solid #e5e7eb">${h}</td><td style="padding:4px 8px;border:1px solid #e5e7eb;background:${color}">${val ? HITO_LABEL[val] : "—"}</td></tr>`;
+      hitoList.filter((h) => hitos[h] != null).map((h) => {
+        const val = hitos[h]!;
+        const color = val === "L" ? "#dcfce7;color:#166534" : val === "P" ? "#fef9c3;color:#92400e" : "#fee2e2;color:#991b1b";
+        const label = val === "L" ? "✓ Logrado" : val === "P" ? "En proceso" : "No logrado";
+        return `<tr><td class="td-area">${eje}</td><td class="td-hito">${h}</td><td class="td-estado" style="background:${color}">${label}</td></tr>`;
       })
     ).join("");
     const textoSections = template.filter(({ eje }) => textos[eje]).map(({ eje }) => textos[eje].trim()).join(" ");
-    const logoHtml = logoBase64 ? `<img src="${logoBase64}" style="height:60px;object-fit:contain" alt="Logo"/>` : "";
-    const firmaLider = lider ? `<div style="flex:1;text-align:center"><div style="border-top:1px solid #374151;padding-top:6px;margin-top:40px;font-size:11px;color:#374151">${lider}<br/><span style="color:#6b7280">Líder pedagógica</span></div></div>` : "";
-    const firmaFacilitadora = facilitadora ? `<div style="flex:1;text-align:center"><div style="border-top:1px solid #374151;padding-top:6px;margin-top:40px;font-size:11px;color:#374151">${facilitadora}<br/><span style="color:#6b7280">Facilitadora</span></div></div>` : "";
-    const firmas = (firmaLider || firmaFacilitadora) ? `<div style="display:flex;gap:40px;margin-top:40px;padding-top:16px;border-top:1px solid #e5e7eb">${firmaLider}${firmaFacilitadora}</div>` : "";
-    w.document.write(`<html><head><title>Informe ${childName}</title>
-      <style>body{font-family:sans-serif;font-size:12px;margin:32px}table{width:100%;border-collapse:collapse}th{background:#f3f4f6;padding:6px 8px;border:1px solid #e5e7eb;text-align:left}.header{display:flex;align-items:center;gap:16px;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #1e1147}@media print{body{margin:20px}}</style>
-      </head><body>
-      <div class="header">${logoHtml}<div style="margin-left:${logoBase64 ? "0" : "0"}"><h2 style="margin:0 0 2px 0;color:#1e1147">Informe de Desarrollo</h2><p style="margin:0;color:#6b7280;font-size:11px">Período: ${report.period}</p></div></div>
-      <p style="margin:4px 0"><strong>Niño/a:</strong> ${childName}</p>
-      ${lider ? `<p style="margin:4px 0;color:#6b7280;font-size:11px">Líder: ${lider}${facilitadora ? ` · Facilitadora: ${facilitadora}` : ""}</p>` : ""}
-      <div style="margin-top:16px">
-      <table><thead><tr><th>Área</th><th>Hito</th><th style="width:100px">Estado</th></tr></thead><tbody>${hitoRows}</tbody></table>
+    const firmaLider = lider ? `<div class="firma"><div class="firma-linea"></div><div class="firma-nombre">${lider}</div><div class="firma-rol">Líder pedagógica</div></div>` : "";
+    const firmaFacilitadora = facilitadora ? `<div class="firma"><div class="firma-linea"></div><div class="firma-nombre">${facilitadora}</div><div class="firma-rol">Facilitadora</div></div>` : "";
+    const firmas = (firmaLider || firmaFacilitadora) ? `<div class="firmas">${firmaLider}${firmaFacilitadora}</div>` : "";
+    const logoHtml = logoBase64
+      ? `<img id="logo" src="${logoBase64}" style="height:64px;object-fit:contain;display:block" alt="Logo"/>`
+      : `<div style="font-size:20px;font-weight:900;color:#1e1147;letter-spacing:-1px">Koratic</div>`;
+
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Informe — ${childName}</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:#1a1a2e;padding:32px 36px;max-width:800px;margin:0 auto}
+      .header{display:flex;align-items:center;gap:20px;padding-bottom:16px;border-bottom:3px solid #1e1147;margin-bottom:20px}
+      .header-text h1{font-size:20px;font-weight:800;color:#1e1147;margin-bottom:2px}
+      .header-text p{font-size:11px;color:#6b7280}
+      .meta{margin-bottom:16px;padding:12px 16px;background:#f5f4fb;border-radius:8px;border-left:4px solid #7c3aed}
+      .meta-nombre{font-size:15px;font-weight:800;color:#1e1147}
+      .meta-sub{font-size:11px;color:#6b7280;margin-top:3px}
+      table{width:100%;border-collapse:collapse;margin-bottom:20px;font-size:11px}
+      th{background:#1e1147;color:white;padding:7px 10px;text-align:left;font-weight:700}
+      .td-area{padding:5px 10px;border:1px solid #e5e7eb;color:#6b7280;font-size:10px;white-space:nowrap;width:130px}
+      .td-hito{padding:5px 10px;border:1px solid #e5e7eb;color:#374151}
+      .td-estado{padding:5px 10px;border:1px solid #e5e7eb;text-align:center;font-size:10px;font-weight:700;white-space:nowrap;width:90px;border-radius:4px}
+      tr:nth-child(even) .td-area, tr:nth-child(even) .td-hito{background:#fafafa}
+      .sintesis{margin-bottom:20px}
+      .sintesis h2{font-size:13px;font-weight:800;color:#1e1147;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #e5e7eb}
+      .sintesis p{line-height:1.8;color:#374151;font-size:12px}
+      .obs{background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:12px;margin-bottom:24px}
+      .obs strong{display:block;margin-bottom:4px;color:#1e1147}
+      .firmas{display:flex;gap:48px;margin-top:48px;padding-top:16px;border-top:1px solid #e5e7eb}
+      .firma{flex:1;text-align:center}
+      .firma-linea{border-top:1px solid #374151;margin-bottom:6px}
+      .firma-nombre{font-size:12px;font-weight:700;color:#1e1147}
+      .firma-rol{font-size:10px;color:#6b7280;margin-top:2px}
+      @media print{body{padding:20px 24px}@page{margin:12mm}}
+    </style>
+    </head><body>
+    <div class="header">
+      ${logoHtml}
+      <div class="header-text">
+        <h1>Informe de Desarrollo</h1>
+        <p>Período: ${report.period} &nbsp;·&nbsp; Sala ECO ${report.ecoNumber ?? 0}</p>
       </div>
-      ${textoSections ? `<div style="margin-top:20px"><h3 style="margin-bottom:8px;color:#1e1147">Síntesis de desarrollo</h3><p style="line-height:1.8;color:#374151">${textoSections}</p></div>` : ""}
-      ${observaciones ? `<div style="margin-top:16px;padding:12px;background:#f9fafb;border-radius:6px"><strong>Observaciones generales:</strong><br/>${observaciones}</div>` : ""}
-      ${firmas}
-      </body></html>`);
+    </div>
+    <div class="meta">
+      <div class="meta-nombre">${childName}</div>
+      <div class="meta-sub">${[lider ? `Líder: ${lider}` : "", facilitadora ? `Facilitadora: ${facilitadora}` : ""].filter(Boolean).join(" &nbsp;·&nbsp; ")}</div>
+    </div>
+    <table>
+      <thead><tr><th>Área</th><th>Hito</th><th style="width:90px;text-align:center">Estado</th></tr></thead>
+      <tbody>${hitoRows}</tbody>
+    </table>
+    ${textoSections ? `<div class="sintesis"><h2>Síntesis de desarrollo</h2><p>${textoSections}</p></div>` : ""}
+    ${observaciones ? `<div class="obs"><strong>Observaciones generales:</strong>${observaciones}</div>` : ""}
+    ${firmas}
+    <script>
+      ${logoBase64 ? `document.getElementById('logo').onload=function(){window.print()};document.getElementById('logo').onerror=function(){window.print()};` : "window.print();"}
+    </script>
+    </body></html>`);
     w.document.close();
-    w.print();
   }
 
   return (
@@ -857,6 +898,11 @@ export default function Informes() {
     return { L, P, N };
   }
 
+  const pendingCount = useMemo(() =>
+    isCoord ? reports.filter((r) => (r.status ?? "borrador") === "en_revision").length : 0,
+    [reports, isCoord]
+  );
+
   return (
     <div className="min-h-full bg-gray-50">
       <div className="bg-[#1e1147] text-white px-5 pt-6 pb-7 lg:pt-8">
@@ -874,6 +920,24 @@ export default function Informes() {
       </div>
 
       <div className="px-4 py-5 max-w-2xl mx-auto space-y-4">
+
+        {/* Alerta informes pendientes de validación */}
+        {isCoord && pendingCount > 0 && (
+          <button
+            onClick={() => setFilterStatus("en_revision")}
+            className="w-full flex items-center gap-3 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 text-left hover:bg-amber-100 transition-colors"
+          >
+            <span className="text-2xl shrink-0">📋</span>
+            <div className="flex-1">
+              <p className="font-bold text-sm text-amber-800">
+                {pendingCount === 1 ? "1 informe pendiente de validar" : `${pendingCount} informes pendientes de validar`}
+              </p>
+              <p className="text-xs text-amber-600">Tocá para ver los informes en revisión</p>
+            </div>
+            <span className="bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shrink-0">{pendingCount}</span>
+          </button>
+        )}
+
         {/* filters */}
         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           <div className="relative col-span-2 sm:flex-1 sm:min-w-[160px]">

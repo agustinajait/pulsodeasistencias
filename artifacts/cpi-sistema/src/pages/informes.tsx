@@ -1042,6 +1042,13 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
         )}
         {isCoord && (
           <>
+            {(lider || facilitadora) && (
+              <p className="text-[11px] text-gray-400 text-center">
+                {lider && (firmaLiderAt ? `✓ Líder firmó el ${fmtFirmaFecha(firmaLiderAt)}` : "⚠ Líder sin firmar")}
+                {lider && facilitadora && " · "}
+                {facilitadora && (firmaFacilitadoraAt ? `✓ Facilitadora firmó el ${fmtFirmaFecha(firmaFacilitadoraAt)}` : "⚠ Facilitadora sin firmar")}
+              </p>
+            )}
             <div className="flex gap-2">
               <Button variant="outline" onClick={handleSave} disabled={saving} className="flex-1">
                 {saving ? "Guardando..." : "Guardar cambios"}
@@ -1239,6 +1246,15 @@ export default function Informes() {
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-semibold text-gray-800">{r.period}</p>
                           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${STATUS_CLASS[r.status ?? "borrador"]}`}>{STATUS_LABEL[r.status ?? "borrador"]}</span>
+                          {isCoord && (r.lider || r.facilitadora) && (
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                              (!r.lider || r.firmaLiderAt) && (!r.facilitadora || r.firmaFacilitadoraAt)
+                                ? "bg-green-100 text-green-700"
+                                : "bg-gray-100 text-gray-400"
+                            }`}>
+                              {(!r.lider || r.firmaLiderAt) && (!r.facilitadora || r.firmaFacilitadoraAt) ? "✓ Firmado" : "Sin firmar"}
+                            </span>
+                          )}
                         </div>
                         <div className="flex gap-2 mt-0.5">
                           {L > 0 && <span className="text-[10px] font-bold text-green-600">{L}L</span>}

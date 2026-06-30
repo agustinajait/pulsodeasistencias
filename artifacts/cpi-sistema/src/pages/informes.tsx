@@ -404,7 +404,7 @@ function NewReportModal({
           </div>
 
           {/* meta */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Período</label>
               <select value={period} onChange={(e) => setPeriod(e.target.value)} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
@@ -419,7 +419,7 @@ function NewReportModal({
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Líder</label>
               <Input value={lider} onChange={(e) => setLider(e.target.value)} placeholder="Nombre" className="text-sm" />
@@ -443,13 +443,13 @@ function NewReportModal({
                 {hitoList.map((h) => {
                   const val = hitos[h] ?? null;
                   return (
-                    <div key={h} className="flex items-center gap-2">
-                      <span className="text-xs text-gray-700 flex-1">{h}</span>
-                      <div className="flex gap-1.5 shrink-0">
+                    <div key={h} className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 py-1">
+                      <span className="text-sm text-gray-700 flex-1 leading-snug">{h}</span>
+                      <div className="flex gap-2 shrink-0">
                         {(["L","P","N"] as HitoVal[]).map((v) => (
                           <button key={v!} onClick={() => setHito(h, val === v ? null : v)}
-                            className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-colors ${
-                              val === v ? HITO_COLOR[v!] + " border-transparent" : "bg-white text-gray-600 border-gray-400 hover:border-gray-700 hover:text-gray-800"
+                            className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-colors min-w-[56px] ${
+                              val === v ? HITO_COLOR[v!] + " border-transparent" : "bg-white text-gray-600 border-gray-300 hover:border-gray-500"
                             }`}>
                             {HITO_LABEL[v!]}
                           </button>
@@ -472,8 +472,8 @@ function NewReportModal({
           ))}
 
           {/* generar automático */}
-          <div className="flex items-center justify-between py-2 border-t border-dashed border-violet-200">
-            <div>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 py-3 border-t border-dashed border-violet-200">
+            <div className="flex-1">
               <p className="text-xs font-semibold text-violet-700">✦ Generar descripciones automáticamente</p>
               <p className="text-[10px] text-gray-400">Basado en los hitos marcados. Podés editar antes de guardar.</p>
             </div>
@@ -493,7 +493,7 @@ function NewReportModal({
                   return merged;
                 });
               }}
-              className="shrink-0 text-[11px] font-bold text-violet-600 hover:text-violet-800 border border-violet-400 hover:border-violet-600 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors"
+              className="shrink-0 text-[11px] font-bold text-violet-600 hover:text-violet-800 border border-violet-400 hover:border-violet-600 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors w-full sm:w-auto"
             >
               Generar
             </button>
@@ -658,7 +658,7 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
         <div className="flex flex-col flex-1 min-w-0 border-r border-gray-100">
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 max-w-2xl w-full mx-auto">
             {/* líder / facilitadora */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Líder</label>
                 <Input value={lider} onChange={(e) => setLider(e.target.value)} placeholder="Nombre" className="text-sm" />
@@ -677,12 +677,12 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
                   {hitoList.map((h) => {
                     const val = hitos[h] ?? null;
                     return (
-                      <div key={h} className="flex items-center gap-2">
-                        <span className="text-xs text-gray-700 flex-1">{h}</span>
-                        <div className="flex gap-1.5 shrink-0">
+                      <div key={h} className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 py-1">
+                        <span className="text-sm text-gray-700 flex-1 leading-snug">{h}</span>
+                        <div className="flex gap-2 shrink-0">
                           {(["L","P","N"] as HitoVal[]).map((v) => (
                             <button key={v!} onClick={() => setHito(h, val === v ? null : v)}
-                              className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-colors ${val === v ? HITO_COLOR[v!] + " border-transparent" : "bg-white text-gray-600 border-gray-400 hover:border-gray-700 hover:text-gray-800"}`}>
+                              className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-colors min-w-[56px] ${val === v ? HITO_COLOR[v!] + " border-transparent" : "bg-white text-gray-600 border-gray-300 hover:border-gray-500"}`}>
                               {HITO_LABEL[v!]}
                             </button>
                           ))}
@@ -700,8 +700,8 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
             ))}
 
             {/* generar automático */}
-            <div className="flex items-center justify-between py-2 border-t border-dashed border-violet-200">
-              <div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 py-3 border-t border-dashed border-violet-200">
+              <div className="flex-1">
                 <p className="text-xs font-semibold text-violet-700">✦ Generar descripciones automáticamente</p>
                 <p className="text-[10px] text-gray-400">Basado en los hitos marcados. Podés editar antes de guardar.</p>
               </div>
@@ -718,7 +718,7 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
                     return merged;
                   });
                 }}
-                className="shrink-0 text-[11px] font-bold text-violet-600 hover:text-violet-800 border border-violet-400 hover:border-violet-600 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors"
+                className="shrink-0 text-[11px] font-bold text-violet-600 hover:text-violet-800 border border-violet-400 hover:border-violet-600 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors w-full sm:w-auto"
               >
                 Generar
               </button>
@@ -734,35 +734,44 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
           </div>
 
           {/* footer */}
-          <div className="px-5 py-4 border-t border-gray-100 shrink-0 max-w-2xl w-full mx-auto flex gap-2">
-            <button onClick={handlePrint} className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-violet-600 border border-gray-200 rounded-lg px-3 py-2">
-              <Printer className="w-3.5 h-3.5" />Imprimir / PDF
-            </button>
+          <div className="px-4 py-4 border-t border-gray-100 shrink-0 max-w-2xl w-full mx-auto space-y-2">
             {isSala && (
               <>
-                <Button variant="outline" onClick={handleSave} disabled={saving} className="flex-1">
-                  {saving ? "Guardando..." : "Guardar borrador"}
-                </Button>
-                {status !== "aprobado" && (
-                  <Button onClick={() => saveWithStatus("en_revision")} disabled={saving} className="flex-1 bg-amber-500 hover:bg-amber-600 text-white">
-                    {saving ? "Enviando..." : "Enviar para validar"}
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={handleSave} disabled={saving} className="flex-1">
+                    {saving ? "Guardando..." : "Guardar borrador"}
                   </Button>
-                )}
+                  {status !== "aprobado" && (
+                    <Button onClick={() => saveWithStatus("en_revision")} disabled={saving} className="flex-1 bg-amber-500 hover:bg-amber-600 text-white">
+                      {saving ? "Enviando..." : "Enviar para validar"}
+                    </Button>
+                  )}
+                </div>
+                <button onClick={handlePrint} className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-violet-600 border border-gray-200 rounded-lg px-3 py-2">
+                  <Printer className="w-3.5 h-3.5" />Imprimir / PDF
+                </button>
               </>
             )}
             {isCoord && (
               <>
-                <button onClick={handleDelete} className="text-xs font-semibold text-red-400 hover:text-red-600 px-2 py-2 rounded-lg hover:bg-red-50 transition-colors shrink-0">
-                  Eliminar
-                </button>
-                <Button variant="outline" onClick={handleSave} disabled={saving} className="flex-1">
-                  {saving ? "Guardando..." : "Guardar cambios"}
-                </Button>
-                {status !== "aprobado" && (
-                  <Button onClick={() => saveWithStatus("aprobado")} disabled={saving} className="flex-1 bg-green-600 hover:bg-green-700 text-white">
-                    {saving ? "Aprobando..." : "Aprobar informe"}
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={handleSave} disabled={saving} className="flex-1">
+                    {saving ? "Guardando..." : "Guardar cambios"}
                   </Button>
-                )}
+                  {status !== "aprobado" && (
+                    <Button onClick={() => saveWithStatus("aprobado")} disabled={saving} className="flex-1 bg-green-600 hover:bg-green-700 text-white">
+                      {saving ? "Aprobando..." : "Aprobar informe"}
+                    </Button>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={handlePrint} className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-violet-600 border border-gray-200 rounded-lg px-3 py-2">
+                    <Printer className="w-3.5 h-3.5" />Imprimir / PDF
+                  </button>
+                  <button onClick={handleDelete} className="text-xs font-semibold text-red-400 hover:text-red-600 px-4 py-2 rounded-lg border border-red-200 hover:bg-red-50 transition-colors">
+                    Eliminar
+                  </button>
+                </div>
               </>
             )}
           </div>
@@ -865,8 +874,8 @@ export default function Informes() {
 
       <div className="px-4 py-5 max-w-2xl mx-auto space-y-4">
         {/* filters */}
-        <div className="flex gap-2 flex-wrap">
-          <div className="relative flex-1 min-w-[160px]">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+          <div className="relative col-span-2 sm:flex-1 sm:min-w-[160px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
               placeholder="Buscar por apellido..."

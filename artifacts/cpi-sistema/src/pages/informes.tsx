@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useListRooms } from "@workspace/api-client-react";
@@ -312,14 +312,15 @@ function NewReportModal({
     setTextos((t) => ({ ...t, [eje]: val }));
   }
 
-  async function handleSave(statusOverride?: string) {
+  async function handleSave(statusOverride?: string | React.MouseEvent) {
+    const resolvedStatus = typeof statusOverride === "string" ? statusOverride : "borrador";
     if (!selectedChild) { toast({ title: "Seleccioná un niño/a", variant: "destructive" }); return; }
     setSaving(true);
     try {
       const res = await fetch(`${BASE}/children/${selectedChild.id}/reports`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ period, ecoNumber: eco, lider: lider || null, facilitadora: facilitadora || null, hitos, textos, observaciones: observaciones || null, status: statusOverride ?? "borrador" }),
+        body: JSON.stringify({ period, ecoNumber: eco, lider: lider || null, facilitadora: facilitadora || null, hitos, textos, observaciones: observaciones || null, status: resolvedStatus }),
       });
       if (res.ok) {
         toast({ title: "Informe guardado" });

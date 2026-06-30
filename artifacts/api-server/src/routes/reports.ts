@@ -110,6 +110,7 @@ router.post("/children/:id/reports", async (req, res) => {
 // PUT /children/:id/reports/:reportId
 router.put("/children/:id/reports/:reportId", async (req, res) => {
   try {
+    await ensureTable();
     const reportId = parseInt(req.params.reportId);
     if (isNaN(reportId)) { res.status(400).json({ error: "Invalid reportId" }); return; }
     const { period, ecoNumber, lider, facilitadora, hitos, textos, observaciones, status } = req.body as Record<string, any>;
@@ -147,6 +148,7 @@ router.put("/children/:id/reports/:reportId", async (req, res) => {
 // PUT /children/:id/reports/:reportId/sign
 router.put("/children/:id/reports/:reportId/sign", async (req, res) => {
   try {
+    await ensureTable();
     const reportId = parseInt(req.params.reportId);
     if (isNaN(reportId)) { res.status(400).json({ error: "Invalid reportId" }); return; }
     const { role, data } = req.body as { role?: string; data?: string | null };
@@ -175,6 +177,7 @@ router.put("/children/:id/reports/:reportId/sign", async (req, res) => {
 // DELETE /children/:id/reports/:reportId/sign?role=lider|facilitadora
 router.delete("/children/:id/reports/:reportId/sign", async (req, res) => {
   try {
+    await ensureTable();
     const reportId = parseInt(req.params.reportId);
     if (isNaN(reportId)) { res.status(400).json({ error: "Invalid reportId" }); return; }
     const role = req.query.role;

@@ -90,7 +90,14 @@ export default function SalaPage() {
 
   const children = useListChildren(
     { roomId: roomId ?? undefined, active: true },
-    { query: { enabled: !!roomId, queryKey: getListChildrenQueryKey({ roomId: roomId ?? undefined, active: true }) } }
+    { query: { enabled: !!roomId, queryKey: [...getListChildrenQueryKey({ roomId: roomId ?? undefined, active: true }), "excludeRevision"],
+      queryFn: async () => {
+        if (!roomId) return [];
+        const res = await fetch(`/api/children?roomId=${roomId}&active=true&excludeRevision=true`);
+        if (!res.ok) throw new Error("Error fetching children");
+        return res.json();
+      }
+    } }
   );
 
   const attendance = useListAttendance(

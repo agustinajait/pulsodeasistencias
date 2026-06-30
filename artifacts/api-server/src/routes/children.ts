@@ -150,9 +150,10 @@ router.get("/children", async (req, res) => {
     }
     if (active !== undefined) {
       conditions.push(eq(childrenTable.activo, active === "true"));
-      if (active === "true") {
-        conditions.push(ne(childrenTable.estado, "EN REVISION"));
-      }
+    }
+    // excludeRevision=true: used by sala view to hide EN REVISION from attendance list
+    if (req.query.excludeRevision === "true") {
+      conditions.push(ne(childrenTable.estado, "EN REVISION"));
     }
     if (search) {
       conditions.push(

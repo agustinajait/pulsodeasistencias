@@ -31,6 +31,136 @@ async function ensureTables() {
   `);
 }
 
+// ── Academic calendar seed ─────────────────────────────────────────────────
+
+type SeedEvent = { fecha: string; tipo: string; titulo: string };
+
+// Feriados nacionales 2026 Argentina + CAIPLI institutional events
+const SEED_EVENTS_2026: SeedEvent[] = [
+  // ── Feriados nacionales ──────────────────────────────────────────────────
+  { fecha: "2026-01-01", tipo: "FERIADO", titulo: "Año Nuevo" },
+  { fecha: "2026-02-16", tipo: "FERIADO", titulo: "Carnaval" },
+  { fecha: "2026-02-17", tipo: "FERIADO", titulo: "Carnaval" },
+  { fecha: "2026-03-24", tipo: "FERIADO", titulo: "Día de la Memoria" },
+  { fecha: "2026-04-02", tipo: "FERIADO", titulo: "Día del Veterano de Malvinas" },
+  { fecha: "2026-04-03", tipo: "FERIADO", titulo: "Viernes Santo" },
+  { fecha: "2026-05-01", tipo: "FERIADO", titulo: "Día del Trabajador" },
+  { fecha: "2026-05-25", tipo: "FERIADO", titulo: "Revolución de Mayo" },
+  { fecha: "2026-06-19", tipo: "FERIADO", titulo: "Paso a la Inmortalidad del Gral. Güemes (puente)" },
+  { fecha: "2026-06-20", tipo: "FERIADO", titulo: "Día de la Bandera" },
+  { fecha: "2026-07-09", tipo: "FERIADO", titulo: "Día de la Independencia" },
+  { fecha: "2026-08-17", tipo: "FERIADO", titulo: "Paso a la Inmortalidad del Gral. San Martín" },
+  { fecha: "2026-10-12", tipo: "FERIADO", titulo: "Día del Respeto a la Diversidad Cultural" },
+  { fecha: "2026-11-20", tipo: "FERIADO", titulo: "Día de la Soberanía Nacional" },
+  { fecha: "2026-12-08", tipo: "FERIADO", titulo: "Inmaculada Concepción de María" },
+  { fecha: "2026-12-25", tipo: "FERIADO", titulo: "Navidad" },
+  // ── Período de adaptación ────────────────────────────────────────────────
+  { fecha: "2026-02-09", tipo: "CAPACITACION", titulo: "Reunión informativa con familias" },
+  { fecha: "2026-02-10", tipo: "CAPACITACION", titulo: "Reunión informativa con familias" },
+  { fecha: "2026-02-19", tipo: "CAPACITACION", titulo: "Reunión informativa con familias (Grupo 1)" },
+  { fecha: "2026-02-20", tipo: "CAPACITACION", titulo: "Reunión informativa con familias (Grupo 2)" },
+  { fecha: "2026-02-23", tipo: "CAPACITACION", titulo: "Período de adaptación" },
+  { fecha: "2026-02-24", tipo: "CAPACITACION", titulo: "Período de adaptación" },
+  { fecha: "2026-02-25", tipo: "CAPACITACION", titulo: "Período de adaptación" },
+  { fecha: "2026-02-26", tipo: "CAPACITACION", titulo: "Período de adaptación" },
+  { fecha: "2026-02-27", tipo: "CAPACITACION", titulo: "Período de adaptación" },
+  // ── Diagnósticos ─────────────────────────────────────────────────────────
+  { fecha: "2026-03-02", tipo: "CAPACITACION", titulo: "Diagnóstico Social, Pedagógico y Nutricional" },
+  { fecha: "2026-03-03", tipo: "CAPACITACION", titulo: "Diagnóstico Social, Pedagógico y Nutricional" },
+  { fecha: "2026-03-04", tipo: "CAPACITACION", titulo: "Diagnóstico Social, Pedagógico y Nutricional" },
+  { fecha: "2026-03-05", tipo: "CAPACITACION", titulo: "Diagnóstico Social, Pedagógico y Nutricional" },
+  { fecha: "2026-03-06", tipo: "CAPACITACION", titulo: "Diagnóstico Social, Pedagógico y Nutricional" },
+  // ── Rabbit Week ──────────────────────────────────────────────────────────
+  { fecha: "2026-03-30", tipo: "SUPERVISION", titulo: "Rabbit Week" },
+  { fecha: "2026-03-31", tipo: "SUPERVISION", titulo: "Rabbit Week" },
+  // ── Día de los jardines ──────────────────────────────────────────────────
+  { fecha: "2026-05-28", tipo: "SUPERVISION", titulo: "Día de los Jardines de Infantes" },
+  { fecha: "2026-05-29", tipo: "SUPERVISION", titulo: "Festejo Día de los Jardines (media jornada)" },
+  // ── Receso invernal / CAIPLI TOUR ────────────────────────────────────────
+  { fecha: "2026-07-13", tipo: "SUPERVISION", titulo: "CAIPLI TOUR" },
+  { fecha: "2026-07-14", tipo: "SUPERVISION", titulo: "CAIPLI TOUR" },
+  { fecha: "2026-07-15", tipo: "SUPERVISION", titulo: "CAIPLI TOUR" },
+  { fecha: "2026-07-16", tipo: "SUPERVISION", titulo: "CAIPLI TOUR" },
+  { fecha: "2026-07-17", tipo: "SUPERVISION", titulo: "Reunión entrega de informes / CAIPLI TOUR" },
+  { fecha: "2026-07-20", tipo: "VACACIONES", titulo: "Receso invernal" },
+  { fecha: "2026-07-21", tipo: "VACACIONES", titulo: "Receso invernal" },
+  { fecha: "2026-07-22", tipo: "VACACIONES", titulo: "Receso invernal" },
+  { fecha: "2026-07-23", tipo: "VACACIONES", titulo: "Receso invernal" },
+  { fecha: "2026-07-24", tipo: "VACACIONES", titulo: "Receso invernal" },
+  { fecha: "2026-07-27", tipo: "VACACIONES", titulo: "Receso invernal" },
+  { fecha: "2026-07-28", tipo: "VACACIONES", titulo: "Receso invernal" },
+  { fecha: "2026-07-29", tipo: "VACACIONES", titulo: "Receso invernal" },
+  { fecha: "2026-07-30", tipo: "VACACIONES", titulo: "Receso invernal" },
+  { fecha: "2026-07-31", tipo: "VACACIONES", titulo: "Receso invernal" },
+  // ── Semana de la niñez ───────────────────────────────────────────────────
+  { fecha: "2026-08-10", tipo: "SUPERVISION", titulo: "Semana de la Niñez" },
+  { fecha: "2026-08-11", tipo: "SUPERVISION", titulo: "Semana de la Niñez" },
+  { fecha: "2026-08-12", tipo: "SUPERVISION", titulo: "Semana de la Niñez" },
+  { fecha: "2026-08-13", tipo: "SUPERVISION", titulo: "Semana de la Niñez" },
+  { fecha: "2026-08-14", tipo: "SUPERVISION", titulo: "Semana de la Niñez" },
+  // ── Día del maestro ──────────────────────────────────────────────────────
+  { fecha: "2026-09-11", tipo: "FERIADO", titulo: "Día del Maestro" },
+  // ── Sport Week ───────────────────────────────────────────────────────────
+  { fecha: "2026-09-07", tipo: "SUPERVISION", titulo: "Sport Week" },
+  { fecha: "2026-09-08", tipo: "SUPERVISION", titulo: "Sport Week" },
+  { fecha: "2026-09-09", tipo: "SUPERVISION", titulo: "Sport Week" },
+  { fecha: "2026-09-10", tipo: "SUPERVISION", titulo: "Sport Week" },
+  // ── Semana de lectura ────────────────────────────────────────────────────
+  { fecha: "2026-10-19", tipo: "SUPERVISION", titulo: "Semana de Lectura" },
+  { fecha: "2026-10-20", tipo: "SUPERVISION", titulo: "Semana de Lectura" },
+  { fecha: "2026-10-21", tipo: "SUPERVISION", titulo: "Semana de Lectura" },
+  { fecha: "2026-10-22", tipo: "SUPERVISION", titulo: "Semana de Lectura" },
+  { fecha: "2026-10-23", tipo: "SUPERVISION", titulo: "Semana de Lectura" },
+  // ── Reuniones entrega informes (noviembre) ───────────────────────────────
+  { fecha: "2026-11-23", tipo: "SUPERVISION", titulo: "Reunión con familias — Entrega de informes" },
+  { fecha: "2026-11-24", tipo: "SUPERVISION", titulo: "Reunión con familias — Entrega de informes" },
+  { fecha: "2026-11-25", tipo: "SUPERVISION", titulo: "Reunión con familias — Entrega de informes" },
+  { fecha: "2026-11-26", tipo: "SUPERVISION", titulo: "Reunión con familias — Entrega de informes" },
+  { fecha: "2026-11-27", tipo: "SUPERVISION", titulo: "Reunión con familias — Entrega de informes" },
+  // ── Egresos y CAIPLIADAS ─────────────────────────────────────────────────
+  { fecha: "2026-12-01", tipo: "SUPERVISION", titulo: "EGRESOS" },
+  { fecha: "2026-12-02", tipo: "SUPERVISION", titulo: "EGRESOS" },
+  { fecha: "2026-12-03", tipo: "SUPERVISION", titulo: "EGRESOS" },
+  { fecha: "2026-12-04", tipo: "SUPERVISION", titulo: "EGRESOS" },
+  { fecha: "2026-12-07", tipo: "SUPERVISION", titulo: "CAIPLIADAS" },
+  { fecha: "2026-12-08", tipo: "SUPERVISION", titulo: "CAIPLIADAS" },
+  { fecha: "2026-12-09", tipo: "SUPERVISION", titulo: "CAIPLIADAS" },
+  { fecha: "2026-12-10", tipo: "SUPERVISION", titulo: "CAIPLIADAS" },
+  { fecha: "2026-12-11", tipo: "SUPERVISION", titulo: "CAIPLIADAS" },
+  { fecha: "2026-12-14", tipo: "SUPERVISION", titulo: "CAIPLIADAS" },
+  { fecha: "2026-12-15", tipo: "SUPERVISION", titulo: "CAIPLIADAS" },
+  { fecha: "2026-12-16", tipo: "SUPERVISION", titulo: "CAIPLIADAS" },
+  { fecha: "2026-12-17", tipo: "SUPERVISION", titulo: "CAIPLIADAS" },
+  { fecha: "2026-12-18", tipo: "SUPERVISION", titulo: "CAIPLIADAS" },
+];
+
+// POST /calendario/seed-2026  { centerId }
+router.post("/calendario/seed-2026", async (req, res) => {
+  try {
+    await ensureTables();
+    const { centerId } = req.body;
+    if (!centerId) { res.status(400).json({ error: "centerId required" }); return; }
+
+    // Delete existing 2026 events for this center to avoid duplicates on re-seed
+    await pool.query(
+      `DELETE FROM calendar_events WHERE center_id=$1 AND fecha >= '2026-01-01' AND fecha <= '2026-12-31'`,
+      [centerId]
+    );
+
+    for (const ev of SEED_EVENTS_2026) {
+      await pool.query(
+        `INSERT INTO calendar_events (center_id, fecha, tipo, titulo) VALUES ($1,$2,$3,$4)`,
+        [centerId, ev.fecha, ev.tipo, ev.titulo]
+      );
+    }
+
+    res.json({ inserted: SEED_EVENTS_2026.length });
+  } catch (err: any) {
+    req.log.error(err, "Error seeding calendar");
+    res.status(500).json({ error: "Internal server error", detail: err?.message });
+  }
+});
+
 // ── Calendar events ────────────────────────────────────────────────────────
 
 // GET /calendario/events?centerId=X&month=YYYY-MM

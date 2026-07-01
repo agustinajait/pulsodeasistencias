@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ChevronLeft, ChevronRight, Plus, X, Trash2, Save, Users, CalendarDays,
+  ChevronLeft, ChevronRight, Plus, X, Trash2, Save, Users, CalendarDays, Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -410,6 +410,30 @@ export default function Calendario() {
   const effectiveCenterId = isSuperAdmin ? superCenterId : centerId;
 
   const [y, m] = month.split("-").map(Number);
+  const [seeding, setSeeding] = useState(false);
+  const [seedDone, setSeedDone] = useState(false);
+
+  async function handleSeed() {
+    if (!effectiveCenterId) return;
+    const ok = window.confirm("¿Cargar el calendario académico 2026? Esto reemplazará todos los eventos 2026 ya cargados para este centro.");
+    if (!ok) return;
+    setSeeding(true);
+    try {
+      const r = await fetch(`${BASE}/calendario/seed-2026`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ centerId: effectiveCenterId }),
+      });
+      if (r.ok) {
+        setSeedDone(true);
+        qc.invalidateQueries({ queryKey: ["cal-events", effectiveCenterId] });
+        qc.invalidateQueries({ queryKey: ["cal-working", effectiveCenterId] });
+        setTimeout(() => setSeedDone(false), 4000);
+      }
+    } finally {
+      setSeeding(false);
+    }
+  }
 
   const eventsQ = useQuery({
     queryKey: ["cal-events", effectiveCenterId, month],
@@ -488,6 +512,22 @@ export default function Calendario() {
               <h2 className="font-bold text-gray-900">{MESES[m - 1]} {y}</h2>
               <button onClick={nextMonth} className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"><ChevronRight className="w-5 h-5" /></button>
             </div>
+
+            {/* seed 2026 */}
+            {canEdit && (
+              <button
+                onClick={handleSeed}
+                disabled={seeding}
+                className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-semibold transition-colors ${
+                  seedDone
+                    ? "bg-green-50 border-green-200 text-green-700"
+                    : "bg-violet-50 border-violet-200 text-violet-600 hover:bg-violet-100"
+                } disabled:opacity-50`}
+              >
+                <Download className="w-4 h-4" />
+                {seeding ? "Cargando..." : seedDone ? "✓ Calendario 2026 cargado" : "Cargar calendario académico 2026"}
+              </button>
+            )}
 
             {/* add event CTA */}
             {canEdit ? (

@@ -18,6 +18,7 @@ import importCases2026Router from "./import-cases-2026";
 import calendarioRouter from "./calendario";
 import planificacionesRouter from "./planificaciones";
 import adminSyncRouter from "./admin-sync";
+import followupReportsRouter from "./followup-reports";
 
 const router: IRouter = Router();
 
@@ -40,5 +41,6 @@ router.use(importCases2026Router);
 router.use(calendarioRouter);
 router.use(planificacionesRouter);
 router.use("/admin-sync", adminSyncRouter);
+router.use(followupReportsRouter);
 
 export default router;

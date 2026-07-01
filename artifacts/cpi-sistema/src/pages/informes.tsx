@@ -389,7 +389,7 @@ async function fetchChildren(centerId: number | null): Promise<Child[]> {
   }));
 }
 
-async function fetchProfile(centerId: number | null): Promise<{ logoBase64?: string; directorNombre?: string; reportPeriods?: string[] } | null> {
+async function fetchProfile(centerId: number | null): Promise<{ logoBase64?: string; directorNombre?: string; coordinadorNombre?: string; email?: string; reportPeriods?: string[] } | null> {
   if (!centerId) return null;
   const r = await fetch(`${BASE}/centers/${centerId}/profile`);
   return r.ok ? r.json() : null;
@@ -1074,9 +1074,301 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
   );
 }
 
+// ── Helpers ────────────────────────────────────────────────────────────────
+type FollowupReport = {
+  id?: number;
+  childId?: number;
+  nombre?: string;
+  apellido?: string;
+  centerId?: number;
+  fecha?: string;
+  lider?: string;
+  facilitadora?: string;
+  ecoNumber?: number;
+  dniNino?: string;
+  fechaNacNino?: string;
+  adultNombre?: string;
+  adultDni?: string;
+  bodyText?: string;
+  firmanteNombre?: string;
+  firmanteTitulo?: string;
+  firmanteMatricula?: string;
+  createdAt?: string;
+};
+
+function calcEdad(fnac: string): string {
+  const parts = fnac.split(/[\/\-]/);
+  if (parts.length < 3) return "";
+  const [d, m, y] = parts.length === 3 && fnac.includes("/") ? parts : [parts[2], parts[1], parts[0]];
+  const birth = new Date(Number(y), Number(m) - 1, Number(d));
+  const now = new Date();
+  let years = now.getFullYear() - birth.getFullYear();
+  let months = now.getMonth() - birth.getMonth();
+  if (months < 0) { years--; months += 12; }
+  const yStr = years > 0 ? `${years} año${years !== 1 ? "s" : ""}` : "";
+  const mStr = months > 0 ? `${months} mes${months !== 1 ? "es" : ""}` : "";
+  return [yStr, mStr].filter(Boolean).join(" y ") || "menos de 1 mes";
+}
+
+function fmtFechaLarga(iso: string): string {
+  const d = new Date(iso + "T12:00:00");
+  return d.toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" });
+}
+
+// ── FollowupReportModal ────────────────────────────────────────────────────
+function FollowupReportModal({
+  centerId, centerName, report, children: childList, logoBase64, email, onClose, onSaved,
+}: {
+  centerId: number;
+  centerName?: string | null;
+  report?: FollowupReport | null;
+  children: Child[];
+  logoBase64?: string;
+  email?: string;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { toast } = useToast();
+  const isEdit = !!report?.id;
+
+  const [childSearch, setChildSearch] = useState("");
+  const [selectedChild, setSelectedChild] = useState<Child | null>(
+    report?.childId ? { id: report.childId, nombre: report.nombre ?? "", apellido: report.apellido ?? "", ecoNumber: report.ecoNumber } : null
+  );
+  const [fecha, setFecha] = useState(report?.fecha ?? new Date().toISOString().slice(0, 10));
+  const [lider, setLider] = useState(report?.lider ?? "");
+  const [facilitadora, setFacilitadora] = useState(report?.facilitadora ?? "");
+  const [dniNino, setDniNino] = useState(report?.dniNino ?? "");
+  const [fechaNacNino, setFechaNacNino] = useState(report?.fechaNacNino ?? "");
+  const [adultNombre, setAdultNombre] = useState(report?.adultNombre ?? "");
+  const [adultDni, setAdultDni] = useState(report?.adultDni ?? "");
+  const [bodyText, setBodyText] = useState(report?.bodyText ?? "");
+  const [firmanteNombre, setFiremanteNombre] = useState(report?.firmanteNombre ?? "");
+  const [firmanteTitulo, setFirmanteTitulo] = useState(report?.firmanteTitulo ?? "");
+  const [firmanteMatricula, setFiremanteMatricula] = useState(report?.firmanteMatricula ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const filteredChildren = useMemo(() => {
+    const q = childSearch.toLowerCase();
+    if (!q) return childList.slice(0, 40);
+    return childList.filter((c) => `${c.apellido} ${c.nombre}`.toLowerCase().includes(q)).slice(0, 40);
+  }, [childList, childSearch]);
+
+  async function handleSave() {
+    if (!selectedChild && !isEdit) { toast({ title: "Seleccioná un niño/a", variant: "destructive" }); return; }
+    setSaving(true);
+    try {
+      const body = {
+        childId: selectedChild?.id ?? report?.childId,
+        centerId,
+        fecha, lider: lider || null, facilitadora: facilitadora || null,
+        ecoNumber: selectedChild?.ecoNumber ?? report?.ecoNumber,
+        dniNino: dniNino || null, fechaNacNino: fechaNacNino || null,
+        adultNombre: adultNombre || null, adultDni: adultDni || null,
+        bodyText: bodyText || null,
+        firmanteNombre: firmanteNombre || null,
+        firmanteTitulo: firmanteTitulo || null,
+        firmanteMatricula: firmanteMatricula || null,
+      };
+      const url = isEdit ? `${BASE}/followup-reports/${report!.id}` : `${BASE}/followup-reports`;
+      const res = await fetch(url, { method: isEdit ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (res.ok) { toast({ title: isEdit ? "Informe actualizado" : "Informe creado" }); onSaved(); }
+      else { const b = await res.json().catch(() => ({})); toast({ title: "Error al guardar", description: b?.error ?? `Error ${res.status}`, variant: "destructive" }); }
+    } catch { toast({ title: "Error de conexión", variant: "destructive" }); }
+    finally { setSaving(false); }
+  }
+
+  function handlePrint() {
+    const w = window.open("", "_blank");
+    if (!w) return;
+    const childName = selectedChild ? `${selectedChild.apellido} ${selectedChild.nombre}` : (report ? `${report.apellido} ${report.nombre}` : "");
+    const ecoNum = selectedChild?.ecoNumber ?? report?.ecoNumber;
+    const edad = fechaNacNino ? ` Edad: ${calcEdad(fechaNacNino)}.` : "";
+    const fechaStr = fmtFechaLarga(fecha);
+    const logoHtml = logoBase64
+      ? `<img id="logo" src="${logoBase64}" style="height:72px;object-fit:contain;display:block" alt="Logo"/>`
+      : `<div style="font-size:22px;font-weight:900;color:#1e1147">Koratic</div>`;
+    const firmaHtml = firmanteNombre
+      ? `<div style="margin-top:48px"><div style="border-top:1px solid #374151;width:200px;margin-bottom:6px"></div><div style="font-size:13px;font-weight:700;color:#1e1147">${firmanteNombre}</div>${firmanteTitulo ? `<div style="font-size:11px;color:#6b7280">${firmanteTitulo}</div>` : ""}${firmanteMatricula ? `<div style="font-size:11px;color:#6b7280">M.P. ${firmanteMatricula}</div>` : ""}</div>`
+      : "";
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Informe — ${childName}</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:'Times New Roman',Times,serif;font-size:12pt;color:#1a1a1a;padding:40px 56px;max-width:800px;margin:0 auto;line-height:1.6}
+      .header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:40px}
+      .fecha{font-size:12pt;text-align:right}
+      .section-title{text-decoration:underline;font-weight:bold;margin-bottom:6px;margin-top:20px;font-size:12pt}
+      .section-body{margin-bottom:20px;font-size:12pt}
+      p{margin-bottom:12px;text-align:justify}
+      .cierre{margin-top:24px}
+      @media print{body{padding:20px 40px}@page{margin:15mm}}
+    </style>
+    </head><body>
+    <div class="header">
+      ${logoHtml}
+      <div class="fecha">Bs. As. el ${fechaStr}</div>
+    </div>
+    <p class="section-title">Datos de la niño/a:</p>
+    <div class="section-body">
+      <p>Nombre y apellido: ${childName}.</p>
+      ${fechaNacNino ? `<p>Fecha de nacimiento: ${fechaNacNino}.${edad}</p>` : ""}
+      ${dniNino ? `<p>DNI: ${dniNino}</p>` : ""}
+    </div>
+    ${adultNombre ? `<p class="section-title">Datos del adulto/a responsable:</p><div class="section-body"><p>Nombre y apellido: ${adultNombre}.</p>${adultDni ? `<p>DNI: ${adultDni}</p>` : ""}</div>` : ""}
+    <p>Desde el Centro de Primera Infancia "${centerName ?? "CAIPLI"}"${lider ? `, a cargo de ${lider}` : ""}${ecoNum ? `, sala ECO ${ecoNum}` : ""}, nos dirigimos a quien corresponda a fin de elevar el informe de seguimiento para poner en conocimiento la situación en que se encuentra actualmente el/la niño/a ${(selectedChild?.nombre ?? report?.nombre ?? "").split(" ")[0]}.</p>
+    ${bodyText ? `<p>${bodyText.replace(/\n/g, "</p><p>")}</p>` : ""}
+    <div class="cierre">
+      <p>Quedo a disposición para ampliar información o trabajar de manera conjunta.</p>
+      ${email ? `<p>Mail de contacto: ${email}</p>` : ""}
+      <p style="margin-top:16px">Saluda atentamente,</p>
+    </div>
+    ${firmaHtml}
+    <script>
+      ${logoBase64 ? `document.getElementById('logo').onload=function(){window.print()};document.getElementById('logo').onerror=function(){window.print()};` : "window.print();"}
+    </script>
+    </body></html>`);
+    w.document.close();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-white flex flex-col" style={{ height: "100dvh" }}>
+      {/* header */}
+      <div className="bg-[#1e1147] text-white px-5 pt-5 pb-4 shrink-0">
+        <div className="flex items-start justify-between max-w-7xl mx-auto">
+          <div>
+            <div className="text-white/50 text-[11px] font-semibold uppercase tracking-widest">Informe de seguimiento</div>
+            <h2 className="text-xl font-bold mt-0.5">{isEdit ? `${report!.apellido}, ${report!.nombre}` : "Nuevo informe"}</h2>
+          </div>
+          <button onClick={onClose} className="text-white/60 hover:text-white p-1 mt-1"><X className="w-5 h-5" /></button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 max-w-2xl w-full mx-auto">
+        {/* child selector */}
+        {!isEdit && (
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Niño/a</p>
+            {selectedChild ? (
+              <div className="flex items-center justify-between border border-violet-300 bg-violet-50 rounded-lg px-3 py-2">
+                <span className="text-sm font-semibold text-violet-800">{selectedChild.apellido}, {selectedChild.nombre}</span>
+                <button onClick={() => setSelectedChild(null)} className="text-violet-400 hover:text-violet-600"><X className="w-4 h-4" /></button>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <Input placeholder="Buscar por apellido..." value={childSearch} onChange={(e) => setChildSearch(e.target.value)} className="text-sm" />
+                <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-48 overflow-y-auto">
+                  {filteredChildren.map((c) => (
+                    <button key={c.id} onClick={() => { setSelectedChild(c); setChildSearch(""); }}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-violet-50 transition-colors">
+                      <span className="font-medium">{c.apellido}, {c.nombre}</span>
+                      {c.ecoNumber != null && <span className="text-gray-400 text-xs ml-2">ECO {c.ecoNumber}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* fecha */}
+        <div>
+          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Fecha del informe</label>
+          <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" />
+        </div>
+
+        {/* datos del niño */}
+        <div>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Datos del niño/a</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] text-gray-400 block mb-1">DNI</label>
+              <Input value={dniNino} onChange={(e) => setDniNino(e.target.value)} placeholder="Ej: 70.123.456" className="text-sm" />
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-400 block mb-1">Fecha de nacimiento</label>
+              <Input value={fechaNacNino} onChange={(e) => setFechaNacNino(e.target.value)} placeholder="DD/MM/AAAA" className="text-sm" />
+              {fechaNacNino && <p className="text-[10px] text-gray-400 mt-0.5">{calcEdad(fechaNacNino)}</p>}
+            </div>
+          </div>
+        </div>
+
+        {/* datos adulto responsable */}
+        <div>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Adulto/a responsable</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] text-gray-400 block mb-1">Nombre y apellido</label>
+              <Input value={adultNombre} onChange={(e) => setAdultNombre(e.target.value)} placeholder="Apellido, Nombre" className="text-sm" />
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-400 block mb-1">DNI</label>
+              <Input value={adultDni} onChange={(e) => setAdultDni(e.target.value)} placeholder="Ej: 30.123.456" className="text-sm" />
+            </div>
+          </div>
+        </div>
+
+        {/* líder / facilitadora */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Líder</label>
+            <Input value={lider} onChange={(e) => setLider(e.target.value)} placeholder="Nombre" className="text-sm" />
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Facilitadora</label>
+            <Input value={facilitadora} onChange={(e) => setFacilitadora(e.target.value)} placeholder="Nombre" className="text-sm" />
+          </div>
+        </div>
+
+        {/* texto libre */}
+        <div>
+          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Contenido del informe</label>
+          <textarea
+            value={bodyText}
+            onChange={(e) => setBodyText(e.target.value)}
+            placeholder="Redactá el informe de seguimiento aquí. Podés describir el período de adaptación, rutinas, comportamiento social, lenguaje, desarrollo motriz, etc."
+            rows={10}
+            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm resize-none"
+          />
+        </div>
+
+        {/* firmante */}
+        <div>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Firmante</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] text-gray-400 block mb-1">Nombre y apellido</label>
+              <Input value={firmanteNombre} onChange={(e) => setFiremanteNombre(e.target.value)} placeholder="Nombre del firmante" className="text-sm" />
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-400 block mb-1">Título profesional</label>
+              <Input value={firmanteTitulo} onChange={(e) => setFirmanteTitulo(e.target.value)} placeholder="Ej: Lic. en Psicopedagogía" className="text-sm" />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="text-[10px] text-gray-400 block mb-1">Matrícula</label>
+              <Input value={firmanteMatricula} onChange={(e) => setFiremanteMatricula(e.target.value)} placeholder="Ej: 273365" className="text-sm" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* footer */}
+      <div className="px-4 py-4 border-t border-gray-100 bg-white shrink-0 space-y-2">
+        <div className="flex gap-2">
+          <Button onClick={handleSave} disabled={saving} className="flex-1">
+            {saving ? "Guardando..." : isEdit ? "Guardar cambios" : "Guardar informe"}
+          </Button>
+          <button onClick={handlePrint} className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-violet-600 border border-gray-200 rounded-lg px-3 py-2">
+            <Printer className="w-3.5 h-3.5" />PDF
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────
 export default function Informes() {
-  const { centerId, role } = useAuth();
+  const { centerId, role, centerName } = useAuth();
   const qc = useQueryClient();
   const { toast } = useToast();
   const isCoord = role === "admin" || role === "superadmin" || role === "coordinacion";
@@ -1085,12 +1377,17 @@ export default function Informes() {
   const logoBase64 = profileQ.data?.logoBase64;
   const periods = (profileQ.data?.reportPeriods?.length ? profileQ.data.reportPeriods : null) ?? PERIODS;
 
+  const urlParams = new URLSearchParams(window.location.search);
+  const [tab, setTab] = useState<"desarrollo" | "seguimiento">(urlParams.get("tab") === "seguimiento" ? "seguimiento" : "desarrollo");
+  const urlChildId = urlParams.get("childId") ? Number(urlParams.get("childId")) : null;
   const [search, setSearch] = useState("");
   const [filterEco, setFilterEco] = useState<string>(ecoNumber != null ? String(ecoNumber) : "");
   const [filterPeriod, setFilterPeriod] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("");
   const [selected, setSelected] = useState<Report | null>(null);
   const [showNew, setShowNew] = useState(false);
+  const [selectedFollowup, setSelectedFollowup] = useState<FollowupReport | null>(null);
+  const [showNewFollowup, setShowNewFollowup] = useState(() => urlParams.get("tab") === "seguimiento" && !!urlParams.get("childId"));
 
   const roomsQ = useListRooms();
   const rooms = (roomsQ.data ?? []).filter((r: any) => !centerId || r.centerId === centerId);
@@ -1098,6 +1395,30 @@ export default function Informes() {
   const reportsQ = useQuery({
     queryKey: ["all-reports", centerId, filterEco, filterPeriod],
     queryFn: () => fetchReports(centerId, filterEco !== "" ? Number(filterEco) : null, filterPeriod || undefined),
+    enabled: !!centerId,
+  });
+
+  const followupQ = useQuery<FollowupReport[]>({
+    queryKey: ["followup-reports", centerId],
+    queryFn: async () => {
+      if (!centerId) return [];
+      const r = await fetch(`${BASE}/followup-reports?centerId=${centerId}`);
+      return r.ok ? r.json() : [];
+    },
+    enabled: !!centerId,
+  });
+  const followupReports = followupQ.data ?? [];
+
+  const filteredFollowups = useMemo(() => {
+    let list = urlChildId ? followupReports.filter((r) => r.childId === urlChildId) : followupReports;
+    if (!search) return list;
+    const q = search.toLowerCase();
+    return list.filter((r) => `${r.nombre} ${r.apellido}`.toLowerCase().includes(q));
+  }, [followupReports, search, urlChildId]);
+
+  const childrenForFollowup = useQuery<Child[]>({
+    queryKey: ["children-for-followup", centerId],
+    queryFn: () => centerId ? fetch(`${BASE}/children?centerId=${centerId}`).then(r => r.json()).then(d => (d.children ?? d ?? []).map((c: any) => ({ id: c.id, nombre: c.nombre, apellido: c.apellido, ecoNumber: c.eco_number ?? c.ecoNumber }))) : Promise.resolve([]),
     enabled: !!centerId,
   });
 
@@ -1135,21 +1456,37 @@ export default function Informes() {
 
   return (
     <div className="min-h-full bg-gray-50">
-      <div className="bg-[#1e1147] text-white px-5 pt-6 pb-7 lg:pt-8">
-        <div className="text-white/50 text-[11px] font-semibold uppercase tracking-widest">Centro</div>
-        <div className="flex items-end justify-between mt-1">
-          <h1 className="text-2xl font-bold">Informes de desarrollo</h1>
+      <div className="bg-[#1e1147] text-white px-5 pt-6 pb-4 lg:pt-8">
+        <div className="text-white/50 text-[11px] font-semibold uppercase tracking-widest">Informes</div>
+        <div className="flex items-end justify-between mt-1 mb-4">
+          <h1 className="text-2xl font-bold">{tab === "desarrollo" ? "Desarrollo" : "Seguimiento"}</h1>
           <button
-            onClick={() => setShowNew(true)}
+            onClick={() => tab === "desarrollo" ? setShowNew(true) : setShowNewFollowup(true)}
             className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 text-white text-sm font-semibold px-3 py-1.5 rounded-xl transition-colors"
           >
-            <Plus className="w-4 h-4" />
-            Nuevo
+            <Plus className="w-4 h-4" />Nuevo
+          </button>
+        </div>
+        {/* tab switcher */}
+        <div className="flex gap-1 bg-white/10 rounded-xl p-1">
+          <button
+            onClick={() => setTab("desarrollo")}
+            className={`flex-1 text-sm font-semibold py-1.5 rounded-lg transition-colors ${tab === "desarrollo" ? "bg-white text-[#1e1147]" : "text-white/70 hover:text-white"}`}
+          >
+            Desarrollo
+          </button>
+          <button
+            onClick={() => setTab("seguimiento")}
+            className={`flex-1 text-sm font-semibold py-1.5 rounded-lg transition-colors ${tab === "seguimiento" ? "bg-white text-[#1e1147]" : "text-white/70 hover:text-white"}`}
+          >
+            Seguimiento
           </button>
         </div>
       </div>
 
       <div className="px-4 py-5 max-w-2xl mx-auto space-y-4">
+
+        {tab === "desarrollo" && (<>
 
         {/* Alerta informes pendientes de validación */}
         {isCoord && pendingCount > 0 && (
@@ -1285,6 +1622,52 @@ export default function Informes() {
             </div>
           ))}
         </div>
+
+        </>)}
+
+        {/* ── SEGUIMIENTO TAB ── */}
+        {tab === "seguimiento" && (
+          <>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input placeholder="Buscar por apellido..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 text-sm" />
+            </div>
+
+            {followupQ.isPending && <p className="text-center py-12 text-gray-400 text-sm">Cargando...</p>}
+
+            {!followupQ.isPending && filteredFollowups.length === 0 && (
+              <div className="text-center py-16">
+                <FileText className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+                <p className="text-gray-400 text-sm">No hay informes de seguimiento</p>
+                <button onClick={() => setShowNewFollowup(true)} className="mt-4 text-violet-600 text-sm font-semibold hover:underline flex items-center gap-1 mx-auto">
+                  <Plus className="w-4 h-4" />Crear el primer informe
+                </button>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {filteredFollowups.map((r) => (
+                <div key={r.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <button
+                    onClick={() => setSelectedFollowup(r)}
+                    className="w-full flex items-center gap-3 px-4 py-4 hover:bg-violet-50/50 transition-colors text-left"
+                  >
+                    <FileText className="w-4 h-4 text-violet-400 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-gray-900">{r.apellido}, {r.nombre}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {r.fecha ? fmtFechaLarga(r.fecha) : "—"}
+                        {r.ecoNumber ? ` · ECO ${r.ecoNumber}` : ""}
+                        {r.firmanteNombre ? ` · ${r.firmanteNombre}` : ""}
+                      </p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {selected && <ReportModal report={selected} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); qc.invalidateQueries({ queryKey: ["all-reports"] }); }} logoBase64={logoBase64} userRole={role} />}
@@ -1296,6 +1679,18 @@ export default function Informes() {
           onClose={() => setShowNew(false)}
           onSaved={() => qc.invalidateQueries({ queryKey: ["all-reports"] })}
           logoBase64={logoBase64}
+        />
+      )}
+      {(showNewFollowup || selectedFollowup) && centerId && (
+        <FollowupReportModal
+          centerId={centerId}
+          centerName={centerName}
+          report={selectedFollowup ?? (urlChildId && !selectedFollowup ? (() => { const c = (childrenForFollowup.data ?? []).find(x => x.id === urlChildId); return c ? { childId: c.id, nombre: c.nombre, apellido: c.apellido, ecoNumber: c.ecoNumber } : null; })() : null)}
+          children={childrenForFollowup.data ?? []}
+          logoBase64={logoBase64}
+          email={profileQ.data?.email}
+          onClose={() => { setShowNewFollowup(false); setSelectedFollowup(null); }}
+          onSaved={() => { setShowNewFollowup(false); setSelectedFollowup(null); qc.invalidateQueries({ queryKey: ["followup-reports"] }); }}
         />
       )}
     </div>

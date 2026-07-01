@@ -2019,6 +2019,9 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                 <Button size="sm" variant="outline" onClick={() => { setView("informe"); setInfMode("list"); }} className="col-span-1" data-testid="btn-ver-informe">
                   Informe de desarrollo
                 </Button>
+                <Button size="sm" variant="outline" onClick={() => { onClose(); navigate(`/informes?tab=seguimiento&childId=${childId}`); }} className="col-span-1">
+                  Informe de seguimiento
+                </Button>
                 <Button size="sm" variant="outline" onClick={() => { onClose(); navigate(`/casos?childId=${childId}`); }} className="col-span-1" data-testid="btn-ver-casos">
                   Equipo técnico
                 </Button>

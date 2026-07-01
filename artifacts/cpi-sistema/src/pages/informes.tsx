@@ -1346,7 +1346,7 @@ function FollowupReportModal({
                     const childFullName = sc ? `${sc.apellido ?? ""} ${sc.nombre ?? ""}`.trim() : "";
                     const age = fechaNacNino ? calcEdad(fechaNacNino) : undefined;
                     const ecoN = selectedChild?.ecoNumber ?? report?.ecoNumber;
-                    const r = await fetch("/api/ai/generate-followup-text", {
+                    const r = await fetch(`${BASE}/ai/generate-followup-text`, {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({

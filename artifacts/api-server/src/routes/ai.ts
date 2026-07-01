@@ -2,7 +2,12 @@ import { Router } from "express";
 import Anthropic from "@anthropic-ai/sdk";
 
 const router = Router();
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+function getClient() {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY no configurada en el servidor");
+  return new Anthropic({ apiKey });
+}
 
 // POST /ai/generate-followup-text
 router.post("/ai/generate-followup-text", async (req, res) => {
@@ -50,6 +55,7 @@ ${context}
 
 Devolvé solo el texto del informe, sin comentarios adicionales.`;
 
+    const anthropic = getClient();
     const message = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 600,
@@ -61,7 +67,7 @@ Devolvé solo el texto del informe, sin comentarios adicionales.`;
     res.json({ text });
   } catch (err: any) {
     req.log.error(err, "AI generate error");
-    res.status(500).json({ error: "Error al generar texto", detail: err?.message });
+    res.status(500).json({ error: err?.message ?? "Error al generar texto" });
   }
 });
 

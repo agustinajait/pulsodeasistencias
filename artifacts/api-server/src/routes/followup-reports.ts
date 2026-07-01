@@ -105,12 +105,7 @@ router.put("/followup-reports/:id", async (req, res) => {
       `UPDATE child_followup_reports
        SET fecha=$2, lider=$3, facilitadora=$4, eco_number=$5, dni_nino=$6, fecha_nac_nino=$7,
            adult_nombre=$8, adult_dni=$9, body_text=$10, firmante_nombre=$11, firmante_titulo=$12,
-           firmante_matricula=$13,
-           firma_lider_data = CASE WHEN lider IS DISTINCT FROM $3 THEN NULL ELSE firma_lider_data END,
-           firma_lider_at   = CASE WHEN lider IS DISTINCT FROM $3 THEN NULL ELSE firma_lider_at END,
-           firma_firmante_data = CASE WHEN firmante_nombre IS DISTINCT FROM $11 THEN NULL ELSE firma_firmante_data END,
-           firma_firmante_at   = CASE WHEN firmante_nombre IS DISTINCT FROM $11 THEN NULL ELSE firma_firmante_at END,
-           updated_at=NOW()
+           firmante_matricula=$13, updated_at=NOW()
        WHERE id=$1
        RETURNING ${RETURNING}`,
       [id, fecha ?? null, lider ?? null, facilitadora ?? null, ecoNumber ?? null, dniNino ?? null, fechaNacNino ?? null, adultNombre ?? null, adultDni ?? null, bodyText ?? null, firmanteNombre ?? null, firmanteTitulo ?? null, firmanteMatricula ?? null]

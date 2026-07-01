@@ -1215,7 +1215,20 @@ function FollowupReportModal({
       };
       const url = isEdit ? `${BASE}/followup-reports/${report!.id}` : `${BASE}/followup-reports`;
       const res = await fetch(url, { method: isEdit ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      if (res.ok) { toast({ title: isEdit ? "Informe actualizado" : "Informe creado" }); onSaved(); }
+      if (res.ok) {
+        const saved = await res.json();
+        toast({ title: isEdit ? "Informe actualizado" : "Informe creado" });
+        if (!isEdit) {
+          onSaved();
+        } else {
+          // stay open, refresh firma state from response
+          setFirmaLiderData(saved.firmaLiderData);
+          setFirmaLiderAt(saved.firmaLiderAt);
+          setFirmaFirmanteData(saved.firmaFirmanteData);
+          setFirmaFirmanteAt(saved.firmaFirmanteAt);
+          onSaved();
+        }
+      }
       else { const b = await res.json().catch(() => ({})); toast({ title: "Error al guardar", description: b?.error ?? `Error ${res.status}`, variant: "destructive" }); }
     } catch { toast({ title: "Error de conexión", variant: "destructive" }); }
     finally { setSaving(false); }
@@ -1819,7 +1832,7 @@ export default function Informes() {
           logoBase64={logoBase64}
           email={profileQ.data?.email}
           onClose={() => { setShowNewFollowup(false); setSelectedFollowup(null); }}
-          onSaved={() => { setShowNewFollowup(false); setSelectedFollowup(null); qc.invalidateQueries({ queryKey: ["followup-reports"] }); }}
+          onSaved={() => { qc.invalidateQueries({ queryKey: ["followup-reports"] }); }}
         />
       )}
     </div>

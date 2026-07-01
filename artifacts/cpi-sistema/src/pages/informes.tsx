@@ -1221,11 +1221,9 @@ function FollowupReportModal({
         if (!isEdit) {
           onSaved();
         } else {
-          // stay open, refresh firma state from response
-          setFirmaLiderData(saved.firmaLiderData);
-          setFirmaLiderAt(saved.firmaLiderAt);
-          setFirmaFirmanteData(saved.firmaFirmanteData);
-          setFirmaFirmanteAt(saved.firmaFirmanteAt);
+          // stay open; only update firma state if server returned real data
+          if (saved.firmaLiderData != null) { setFirmaLiderData(saved.firmaLiderData); setFirmaLiderAt(saved.firmaLiderAt); }
+          if (saved.firmaFirmanteData != null) { setFirmaFirmanteData(saved.firmaFirmanteData); setFirmaFirmanteAt(saved.firmaFirmanteAt); }
           onSaved();
         }
       }
@@ -1289,7 +1287,7 @@ function FollowupReportModal({
     </div>
     ${firmaHtml}
     <script>
-      ${logoBase64 ? `document.getElementById('logo').onload=function(){window.print()};document.getElementById('logo').onerror=function(){window.print()};` : "window.print();"}
+      window.onload = function() { window.print(); };
     </script>
     </body></html>`);
     w.document.close();

@@ -1143,6 +1143,7 @@ function FollowupReportModal({
   const [adultNombre, setAdultNombre] = useState(report?.adultNombre ?? "");
   const [adultDni, setAdultDni] = useState(report?.adultDni ?? "");
   const [bodyText, setBodyText] = useState(report?.bodyText ?? "");
+  const [aiLoading, setAiLoading] = useState(false);
   const [firmanteNombre, setFiremanteNombre] = useState(report?.firmanteNombre ?? "");
   const [firmanteTitulo, setFirmanteTitulo] = useState(report?.firmanteTitulo ?? "");
   const [firmanteMatricula, setFiremanteMatricula] = useState(report?.firmanteMatricula ?? "");
@@ -1321,7 +1322,52 @@ function FollowupReportModal({
 
         {/* texto libre */}
         <div>
-          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Contenido del informe</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Contenido del informe</label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={aiLoading}
+                onClick={async () => {
+                  setAiLoading(true);
+                  try {
+                    const sc = selectedChild ?? (report as any);
+                    const childFullName = sc ? `${sc.apellido ?? ""} ${sc.nombre ?? ""}`.trim() : "";
+                    const age = fechaNacNino ? calcEdad(fechaNacNino) : undefined;
+                    const ecoN = selectedChild?.ecoNumber ?? report?.ecoNumber;
+                    const r = await fetch("/api/ai/generate-followup-text", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        childName: childFullName,
+                        childAge: age,
+                        sala: ecoN ? `ECO ${ecoN}` : undefined,
+                        lider: lider || undefined,
+                        facilitadora: facilitadora || undefined,
+                        adultNombre: adultNombre || undefined,
+                        existingText: bodyText || undefined,
+                      }),
+                    });
+                    const data = await r.json();
+                    if (data.text) setBodyText(data.text);
+                    else toast({ title: data.error ?? "Error al generar texto", variant: "destructive" });
+                  } catch {
+                    toast({ title: "Error al generar texto", variant: "destructive" });
+                  } finally {
+                    setAiLoading(false);
+                  }
+                }}
+                className="flex items-center gap-1 text-[11px] text-violet-600 hover:text-violet-800 font-medium disabled:opacity-50"
+              >
+                {aiLoading ? (
+                  <span className="animate-spin inline-block w-3 h-3 border border-violet-500 border-t-transparent rounded-full" />
+                ) : (
+                  <span>✦</span>
+                )}
+                {bodyText.trim().length > 30 ? "Mejorar texto" : "Generar texto"}
+              </button>
+            </div>
+          </div>
           <textarea
             value={bodyText}
             onChange={(e) => setBodyText(e.target.value)}

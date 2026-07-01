@@ -19,6 +19,7 @@ import calendarioRouter from "./calendario";
 import planificacionesRouter from "./planificaciones";
 import adminSyncRouter from "./admin-sync";
 import followupReportsRouter from "./followup-reports";
+import aiRouter from "./ai";
 
 const router: IRouter = Router();
 
@@ -42,5 +43,6 @@ router.use(calendarioRouter);
 router.use(planificacionesRouter);
 router.use("/admin-sync", adminSyncRouter);
 router.use(followupReportsRouter);
+router.use(aiRouter);
 
 export default router;

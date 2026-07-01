@@ -3,6 +3,17 @@ import { pool } from "@workspace/db";
 
 const router = Router();
 
+const RETURNING = `
+  id, child_id AS "childId", center_id AS "centerId", fecha, lider, facilitadora,
+  eco_number AS "ecoNumber", dni_nino AS "dniNino", fecha_nac_nino AS "fechaNacNino",
+  adult_nombre AS "adultNombre", adult_dni AS "adultDni", body_text AS "bodyText",
+  firmante_nombre AS "firmanteNombre", firmante_titulo AS "firmanteTitulo",
+  firmante_matricula AS "firmanteMatricula",
+  firma_lider_data AS "firmaLiderData", firma_lider_at AS "firmaLiderAt",
+  firma_firmante_data AS "firmaFirmanteData", firma_firmante_at AS "firmaFirmanteAt",
+  created_at AS "createdAt", updated_at AS "updatedAt"
+`;
+
 async function ensureTable() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS child_followup_reports (
@@ -25,6 +36,10 @@ async function ensureTable() {
       updated_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  await pool.query(`ALTER TABLE child_followup_reports ADD COLUMN IF NOT EXISTS firma_lider_data TEXT`);
+  await pool.query(`ALTER TABLE child_followup_reports ADD COLUMN IF NOT EXISTS firma_lider_at TIMESTAMPTZ`);
+  await pool.query(`ALTER TABLE child_followup_reports ADD COLUMN IF NOT EXISTS firma_firmante_data TEXT`);
+  await pool.query(`ALTER TABLE child_followup_reports ADD COLUMN IF NOT EXISTS firma_firmante_at TIMESTAMPTZ`);
 }
 
 // GET /followup-reports?centerId=X&childId=Y
@@ -44,6 +59,8 @@ router.get("/followup-reports", async (req, res) => {
               f.body_text AS "bodyText",
               f.firmante_nombre AS "firmanteNombre", f.firmante_titulo AS "firmanteTitulo",
               f.firmante_matricula AS "firmanteMatricula",
+              f.firma_lider_data AS "firmaLiderData", f.firma_lider_at AS "firmaLiderAt",
+              f.firma_firmante_data AS "firmaFirmanteData", f.firma_firmante_at AS "firmaFirmanteAt",
               f.created_at AS "createdAt", f.updated_at AS "updatedAt"
        FROM child_followup_reports f
        JOIN children ch ON ch.id = f.child_id
@@ -67,7 +84,7 @@ router.post("/followup-reports", async (req, res) => {
     const { rows } = await pool.query(
       `INSERT INTO child_followup_reports (child_id, center_id, fecha, lider, facilitadora, eco_number, dni_nino, fecha_nac_nino, adult_nombre, adult_dni, body_text, firmante_nombre, firmante_titulo, firmante_matricula)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
-       RETURNING id, child_id AS "childId", center_id AS "centerId", fecha, lider, facilitadora, eco_number AS "ecoNumber", dni_nino AS "dniNino", fecha_nac_nino AS "fechaNacNino", adult_nombre AS "adultNombre", adult_dni AS "adultDni", body_text AS "bodyText", firmante_nombre AS "firmanteNombre", firmante_titulo AS "firmanteTitulo", firmante_matricula AS "firmanteMatricula", created_at AS "createdAt"`,
+       RETURNING ${RETURNING}`,
       [childId, centerId, fecha ?? null, lider ?? null, facilitadora ?? null, ecoNumber ?? null, dniNino ?? null, fechaNacNino ?? null, adultNombre ?? null, adultDni ?? null, bodyText ?? null, firmanteNombre ?? null, firmanteTitulo ?? null, firmanteMatricula ?? null]
     );
     res.status(201).json(rows[0]);
@@ -88,15 +105,64 @@ router.put("/followup-reports/:id", async (req, res) => {
       `UPDATE child_followup_reports
        SET fecha=$2, lider=$3, facilitadora=$4, eco_number=$5, dni_nino=$6, fecha_nac_nino=$7,
            adult_nombre=$8, adult_dni=$9, body_text=$10, firmante_nombre=$11, firmante_titulo=$12,
-           firmante_matricula=$13, updated_at=NOW()
+           firmante_matricula=$13,
+           firma_lider_data = CASE WHEN lider IS DISTINCT FROM $3 THEN NULL ELSE firma_lider_data END,
+           firma_lider_at   = CASE WHEN lider IS DISTINCT FROM $3 THEN NULL ELSE firma_lider_at END,
+           firma_firmante_data = CASE WHEN firmante_nombre IS DISTINCT FROM $11 THEN NULL ELSE firma_firmante_data END,
+           firma_firmante_at   = CASE WHEN firmante_nombre IS DISTINCT FROM $11 THEN NULL ELSE firma_firmante_at END,
+           updated_at=NOW()
        WHERE id=$1
-       RETURNING id, child_id AS "childId", center_id AS "centerId", fecha, lider, facilitadora, eco_number AS "ecoNumber", dni_nino AS "dniNino", fecha_nac_nino AS "fechaNacNino", adult_nombre AS "adultNombre", adult_dni AS "adultDni", body_text AS "bodyText", firmante_nombre AS "firmanteNombre", firmante_titulo AS "firmanteTitulo", firmante_matricula AS "firmanteMatricula", created_at AS "createdAt", updated_at AS "updatedAt"`,
+       RETURNING ${RETURNING}`,
       [id, fecha ?? null, lider ?? null, facilitadora ?? null, ecoNumber ?? null, dniNino ?? null, fechaNacNino ?? null, adultNombre ?? null, adultDni ?? null, bodyText ?? null, firmanteNombre ?? null, firmanteTitulo ?? null, firmanteMatricula ?? null]
     );
     if (!rows.length) { res.status(404).json({ error: "Not found" }); return; }
     res.json(rows[0]);
   } catch (err: any) {
     req.log.error(err, "Error updating followup report");
+    res.status(500).json({ error: "Internal server error", detail: err?.message });
+  }
+});
+
+// PUT /followup-reports/:id/sign  { role: "lider" | "firmante", data: string | null }
+router.put("/followup-reports/:id/sign", async (req, res) => {
+  try {
+    await ensureTable();
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+    const { role, data } = req.body;
+    if (role !== "lider" && role !== "firmante") { res.status(400).json({ error: "role must be lider or firmante" }); return; }
+    const col = role === "lider" ? "firma_lider" : "firma_firmante";
+    const { rows } = await pool.query(
+      `UPDATE child_followup_reports
+       SET ${col}_data=$2, ${col}_at=NOW(), updated_at=NOW()
+       WHERE id=$1
+       RETURNING ${RETURNING}`,
+      [id, data]
+    );
+    if (!rows.length) { res.status(404).json({ error: "Not found" }); return; }
+    res.json(rows[0]);
+  } catch (err: any) {
+    req.log.error(err, "Error signing followup report");
+    res.status(500).json({ error: "Internal server error", detail: err?.message });
+  }
+});
+
+// DELETE /followup-reports/:id/sign?role=lider|firmante
+router.delete("/followup-reports/:id/sign", async (req, res) => {
+  try {
+    await ensureTable();
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+    const role = req.query.role as string;
+    if (role !== "lider" && role !== "firmante") { res.status(400).json({ error: "role must be lider or firmante" }); return; }
+    const col = role === "lider" ? "firma_lider" : "firma_firmante";
+    const { rows } = await pool.query(
+      `UPDATE child_followup_reports SET ${col}_data=NULL, ${col}_at=NULL, updated_at=NOW() WHERE id=$1 RETURNING ${RETURNING}`,
+      [id]
+    );
+    if (!rows.length) { res.status(404).json({ error: "Not found" }); return; }
+    res.json(rows[0]);
+  } catch (err: any) {
     res.status(500).json({ error: "Internal server error", detail: err?.message });
   }
 });

@@ -1097,6 +1097,10 @@ type FollowupReport = {
   firmanteNombre?: string;
   firmanteTitulo?: string;
   firmanteMatricula?: string;
+  firmaLiderData?: string | null;
+  firmaLiderAt?: string | null;
+  firmaFirmanteData?: string | null;
+  firmaFirmanteAt?: string | null;
   createdAt?: string;
 };
 
@@ -1151,7 +1155,41 @@ function FollowupReportModal({
   const [firmanteNombre, setFiremanteNombre] = useState(report?.firmanteNombre ?? "");
   const [firmanteTitulo, setFirmanteTitulo] = useState(report?.firmanteTitulo ?? "");
   const [firmanteMatricula, setFiremanteMatricula] = useState(report?.firmanteMatricula ?? "");
+  const [firmaLiderData, setFirmaLiderData] = useState<string | null | undefined>(report?.firmaLiderData);
+  const [firmaLiderAt, setFirmaLiderAt] = useState<string | null | undefined>(report?.firmaLiderAt);
+  const [firmaFirmanteData, setFirmaFirmanteData] = useState<string | null | undefined>(report?.firmaFirmanteData);
+  const [firmaFirmanteAt, setFirmaFirmanteAt] = useState<string | null | undefined>(report?.firmaFirmanteAt);
   const [saving, setSaving] = useState(false);
+
+  async function sign(role: "lider" | "firmante", data: string | null) {
+    if (!report?.id) return;
+    try {
+      const res = await fetch(`${BASE}/followup-reports/${report.id}/sign`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role, data }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        if (role === "lider") { setFirmaLiderData(updated.firmaLiderData); setFirmaLiderAt(updated.firmaLiderAt); }
+        else { setFirmaFirmanteData(updated.firmaFirmanteData); setFirmaFirmanteAt(updated.firmaFirmanteAt); }
+        toast({ title: "Firma guardada" });
+        onSaved();
+      } else { toast({ title: "Error al firmar", variant: "destructive" }); }
+    } catch { toast({ title: "Error de conexión", variant: "destructive" }); }
+  }
+
+  async function clearSign(role: "lider" | "firmante") {
+    if (!report?.id) return;
+    try {
+      const res = await fetch(`${BASE}/followup-reports/${report.id}/sign?role=${role}`, { method: "DELETE" });
+      if (res.ok) {
+        if (role === "lider") { setFirmaLiderData(null); setFirmaLiderAt(null); }
+        else { setFirmaFirmanteData(null); setFirmaFirmanteAt(null); }
+        onSaved();
+      }
+    } catch { toast({ title: "Error de conexión", variant: "destructive" }); }
+  }
 
   const filteredChildren = useMemo(() => {
     const q = childSearch.toLowerCase();
@@ -1193,8 +1231,17 @@ function FollowupReportModal({
     const logoHtml = logoBase64
       ? `<img id="logo" src="${logoBase64}" style="height:72px;object-fit:contain;display:block" alt="Logo"/>`
       : `<div style="font-size:22px;font-weight:900;color:#1e1147">Koratic</div>`;
-    const firmaHtml = firmanteNombre
-      ? `<div style="margin-top:48px"><div style="border-top:1px solid #374151;width:200px;margin-bottom:6px"></div><div style="font-size:13px;font-weight:700;color:#1e1147">${firmanteNombre}</div>${firmanteTitulo ? `<div style="font-size:11px;color:#6b7280">${firmanteTitulo}</div>` : ""}${firmanteMatricula ? `<div style="font-size:11px;color:#6b7280">M.P. ${firmanteMatricula}</div>` : ""}</div>`
+    const mkFirmaBlock = (nombre: string, rol: string, data?: string | null, at?: string | null) => {
+      const img = data && data !== "CONFIRMADO" ? `<img src="${data}" style="height:38px;object-fit:contain;display:block;margin-bottom:4px"/>` : "";
+      const ts = at ? ` · Firmado ${fmtFirmaFecha(at)}` : "";
+      return `<div style="flex:1;text-align:center">${img}<div style="border-top:1px solid #374151;margin-bottom:6px"></div><div style="font-size:12px;font-weight:700;color:#1e1147">${nombre}</div><div style="font-size:10px;color:#6b7280">${rol}${ts}</div></div>`;
+    };
+    const firmaBlocks = [
+      lider ? mkFirmaBlock(lider, "Líder pedagógica", firmaLiderData, firmaLiderAt) : "",
+      firmanteNombre ? mkFirmaBlock(firmanteNombre, [firmanteTitulo, firmanteMatricula ? `M.P. ${firmanteMatricula}` : ""].filter(Boolean).join(" · "), firmaFirmanteData, firmaFirmanteAt) : "",
+    ].filter(Boolean);
+    const firmaHtml = firmaBlocks.length
+      ? `<div style="display:flex;gap:40px;margin-top:48px;justify-content:center">${firmaBlocks.join("")}</div>`
       : "";
     w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Informe — ${childName}</title>
     <style>
@@ -1406,6 +1453,31 @@ function FollowupReportModal({
             </div>
           </div>
         </div>
+
+        {/* firmas — solo en modo edición */}
+        {isEdit && (
+          <div className="border-t border-gray-100 pt-4 space-y-3">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Firmas</p>
+            <SignatureBlock
+              label="Líder"
+              name={lider || "Líder"}
+              data={firmaLiderData}
+              at={firmaLiderAt}
+              canSign={!!lider}
+              onSign={(data) => sign("lider", data)}
+              onClear={() => clearSign("lider")}
+            />
+            <SignatureBlock
+              label="Firmante"
+              name={firmanteNombre || "Firmante"}
+              data={firmaFirmanteData}
+              at={firmaFirmanteAt}
+              canSign={!!firmanteNombre}
+              onSign={(data) => sign("firmante", data)}
+              onClear={() => clearSign("firmante")}
+            />
+          </div>
+        )}
       </div>
 
       {/* footer */}

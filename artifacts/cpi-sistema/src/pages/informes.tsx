@@ -46,6 +46,10 @@ type Child = {
   nombre: string;
   apellido: string;
   ecoNumber?: number;
+  dni?: string | null;
+  fnac?: string | null;
+  famNombre?: string | null;
+  famApellido?: string | null;
 };
 
 // ── ECO templates ─────────────────────────────────────────────────────────
@@ -1259,7 +1263,14 @@ function FollowupReportModal({
                 <Input placeholder="Buscar por apellido..." value={childSearch} onChange={(e) => setChildSearch(e.target.value)} className="text-sm" />
                 <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-48 overflow-y-auto">
                   {filteredChildren.map((c) => (
-                    <button key={c.id} onClick={() => { setSelectedChild(c); setChildSearch(""); }}
+                    <button key={c.id} onClick={() => {
+                        setSelectedChild(c);
+                        setChildSearch("");
+                        if (c.dni && !dniNino) setDniNino(c.dni);
+                        if (c.fnac && !fechaNacNino) setFechaNacNino(c.fnac);
+                        const adultName = [c.famApellido, c.famNombre].filter(Boolean).join(", ");
+                        if (adultName && !adultNombre) setAdultNombre(adultName);
+                      }}
                       className="w-full text-left px-3 py-2 text-sm hover:bg-violet-50 transition-colors">
                       <span className="font-medium">{c.apellido}, {c.nombre}</span>
                       {c.ecoNumber != null && <span className="text-gray-400 text-xs ml-2">ECO {c.ecoNumber}</span>}
@@ -1464,7 +1475,7 @@ export default function Informes() {
 
   const childrenForFollowup = useQuery<Child[]>({
     queryKey: ["children-for-followup", centerId],
-    queryFn: () => centerId ? fetch(`${BASE}/children?centerId=${centerId}`).then(r => r.json()).then(d => (d.children ?? d ?? []).map((c: any) => ({ id: c.id, nombre: c.nombre, apellido: c.apellido, ecoNumber: c.eco_number ?? c.ecoNumber }))) : Promise.resolve([]),
+    queryFn: () => centerId ? fetch(`${BASE}/children?centerId=${centerId}`).then(r => r.json()).then(d => (d.children ?? d ?? []).map((c: any) => ({ id: c.id, nombre: c.nombre, apellido: c.apellido, ecoNumber: c.eco_number ?? c.ecoNumber, dni: c.dni, fnac: c.fnac, famNombre: c.famNombre ?? c.fam_nombre, famApellido: c.famApellido ?? c.fam_apellido }))) : Promise.resolve([]),
     enabled: !!centerId,
   });
 

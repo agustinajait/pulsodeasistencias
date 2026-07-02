@@ -867,11 +867,9 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
     ${textoSections ? `<div class="sintesis"><h2>Síntesis de desarrollo</h2><p>${textoSections}</p></div>` : ""}
     ${observaciones ? `<div class="obs"><strong>Observaciones generales:</strong>${observaciones}</div>` : ""}
     ${firmas}
-    <script>
-      ${logoBase64 ? `document.getElementById('logo').onload=function(){window.print()};document.getElementById('logo').onerror=function(){window.print()};` : "window.print();"}
-    </script>
     </body></html>`);
     w.document.close();
+    setTimeout(() => w.print(), 600);
   }
 
   return (
@@ -1286,11 +1284,9 @@ function FollowupReportModal({
       <p style="margin-top:16px">Saluda atentamente,</p>
     </div>
     ${firmaHtml}
-    <script>
-      window.onload = function() { window.print(); };
-    </script>
     </body></html>`);
     w.document.close();
+    setTimeout(() => w.print(), 600);
   }
 
   return (

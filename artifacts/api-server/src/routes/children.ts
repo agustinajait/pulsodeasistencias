@@ -498,11 +498,14 @@ router.post("/children/:id/reinstate", async (req, res) => {
       return;
     }
 
+    const bodyEstado = (req.body as { estado?: string }).estado;
+    const nuevoEstado = bodyEstado === "EN REVISION" ? "EN REVISION" : "INSCRIPTX";
+
     const [updated] = await db
       .update(childrenTable)
       .set({
         activo: true,
-        estado: "INSCRIPTX",
+        estado: nuevoEstado,
         estAsist: "Regular",
         fechaBaja: null,
         motivoBaja: null,

@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import {
   useGetDashboardSummary, useGetAlerts, useGetRecentContacts, useGetRoomsSummary,
-  useListChildren, useListAttendance, useCreateChild, useUpdateRoom, useDeleteChild, useUpdateChild,
+  useListChildren, useListAttendance, useCreateChild, useUpdateRoom, useDeleteChild, useUpdateChild, useReinstateChild,
   useListCenters, useListRooms, useCreateCenter, useCreateRoom, useDeleteRoom, useUpdateCenter, useDeleteCenter,
   getGetDashboardSummaryQueryKey, getGetAlertsQueryKey, getGetRecentContactsQueryKey,
   getGetRoomsSummaryQueryKey, getListChildrenQueryKey, getListRoomsQueryKey, getListAttendanceQueryKey,
@@ -824,6 +824,7 @@ export default function AdminPage() {
   const updateRoom = useUpdateRoom();
   const deleteChild = useDeleteChild();
   const updateChild = useUpdateChild();
+  const reinstateChild = useReinstateChild();
 
   // Cumpleaños hoy
   const birthdaysQuery = useQuery<{ id: number; nombre: string; apellido: string; fnac: string }[]>({
@@ -1834,16 +1835,29 @@ export default function AdminPage() {
                         </div>
                       ))}
                     </div>
-                    <a
-                      href="https://cpis.com.ar"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-2 inline-flex items-center gap-1 text-xs text-blue-700 font-semibold hover:underline"
-                      data-testid={`link-cpis-${child.id}`}
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                      Abrir cpis.com.ar
-                    </a>
+                    <div className="mt-2 flex items-center gap-2">
+                      <a
+                        href="https://cpis.com.ar"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-blue-700 font-semibold hover:underline"
+                        data-testid={`link-cpis-${child.id}`}
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        Abrir cpis.com.ar
+                      </a>
+                      <button
+                        onClick={() => reinstateChild.mutate(
+                          { data: { estado: "EN REVISION" } as any, id: child.id },
+                          { onSuccess: () => { toast({ title: "Pasado a En revisión" }); qc.invalidateQueries({ queryKey: getListChildrenQueryKey() }); } }
+                        )}
+                        disabled={reinstateChild.isPending}
+                        className="ml-auto text-xs px-2.5 py-1 rounded-md bg-amber-100 text-amber-700 font-semibold border border-amber-300 hover:bg-amber-200 transition-colors disabled:opacity-50"
+                        data-testid={`btn-egreso-revision-${child.id}`}
+                      >
+                        Pasar a revisión
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

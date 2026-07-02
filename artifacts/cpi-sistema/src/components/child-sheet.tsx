@@ -678,8 +678,6 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
 
   function invalidateAll() {
     queryClient.invalidateQueries({ queryKey: getGetChildQueryKey(childId) });
-    queryClient.invalidateQueries({ queryKey: getListChildrenQueryKey({ roomId: roomId ?? undefined, active: true }) });
-    queryClient.invalidateQueries({ queryKey: getListChildrenQueryKey({ active: false }) });
     queryClient.invalidateQueries({ queryKey: getListChildrenQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetRoomsSummaryQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });

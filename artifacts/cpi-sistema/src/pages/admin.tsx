@@ -904,8 +904,7 @@ export default function AdminPage() {
     queryClient.invalidateQueries({ queryKey: getGetAlertsQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetRecentContactsQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetRoomsSummaryQueryKey() });
-    queryClient.invalidateQueries({ queryKey: getListChildrenQueryKey({ active: true }) });
-    queryClient.invalidateQueries({ queryKey: getListChildrenQueryKey({ active: false }) });
+    queryClient.invalidateQueries({ queryKey: getListChildrenQueryKey() });
     queryClient.invalidateQueries({ queryKey: getListRoomsQueryKey() });
     queryClient.invalidateQueries({ queryKey: getListCentersQueryKey() });
   }

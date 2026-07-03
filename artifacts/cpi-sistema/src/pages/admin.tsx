@@ -747,6 +747,7 @@ export default function AdminPage() {
   const [search, setSearch] = useState("");
   const [selectedChild, setSelectedChild] = useState<number | null>(null);
   const [nominaTab, setNominaTab] = useState<"activos" | "revision" | "alerta" | "bajas">("activos");
+  const [estadoOverrides, setEstadoOverrides] = useState<Record<number, string>>({});
   const [nominaRoomId, setNominaRoomId] = useState<number | null>(null);
   const [nominaVacunas, setNominaVacunas] = useState<"todos" | "con" | "sin">("todos");
   const [editingRoomId, setEditingRoomId] = useState<number | null>(null);
@@ -1017,29 +1018,29 @@ export default function AdminPage() {
     const q = search.toLowerCase();
     const SPECIAL = ["EN REVISION", "ALERTA"];
     const base = (allChildren.data ?? []).filter(
-      (c: Child) => !SPECIAL.includes((c as any).estado ?? "") && (c.apellido.toLowerCase().includes(q) || c.nombre.toLowerCase().includes(q))
+      (c: Child) => !SPECIAL.includes(estadoOverrides[c.id] ?? (c as any).estado ?? "") && (c.apellido.toLowerCase().includes(q) || c.nombre.toLowerCase().includes(q))
     );
     const byRoom = nominaRoomId != null ? base.filter((c: Child) => c.roomId === nominaRoomId) : base;
     return applyVacunasFilter(byRoom);
-  }, [allChildren.data, search, nominaRoomId, nominaVacunas]);
+  }, [allChildren.data, search, nominaRoomId, nominaVacunas, estadoOverrides]);
 
   const filteredRevision = useMemo(() => {
     const q = search.toLowerCase();
     const base = (allChildren.data ?? []).filter(
-      (c: Child) => (c as any).estado === "EN REVISION" && (c.apellido.toLowerCase().includes(q) || c.nombre.toLowerCase().includes(q))
+      (c: Child) => (estadoOverrides[c.id] ?? (c as any).estado) === "EN REVISION" && (c.apellido.toLowerCase().includes(q) || c.nombre.toLowerCase().includes(q))
     );
     const byRoom = nominaRoomId != null ? base.filter((c: Child) => c.roomId === nominaRoomId) : base;
     return applyVacunasFilter(byRoom);
-  }, [allChildren.data, search, nominaRoomId, nominaVacunas]);
+  }, [allChildren.data, search, nominaRoomId, nominaVacunas, estadoOverrides]);
 
   const filteredAlerta = useMemo(() => {
     const q = search.toLowerCase();
     const base = (allChildren.data ?? []).filter(
-      (c: Child) => (c as any).estado === "ALERTA" && (c.apellido.toLowerCase().includes(q) || c.nombre.toLowerCase().includes(q))
+      (c: Child) => (estadoOverrides[c.id] ?? (c as any).estado) === "ALERTA" && (c.apellido.toLowerCase().includes(q) || c.nombre.toLowerCase().includes(q))
     );
     const byRoom = nominaRoomId != null ? base.filter((c: Child) => c.roomId === nominaRoomId) : base;
     return applyVacunasFilter(byRoom);
-  }, [allChildren.data, search, nominaRoomId, nominaVacunas]);
+  }, [allChildren.data, search, nominaRoomId, nominaVacunas, estadoOverrides]);
 
   const filteredBajas = useMemo(() => {
     const q = search.toLowerCase();
@@ -1634,21 +1635,17 @@ export default function AdminPage() {
                           onChange={(e) => {
                             const nuevoEstado = e.target.value;
                             const labels: Record<string, string> = { "INSCRIPTX": "Activo", "EN REVISION": "En revisión", "ALERTA": "Alerta" };
-                            // Optimistic update: patch cache directly so child moves to correct list immediately
-                            const activeKey = getListChildrenQueryKey({ ...centerParam, active: true });
-                            queryClient.setQueryData(activeKey, (old: Child[] | undefined) =>
-                              (old ?? []).map((c) => c.id === child.id ? { ...c, estado: nuevoEstado } as Child : c)
-                            );
+                            setEstadoOverrides((prev) => ({ ...prev, [child.id]: nuevoEstado }));
                             updateChild.mutate(
                               { id: child.id, data: { estado: nuevoEstado } as any },
                               {
                                 onSuccess: () => {
                                   toast({ title: `${child.apellido} ${child.nombre} → ${labels[nuevoEstado] ?? nuevoEstado}`, duration: 3000 });
                                   invalidateAll();
+                                  setEstadoOverrides((prev) => { const n = { ...prev }; delete n[child.id]; return n; });
                                 },
                                 onError: () => {
-                                  // Revert optimistic update on failure
-                                  queryClient.invalidateQueries({ queryKey: activeKey });
+                                  setEstadoOverrides((prev) => { const n = { ...prev }; delete n[child.id]; return n; });
                                   toast({ title: "Error al cambiar estado", variant: "destructive" });
                                 }
                               }

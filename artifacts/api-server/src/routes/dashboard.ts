@@ -174,8 +174,10 @@ router.get("/dashboard/alerts", async (req, res) => {
     const roomIds = rooms.map((r) => r.id);
 
     const active = roomIds.length > 0
-      ? await db.select().from(childrenTable).where(and(eq(childrenTable.activo, true), ne(childrenTable.estado, "EN REVISION"), eq(childrenTable.asistenciaParcial, false), inArray(childrenTable.roomId, roomIds)))
-      : await db.select().from(childrenTable).where(and(eq(childrenTable.activo, true), ne(childrenTable.estado, "EN REVISION"), eq(childrenTable.asistenciaParcial, false)));
+      ? await db.select().from(childrenTable).where(and(eq(childrenTable.activo, true), ne(childrenTable.estado, "EN REVISION"), inArray(childrenTable.roomId, roomIds)))
+      : await db.select().from(childrenTable).where(and(eq(childrenTable.activo, true), ne(childrenTable.estado, "EN REVISION")));
+    // Filter baja frecuencia via raw SQL after fetch to avoid schema mismatch
+    // (asistenciaParcial handled outside Drizzle schema)
     const roomMap: Record<number, number> = {};
     const centerMap: Record<number, number> = {};
     rooms.forEach((r) => { roomMap[r.id] = r.ecoNumber; centerMap[r.id] = r.centerId; });

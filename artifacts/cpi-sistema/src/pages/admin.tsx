@@ -1641,8 +1641,17 @@ export default function AdminPage() {
                               {
                                 onSuccess: () => {
                                   toast({ title: `${child.apellido} ${child.nombre} → ${labels[nuevoEstado] ?? nuevoEstado}`, duration: 3000 });
-                                  invalidateAll();
+                                  // Patch the cache directly so clearing the override doesn't revert the child
+                                  const patchCache = (key: unknown[]) => {
+                                    queryClient.setQueryData(key, (old: Child[] | undefined) =>
+                                      old?.map((c) => c.id === child.id ? { ...c, estado: nuevoEstado } : c)
+                                    );
+                                  };
+                                  patchCache(getListChildrenQueryKey({ ...centerParam, active: true }));
+                                  patchCache(getListChildrenQueryKey({ ...centerParam, active: false }));
+                                  patchCache(getListChildrenQueryKey());
                                   setEstadoOverrides((prev) => { const n = { ...prev }; delete n[child.id]; return n; });
+                                  invalidateAll();
                                 },
                                 onError: () => {
                                   setEstadoOverrides((prev) => { const n = { ...prev }; delete n[child.id]; return n; });

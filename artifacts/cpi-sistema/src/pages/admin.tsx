@@ -1634,12 +1634,24 @@ export default function AdminPage() {
                           onChange={(e) => {
                             const nuevoEstado = e.target.value;
                             const labels: Record<string, string> = { "INSCRIPTX": "Activo", "EN REVISION": "En revisión", "ALERTA": "Alerta" };
+                            // Optimistic update: patch cache directly so child moves to correct list immediately
+                            const activeKey = getListChildrenQueryKey({ ...centerParam, active: true });
+                            queryClient.setQueryData(activeKey, (old: Child[] | undefined) =>
+                              (old ?? []).map((c) => c.id === child.id ? { ...c, estado: nuevoEstado } as Child : c)
+                            );
                             updateChild.mutate(
                               { id: child.id, data: { estado: nuevoEstado } as any },
-                              { onSuccess: () => {
-                                toast({ title: `${child.apellido} ${child.nombre} → ${labels[nuevoEstado] ?? nuevoEstado}`, duration: 3000 });
-                                invalidateAll();
-                              }}
+                              {
+                                onSuccess: () => {
+                                  toast({ title: `${child.apellido} ${child.nombre} → ${labels[nuevoEstado] ?? nuevoEstado}`, duration: 3000 });
+                                  invalidateAll();
+                                },
+                                onError: () => {
+                                  // Revert optimistic update on failure
+                                  queryClient.invalidateQueries({ queryKey: activeKey });
+                                  toast({ title: "Error al cambiar estado", variant: "destructive" });
+                                }
+                              }
                             );
                           }}
                         >

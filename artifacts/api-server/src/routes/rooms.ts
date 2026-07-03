@@ -169,7 +169,7 @@ router.get("/rooms/summary", async (req, res) => {
       const pct = total > 0 ? Math.round((present / total) * 100) : 0;
 
       let alerts = 0;
-      activeKids.forEach((kid) => {
+      activeKids.filter((kid) => !(kid as any).asistenciaParcial).forEach((kid) => {
         const dayMap = kidAttMap[kid.id] ?? {};
         let consec = 0;
         for (const d of allDays) {

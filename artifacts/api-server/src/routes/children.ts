@@ -1,10 +1,14 @@
 import { Router } from "express";
-import { db, childrenTable, roomsTable, attendanceTable, contactsTable, childDocumentsTable, centersTable } from "@workspace/db";
+import { db, pool, childrenTable, roomsTable, attendanceTable, contactsTable, childDocumentsTable, centersTable } from "@workspace/db";
 import { randomBytes } from "crypto";
 import { eq, and, ilike, or, sql, desc, inArray, ne } from "drizzle-orm";
 import { CreateChildBody, UpdateChildBody, DischargeChildBody } from "@workspace/api-zod";
 
 const router = Router();
+
+// Ensure asistencia_parcial column exists
+pool.query(`ALTER TABLE children ADD COLUMN IF NOT EXISTS asistencia_parcial BOOLEAN NOT NULL DEFAULT FALSE`).catch(() => {});
+
 
 const TODAY = () => new Date().toISOString().slice(0, 10);
 
@@ -387,6 +391,8 @@ router.patch("/children/:id", async (req, res) => {
     // vacunasUrl no está en el schema zod pero lo aceptamos directamente
     const vacunasUrl = (req.body as Record<string, unknown>).vacunasUrl;
     if (typeof vacunasUrl === "string") (updates as Record<string, unknown>).vacunasUrl = vacunasUrl;
+    const body = req.body as Record<string, unknown>;
+    if (typeof body.asistenciaParcial === "boolean") updates.asistenciaParcial = body.asistenciaParcial;
 
     const [updated] = await db
       .update(childrenTable)

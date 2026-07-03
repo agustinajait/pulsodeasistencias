@@ -29,6 +29,7 @@ export const childrenTable = pgTable("children", {
   motivoBaja: varchar("motivo_baja", { length: 200 }),
   tipoBaja: varchar("tipo_baja", { length: 50 }),
   docsToken: varchar("docs_token", { length: 64 }).unique(),
+  asistenciaParcial: boolean("asistencia_parcial").default(false),
   panialesAuth: boolean("paniales_auth").default(false),
   aptoFisico: boolean("apto_fisico").default(false),
   autRetiro: boolean("aut_retiro").default(false),

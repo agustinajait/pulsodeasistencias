@@ -1597,6 +1597,9 @@ export default function AdminPage() {
                       onClick={!bulkDeleteMode ? () => setSelectedChild(child.id) : undefined}
                     >
                       {child.apellido} {child.nombre}
+                      {(child as any).asistenciaParcial && (
+                        <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 font-semibold border border-sky-200">Parcial</span>
+                      )}
                     </div>
                     <div className="text-xs text-muted-foreground mb-1">
                       {child.registro && <span className="font-mono mr-1.5">#{child.registro}</span>}

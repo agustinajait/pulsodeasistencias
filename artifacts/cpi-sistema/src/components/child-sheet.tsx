@@ -1429,6 +1429,19 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
               </div>
             )}
 
+            {/* Asistencia parcial badge */}
+            {(c as any).asistenciaParcial && (
+              <div className="flex items-center gap-2 bg-sky-50 text-sky-700 border border-sky-300 rounded-lg px-3 py-2 text-sm font-semibold">
+                <span className="flex-1">Asistencia parcial (1-2 veces/semana)</span>
+                <button
+                  className="text-xs underline"
+                  onClick={() => updateChild.mutate({ id: childId, data: { asistenciaParcial: false } as any }, { onSuccess: () => { toast({ title: "Asistencia parcial desactivada" }); invalidateAll(); } })}
+                >
+                  Quitar
+                </button>
+              </div>
+            )}
+
             {/* Estado badge */}
             {(c as any).estado === "EN REVISION" && (
               <div className="flex items-center gap-2 bg-amber-50 text-amber-700 border border-amber-300 rounded-lg px-3 py-2 text-sm font-semibold">
@@ -2058,6 +2071,21 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                       data-testid="btn-toggle-alerta"
                     >
                       {(c as any).estado === "ALERTA" ? "Quitar alerta" : "Alerta"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const nuevo = !(c as any).asistenciaParcial;
+                        updateChild.mutate(
+                          { id: childId, data: { asistenciaParcial: nuevo } as any },
+                          { onSuccess: () => { toast({ title: nuevo ? "Marcado como asistencia parcial" : "Asistencia parcial desactivada" }); invalidateAll(); } }
+                        );
+                      }}
+                      className={`col-span-1 ${(c as any).asistenciaParcial ? "border-sky-400 text-sky-700 bg-sky-50" : "border-sky-300 text-sky-700"}`}
+                      data-testid="btn-toggle-parcial"
+                    >
+                      {(c as any).asistenciaParcial ? "Quitar parcial" : "Parcial"}
                     </Button>
                     <Button size="sm" variant="destructive" onClick={() => setView("baja")} data-testid="btn-registrar-baja">Registrar egreso</Button>
                   </>

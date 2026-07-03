@@ -3,13 +3,22 @@
   "buildCommand": "pnpm --filter @workspace/api-server build && pnpm --filter @workspace/cpi-sistema build",
   "outputDirectory": "artifacts/cpi-sistema/dist/public",
   "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+    { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/login", "destination": "/index.html" },
+    { "source": "/admin", "destination": "/index.html" },
+    { "source": "/sala", "destination": "/index.html" },
+    { "source": "/reportes", "destination": "/index.html" },
+    { "source": "/servicios", "destination": "/index.html" },
+    { "source": "/casos", "destination": "/index.html" },
+    { "source": "/informes", "destination": "/index.html" },
+    { "source": "/configuracion", "destination": "/index.html" },
+    { "source": "/oportunai", "destination": "/index.html" },
+    { "source": "/talentos", "destination": "/index.html" },
+    { "source": "/calendario", "destination": "/index.html" },
+    { "source": "/planificaciones", "destination": "/index.html" },
+    { "source": "/diagnostico", "destination": "/index.html" },
+    { "source": "/check-in/(.*)", "destination": "/index.html" },
+    { "source": "/docs/(.*)", "destination": "/index.html" },
+    { "source": "/", "destination": "/landing.html" }
   ]
 }

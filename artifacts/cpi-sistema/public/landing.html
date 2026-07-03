@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>KORATIC · Infraestructura Integral de Gestión</title>
+<style>
+:root{
+  --navy:#080d34;
+  --ink:#111744;
+  --muted:#5a617e;
+  --purple:#5427d9;
+  --purple2:#704dff;
+  --purple3:#f1ecff;
+  --orange:#ff6a19;
+  --green:#149849;
+  --blue:#0f63ff;
+  --gray:#585d75;
+  --line:#e6e4f4;
+  --soft:#faf8ff;
+  --shadow:0 24px 70px rgba(28,20,95,.12);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:Inter,system-ui,-apple-system,sans-serif;
+  color:var(--ink);
+  background:#fff;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+button,a{font-family:inherit}
+
+/* ── PROGRESS BAR ─────────────────────────────────────────────────────── */
+.progress{position:fixed;top:0;left:0;width:100%;height:3px;z-index:200;pointer-events:none}
+.progress span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--purple),#9a7dff);transition:width .1s}
+
+/* ── LOGO MARK ────────────────────────────────────────────────────────── */
+.mark{width:40px;height:40px;position:relative;flex:0 0 auto}
+.mark i{position:absolute;width:18px;height:18px;border-radius:50%;left:11px;top:11px;transform-origin:9px 9px;background:linear-gradient(135deg,#7d62ff,#3b18b7);box-shadow:0 4px 12px rgba(84,39,217,.24)}
+.mark i:nth-child(1){transform:translateY(-13px)}
+.mark i:nth-child(2){transform:rotate(45deg) translateY(-13px)}
+.mark i:nth-child(3){transform:rotate(90deg) translateY(-13px)}
+.mark i:nth-child(4){transform:rotate(135deg) translateY(-13px)}
+.mark i:nth-child(5){transform:rotate(180deg) translateY(-13px)}
+.mark i:nth-child(6){transform:rotate(225deg) translateY(-13px)}
+.mark i:nth-child(7){transform:rotate(270deg) translateY(-13px)}
+.mark i:nth-child(8){transform:rotate(315deg) translateY(-13px)}
+.mark:after{content:"";position:absolute;width:18px;height:18px;border-radius:50%;left:11px;top:11px;background:#fff;box-shadow:0 4px 14px rgba(23,16,84,.18)}
+.logo{display:flex;align-items:center;gap:10px}
+.logo strong{font-size:28px;font-weight:950;letter-spacing:-.06em;color:var(--navy)}
+
+/* ── HEADER ───────────────────────────────────────────────────────────── */
+.header{
+  position:sticky;top:0;z-index:100;
+  height:72px;display:flex;align-items:center;
+  background:rgba(255,255,255,.88);
+  border-bottom:1px solid rgba(231,228,246,.80);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+}
+.container{width:min(1180px,calc(100% - 40px));margin:0 auto}
+.header-row{display:flex;align-items:center;justify-content:space-between;gap:20px}
+.brand{display:flex;align-items:center;gap:14px}
+.divider{width:1px;height:36px;background:#dedbef;flex-shrink:0}
+.claim{font-size:12px;line-height:1.3;color:#5a617e;font-weight:600}
+.nav{display:flex;align-items:center;gap:26px}
+.nav a{
+  border:0;background:transparent;color:var(--navy);font-size:14px;font-weight:700;
+  cursor:pointer;padding:8px 0;text-decoration:none;
+  transition:.14s ease;white-space:nowrap;
+}
+.nav a:hover{color:var(--purple)}
+.header-actions{display:flex;align-items:center;gap:10px}
+
+/* ── HAMBURGER ────────────────────────────────────────────────────────── */
+.hamburger{
+  display:none;width:44px;height:44px;border:0;background:transparent;
+  cursor:pointer;border-radius:10px;flex-direction:column;
+  align-items:center;justify-content:center;gap:5px;
+  transition:background .14s;
+}
+.hamburger:hover{background:#f3f0ff}
+.hamburger span{display:block;width:22px;height:2px;background:var(--navy);border-radius:2px;transition:.22s ease}
+.hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.hamburger.open span:nth-child(2){opacity:0;transform:scaleX(0)}
+.hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+
+/* Mobile nav drawer */
+.mobile-nav{
+  display:none;position:fixed;inset:72px 0 0 0;z-index:99;
+  background:rgba(255,255,255,.97);backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  flex-direction:column;padding:28px 24px;gap:6px;
+  border-top:1px solid var(--line);
+  transform:translateY(-8px);opacity:0;
+  transition:opacity .22s,transform .22s;
+  pointer-events:none;
+}
+.mobile-nav.open{display:flex;transform:translateY(0);opacity:1;pointer-events:all}
+.mobile-nav a{
+  padding:14px 16px;border-radius:14px;font-size:17px;font-weight:700;
+  color:var(--navy);text-decoration:none;transition:.12s;
+}
+.mobile-nav a:hover{background:var(--purple3);color:var(--purple)}
+.mobile-nav .sep{height:1px;background:var(--line);margin:8px 0}
+.mobile-nav .m-cta{
+  display:flex;flex-direction:column;gap:10px;margin-top:8px;
+}
+
+/* ── BUTTONS ──────────────────────────────────────────────────────────── */
+.btn{
+  height:50px;border-radius:14px;border:0;padding:0 22px;
+  display:inline-flex;align-items:center;justify-content:center;gap:10px;
+  font-size:14px;font-weight:800;cursor:pointer;white-space:nowrap;
+  transition:transform .14s,box-shadow .14s,background .14s;
+  text-decoration:none;
+}
+.btn:active{transform:scale(.97)!important}
+.btn-primary{
+  background:linear-gradient(135deg,#612eea,#4018bf);
+  color:#fff;box-shadow:0 14px 32px rgba(84,39,217,.26);
+}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 18px 42px rgba(84,39,217,.34)}
+.btn-outline{
+  background:#fff;color:var(--navy);
+  border:1.5px solid #dedff0;box-shadow:0 6px 18px rgba(17,23,68,.05);
+}
+.btn-outline:hover{transform:translateY(-2px);border-color:#b8b2e8}
+.btn-ghost{background:rgba(255,255,255,.10);color:#fff;border:1.5px solid rgba(255,255,255,.30)}
+.btn-ghost:hover{background:rgba(255,255,255,.18)}
+.btn-sm{height:42px;font-size:13px;padding:0 16px;border-radius:11px}
+.btn-full{width:100%}
+
+/* ── HERO ─────────────────────────────────────────────────────────────── */
+.hero{
+  padding:72px 0 64px;overflow:hidden;
+  background:
+    radial-gradient(circle at 6% 0%,rgba(112,77,255,.14),transparent 28%),
+    radial-gradient(circle at 92% 10%,rgba(112,77,255,.10),transparent 30%);
+}
+.hero-grid{display:grid;grid-template-columns:1fr 1.1fr;gap:52px;align-items:center}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 13px;
+  border-radius:999px;background:#f2edff;color:var(--purple);
+  font-size:12px;font-weight:800;margin-bottom:22px;letter-spacing:.02em;
+}
+.eyebrow:before{content:"●";font-size:8px;color:var(--purple2)}
+.hero h1{
+  color:var(--navy);font-size:58px;line-height:1.04;letter-spacing:-.075em;
+  font-weight:950;
+}
+.hero h1 em{font-style:normal;color:var(--purple)}
+.hero-sub{
+  margin:20px 0 32px;color:#3f4568;font-size:17px;line-height:1.65;max-width:560px;
+}
+.hero-actions{display:flex;gap:14px;flex-wrap:wrap}
+.hero-actions .btn{height:56px;font-size:15px;padding:0 28px;border-radius:16px}
+
+/* Hero visual */
+.preview{
+  position:relative;min-height:460px;border-radius:28px;
+  background:linear-gradient(135deg,#f0ebff 0%,#faf8ff 50%,#ede5ff 100%);
+  border:1px solid rgba(160,130,255,.2);
+  box-shadow:0 32px 80px rgba(28,20,95,.14);
+  overflow:hidden;
+}
+.preview-glow{
+  position:absolute;top:-80px;right:-80px;
+  width:320px;height:320px;border-radius:50%;
+  background:radial-gradient(circle,rgba(112,77,255,.18),transparent 70%);
+}
+.preview-sidebar{
+  position:absolute;left:24px;top:40px;bottom:40px;width:52px;
+  border-radius:18px;
+  background:linear-gradient(180deg,#5a2ee5,#311196);
+  display:flex;flex-direction:column;align-items:center;
+  padding:18px 0;gap:14px;
+  box-shadow:0 16px 40px rgba(84,39,217,.3);
+}
+.preview-sidebar span{font-size:18px;opacity:.8}
+.preview-sidebar span:first-child{opacity:1}
+.preview-card{
+  position:absolute;left:100px;top:60px;right:24px;
+  background:rgba(255,255,255,.95);border-radius:22px;
+  border:1px solid rgba(255,255,255,.9);
+  box-shadow:0 20px 50px rgba(38,28,116,.14);
+  padding:24px;
+}
+.preview-card-head{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+.preview-card-head .mark{width:32px;height:32px}
+.preview-card-head .mark i{width:14px;height:14px;left:9px;top:9px;transform-origin:7px 7px}
+.preview-card-head .mark i:nth-child(1){transform:translateY(-10px)}
+.preview-card-head .mark i:nth-child(2){transform:rotate(45deg) translateY(-10px)}
+.preview-card-head .mark i:nth-child(3){transform:rotate(90deg) translateY(-10px)}
+.preview-card-head .mark i:nth-child(4){transform:rotate(135deg) translateY(-10px)}
+.preview-card-head .mark i:nth-child(5){transform:rotate(180deg) translateY(-10px)}
+.preview-card-head .mark i:nth-child(6){transform:rotate(225deg) translateY(-10px)}
+.preview-card-head .mark i:nth-child(7){transform:rotate(270deg) translateY(-10px)}
+.preview-card-head .mark i:nth-child(8){transform:rotate(315deg) translateY(-10px)}
+.preview-card-head .mark:after{width:14px;height:14px;left:9px;top:9px}
+.preview-card-head strong{font-size:18px;font-weight:950;letter-spacing:-.04em;color:var(--navy)}
+.stat-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px}
+.stat{background:var(--soft);border-radius:14px;padding:12px 10px;text-align:center;border:1px solid var(--line)}
+.stat-n{font-size:22px;font-weight:950;letter-spacing:-.04em;color:var(--navy)}
+.stat-l{font-size:10px;color:var(--muted);font-weight:700;margin-top:2px;text-transform:uppercase;letter-spacing:.04em}
+.activity{display:flex;flex-direction:column;gap:8px}
+.activity-row{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--soft);border-radius:11px;border:1px solid var(--line)}
+.activity-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.activity-text{font-size:12px;color:var(--ink);font-weight:600;flex:1;line-height:1.2}
+.activity-time{font-size:11px;color:var(--muted)}
+.float-badge{
+  position:absolute;border-radius:16px;background:#fff;
+  box-shadow:0 12px 32px rgba(38,28,116,.14);
+  border:1px solid var(--line);padding:10px 14px;
+  display:flex;align-items:center;gap:8px;white-space:nowrap;
+  font-size:13px;font-weight:700;color:var(--navy);
+}
+.fb1{left:80px;bottom:32px}
+.fb2{right:16px;bottom:80px;font-size:12px}
+
+/* ── BENEFITS ─────────────────────────────────────────────────────────── */
+.benefits{padding:16px 0 64px}
+.benefit-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.benefit{
+  background:#fff;border:1px solid #eceaf7;border-radius:22px;
+  padding:24px 20px;min-height:150px;
+  box-shadow:0 8px 24px rgba(17,23,68,.04);
+  transition:.18s;cursor:default;
+}
+.benefit:hover{transform:translateY(-3px);box-shadow:0 20px 46px rgba(17,23,68,.09)}
+.benefit-icon{font-size:32px;margin-bottom:14px}
+.benefit b{display:block;color:var(--navy);font-size:14px;font-weight:800;line-height:1.2}
+.benefit small{display:block;margin-top:7px;color:var(--muted);font-size:13px;line-height:1.4}
+
+/* ── SECTION COMMON ───────────────────────────────────────────────────── */
+.section-head{text-align:center;max-width:680px;margin:0 auto 40px}
+.section-head .tag{
+  display:inline-block;padding:4px 12px;border-radius:999px;
+  background:#f2edff;color:var(--purple);font-size:12px;font-weight:800;
+  margin-bottom:14px;letter-spacing:.02em;
+}
+.section-head h2{color:var(--navy);font-size:36px;line-height:1.1;letter-spacing:-.05em;font-weight:950}
+.section-head p{margin:12px 0 0;color:var(--muted);font-size:16px;line-height:1.6}
+
+/* ── SOLUTIONS ────────────────────────────────────────────────────────── */
+.solutions-wrap{padding:72px 0;background:linear-gradient(180deg,#fbfaff,#fff)}
+.solutions{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.solution{
+  border:1.5px solid #e8e6f5;border-radius:24px;padding:24px 20px;
+  background:#fff;box-shadow:0 8px 24px rgba(17,23,68,.04);
+  display:flex;flex-direction:column;cursor:pointer;transition:.18s;min-height:280px;
+}
+.solution:hover{transform:translateY(-5px);box-shadow:0 22px 56px rgba(28,20,95,.12);border-color:rgba(84,39,217,.2)}
+.sicon{
+  width:56px;height:56px;border-radius:18px;display:grid;place-items:center;
+  font-size:26px;background:#f4efff;color:var(--purple);margin-bottom:18px;
+}
+.solution h3{font-size:19px;line-height:1.05;letter-spacing:-.04em;font-weight:900}
+.solution b{display:block;margin-top:7px;color:var(--navy);font-size:13px;line-height:1.3;font-weight:700}
+.solution p{margin:14px 0 0;color:#4e536d;font-size:13px;line-height:1.6;flex:1}
+.solution .more{margin-top:18px;font-size:13px;font-weight:800}
+
+/* ── STATS ────────────────────────────────────────────────────────────── */
+.stats-section{padding:56px 0;background:linear-gradient(135deg,#5427d9 0%,#310f96 100%)}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(255,255,255,.12)}
+.stat-block{background:transparent;padding:36px 24px;text-align:center}
+.stat-block strong{display:block;font-size:48px;font-weight:950;color:#fff;letter-spacing:-.06em;line-height:1}
+.stat-block span{display:block;margin-top:8px;font-size:14px;color:rgba(255,255,255,.72);font-weight:600}
+
+/* ── AUDIENCE ─────────────────────────────────────────────────────────── */
+.audience{padding:72px 0}
+.audience-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.audience-card{
+  text-align:left;border-radius:22px;border:1.5px solid #efedf9;
+  background:#fff;padding:24px 22px;min-height:130px;
+  cursor:pointer;transition:.16s;display:flex;align-items:center;gap:16px;
+}
+.audience-card:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(28,20,95,.09);border-color:rgba(84,39,217,.2)}
+.audience-icon{
+  width:52px;height:52px;border-radius:16px;background:#f4efff;
+  display:grid;place-items:center;font-size:26px;flex-shrink:0;
+}
+.audience-card b{display:block;color:var(--navy);font-size:14px;font-weight:800;line-height:1.25}
+.audience-card small{display:block;margin-top:4px;color:var(--muted);font-size:12px;line-height:1.4}
+
+/* ── CTA FINAL ────────────────────────────────────────────────────────── */
+.cta-section{padding:56px 0 72px}
+.cta-card{
+  border-radius:32px;padding:56px;
+  background:radial-gradient(circle at 90% 10%,rgba(255,255,255,.15),transparent 30%),
+             linear-gradient(135deg,#5a2ee5 0%,#17066f 100%);
+  color:#fff;display:grid;grid-template-columns:1fr auto;
+  gap:32px;align-items:center;
+  box-shadow:0 28px 70px rgba(55,26,160,.28);
+}
+.cta-card h2{font-size:36px;line-height:1.08;letter-spacing:-.06em;font-weight:950}
+.cta-card p{margin:12px 0 0;color:rgba(255,255,255,.80);font-size:16px;line-height:1.55;max-width:500px}
+.cta-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-end}
+
+/* ── FOOTER ───────────────────────────────────────────────────────────── */
+.footer{background:linear-gradient(180deg,#0d123e,#050822);padding:48px 0 28px;color:#fff}
+.footer-grid{
+  display:grid;grid-template-columns:1.4fr repeat(3,1fr) auto;
+  gap:36px;border-bottom:1px solid rgba(255,255,255,.10);padding-bottom:32px;margin-bottom:24px;
+}
+.footer .logo strong{color:#fff;font-size:26px}
+.footer-desc{margin-top:10px;color:rgba(255,255,255,.6);font-size:13px;line-height:1.6}
+.footer h4{font-size:13px;color:rgba(255,255,255,.5);font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px}
+.footer-links{display:flex;flex-direction:column;gap:8px}
+.footer-links a{
+  color:rgba(255,255,255,.75);font-size:14px;font-weight:600;
+  text-decoration:none;transition:.12s;
+}
+.footer-links a:hover{color:#fff}
+.social{display:flex;gap:8px;margin-top:4px}
+.social-btn{
+  width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.10);
+  color:#fff;display:grid;place-items:center;font-weight:900;font-size:13px;
+  cursor:pointer;border:0;transition:.14s;
+}
+.social-btn:hover{background:rgba(255,255,255,.20)}
+.legal{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:rgba(255,255,255,.45);font-size:12px}
+
+/* ── TOAST ────────────────────────────────────────────────────────────── */
+.toast{
+  position:fixed;left:50%;bottom:24px;z-index:300;
+  transform:translateX(-50%) translateY(16px);opacity:0;
+  width:min(88vw,380px);padding:13px 18px;border-radius:16px;color:#fff;
+  background:rgba(8,13,52,.94);border:1px solid rgba(255,255,255,.14);
+  box-shadow:0 18px 48px rgba(0,0,0,.28);backdrop-filter:blur(16px);
+  text-align:center;font-size:14px;font-weight:700;
+  pointer-events:none;transition:.18s;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── MOBILE ───────────────────────────────────────────────────────────── */
+@media(max-width:1024px){
+  .solutions{grid-template-columns:repeat(3,1fr)}
+  .footer-grid{grid-template-columns:1fr 1fr 1fr}
+  .footer-grid > div:last-child{grid-column:1/-1}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:768px){
+  .nav,.claim,.divider{display:none}
+  .hamburger{display:flex}
+  .container{width:calc(100% - 32px)}
+  .header{height:64px}
+  .mobile-nav{top:64px}
+
+  .hero{padding:48px 0 44px}
+  .hero-grid{grid-template-columns:1fr;gap:36px}
+  .hero h1{font-size:40px;letter-spacing:-.055em}
+  .hero-sub{font-size:16px;margin:16px 0 24px}
+  .hero-actions{gap:12px}
+  .hero-actions .btn{height:52px;font-size:14px;min-width:0;flex:1 1 140px}
+
+  .preview{min-height:320px;border-radius:22px}
+  .preview-sidebar{left:16px;top:28px;bottom:28px;width:44px}
+  .preview-card{left:76px;top:28px;right:16px;padding:18px}
+  .stat-n{font-size:18px}
+  .activity-row{padding:6px 8px}
+  .float-badge{display:none}
+
+  .benefit-row{grid-template-columns:repeat(2,1fr)}
+  .benefit{min-height:auto;padding:20px 16px}
+
+  .solutions{grid-template-columns:1fr}
+  .solution{min-height:auto}
+
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .stat-block strong{font-size:38px}
+
+  .audience-grid{grid-template-columns:1fr 1fr}
+
+  .cta-card{grid-template-columns:1fr;padding:36px 24px}
+  .cta-actions{justify-content:flex-start}
+  .cta-card h2{font-size:28px}
+
+  .footer-grid{grid-template-columns:1fr}
+  .footer-grid > div:last-child{grid-column:1}
+  .section-head h2{font-size:28px}
+  .section-head p{font-size:15px}
+}
+@media(max-width:480px){
+  .hero h1{font-size:34px}
+  .audience-grid{grid-template-columns:1fr}
+  .benefit-row{grid-template-columns:1fr}
+  .stats-grid{grid-template-columns:1fr}
+  .stat-block{padding:28px 20px}
+  .cta-card h2{font-size:24px}
+  .hero-actions .btn{flex:1 1 100%}
+}
+</style>
+</head>
+<body>
+
+<div class="progress"><span id="bar"></span></div>
+
+<!-- ── HEADER ─────────────────────────────────────────────────────────── -->
+<header class="header">
+  <div class="container header-row">
+    <div class="brand">
+      <div class="logo">
+        <span class="mark"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+        <strong>KORATIC</strong>
+      </div>
+      <span class="divider"></span>
+      <span class="claim">Infraestructura<br>Integral de Gestión</span>
+    </div>
+
+    <nav class="nav">
+      <a href="#soluciones">Soluciones</a>
+      <a href="#organizaciones">Organizaciones</a>
+      <a href="#" class="js-action" data-label="Recursos">Recursos</a>
+      <a href="#" class="js-action" data-label="Nosotros">Nosotros</a>
+    </nav>
+
+    <div class="header-actions">
+      <button class="btn btn-outline btn-sm js-action" data-label="Iniciar sesión">Iniciar sesión</button>
+      <button class="btn btn-primary btn-sm js-action" data-label="Registrarse">Registrarse →</button>
+    </div>
+
+    <button class="hamburger" id="ham" aria-label="Menú">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<!-- Mobile nav -->
+<nav class="mobile-nav" id="mnav">
+  <a href="#soluciones" class="js-nav">Soluciones</a>
+  <a href="#organizaciones" class="js-nav">Organizaciones</a>
+  <a href="#" class="js-nav js-action" data-label="Recursos">Recursos</a>
+  <a href="#" class="js-nav js-action" data-label="Nosotros">Nosotros</a>
+  <a href="#" class="js-nav js-action" data-label="Contacto">Contacto</a>
+  <div class="sep"></div>
+  <div class="m-cta">
+    <button class="btn btn-outline btn-full js-action" data-label="Iniciar sesión">Iniciar sesión</button>
+    <button class="btn btn-primary btn-full js-action" data-label="Registrarse">Registrarse →</button>
+  </div>
+</nav>
+
+<main>
+
+  <!-- ── HERO ─────────────────────────────────────────────────────────── -->
+  <section class="hero" id="inicio">
+    <div class="container hero-grid">
+      <div>
+        <div class="eyebrow">Plataforma integral para centros y organizaciones</div>
+        <h1>Gestioná toda tu organización desde <em>un solo lugar.</em></h1>
+        <p class="hero-sub">KORATIC integra la gestión social, institucional y operativa de organizaciones que trabajan con personas y comunidades, garantizando trazabilidad, cumplimiento e indicadores de impacto.</p>
+        <div class="hero-actions">
+          <button class="btn btn-primary js-action" data-label="Ingresar a KORATIC">Ingresar a KORATIC →</button>
+          <button class="btn btn-outline js-action" data-label="Solicitar demo">▣ Solicitar demo</button>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div class="preview-glow"></div>
+        <div class="preview-sidebar">
+          <span>⌂</span><span>⌘</span><span>☷</span><span>☑</span><span>▥</span><span>⚙</span>
+        </div>
+        <div class="preview-card">
+          <div class="preview-card-head">
+            <span class="mark"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+            <strong>KORATIC</strong>
+          </div>
+          <div class="stat-row">
+            <div class="stat"><div class="stat-n">247</div><div class="stat-l">Niños</div></div>
+            <div class="stat"><div class="stat-n">94%</div><div class="stat-l">Asistencia</div></div>
+            <div class="stat"><div class="stat-n">12</div><div class="stat-l">Alertas</div></div>
+          </div>
+          <div class="activity">
+            <div class="activity-row">
+              <div class="activity-dot" style="background:#149849"></div>
+              <div class="activity-text">Registro de asistencia completado</div>
+              <div class="activity-time">Hoy 9:04</div>
+            </div>
+            <div class="activity-row">
+              <div class="activity-dot" style="background:#ff6a19"></div>
+              <div class="activity-text">3 ausencias consecutivas — Lucas M.</div>
+              <div class="activity-time">Hoy 8:50</div>
+            </div>
+            <div class="activity-row">
+              <div class="activity-dot" style="background:#5427d9"></div>
+              <div class="activity-text">Informe enviado para validación</div>
+              <div class="activity-time">Ayer 17:30</div>
+            </div>
+          </div>
+        </div>
+        <div class="float-badge fb1">✓ 12 informes aprobados</div>
+        <div class="float-badge fb2">🔔 2 alertas nuevas</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── BENEFITS ──────────────────────────────────────────────────────── -->
+  <section class="benefits">
+    <div class="container benefit-row">
+      <div class="benefit">
+        <div class="benefit-icon">🔒</div>
+        <b>Seguro y confiable</b>
+        <small>Datos siempre protegidos con acceso por roles</small>
+      </div>
+      <div class="benefit">
+        <div class="benefit-icon">☁️</div>
+        <b>100% en la nube</b>
+        <small>Accedé desde cualquier dispositivo, en cualquier momento</small>
+      </div>
+      <div class="benefit">
+        <div class="benefit-icon">📊</div>
+        <b>Información en tiempo real</b>
+        <small>Mejores decisiones, más impacto social</small>
+      </div>
+      <div class="benefit">
+        <div class="benefit-icon">🎯</div>
+        <b>Diseñado para centros</b>
+        <small>Simple, flexible e intuitivo para todo el equipo</small>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── STATS ─────────────────────────────────────────────────────────── -->
+  <section class="stats-section">
+    <div class="container">
+      <div class="stats-grid">
+        <div class="stat-block">
+          <strong>+40</strong>
+          <span>Centros activos</span>
+        </div>
+        <div class="stat-block">
+          <strong>+8.000</strong>
+          <span>Personas gestionadas</span>
+        </div>
+        <div class="stat-block">
+          <strong>98%</strong>
+          <span>Satisfacción de equipos</span>
+        </div>
+        <div class="stat-block">
+          <strong>24/7</strong>
+          <span>Disponibilidad garantizada</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SOLUTIONS ─────────────────────────────────────────────────────── -->
+  <section class="solutions-wrap" id="soluciones">
+    <div class="container">
+      <div class="section-head">
+        <div class="tag">Soluciones</div>
+        <h2>Cinco módulos, un mismo propósito.</h2>
+        <p>Herramientas integradas para que tu centro gestione mejor y genere más impacto social.</p>
+      </div>
+      <div class="solutions">
+        <article class="solution js-action" data-label="KORAI" style="border-color:rgba(84,39,217,.2)">
+          <div class="sicon">✹</div>
+          <h3 style="color:var(--purple)">KORAI</h3>
+          <b>Conocé a las familias y personas de tu comunidad</b>
+          <p>Diagnóstico, seguimiento y planes de acción personalizados para mejorar el bienestar.</p>
+          <div class="more" style="color:var(--purple)">Conocé más →</div>
+        </article>
+        <article class="solution js-action" data-label="Pulso TIC" style="border-color:rgba(255,106,25,.2)">
+          <div class="sicon" style="background:#fff0e6;color:var(--orange)">👥</div>
+          <h3 style="color:var(--orange)">Pulso TIC</h3>
+          <b>Gestioná tu centro día a día</b>
+          <p>Asistencia, permanencia, alertas y toda la información que necesitás en tiempo real.</p>
+          <div class="more" style="color:var(--orange)">Conocé más →</div>
+        </article>
+        <article class="solution js-action" data-label="OportunAI" style="border-color:rgba(20,152,73,.2)">
+          <div class="sicon" style="background:#eaf8ef;color:var(--green)">💼</div>
+          <h3 style="color:var(--green)">OportunAI</h3>
+          <b>Generá oportunidades para tu comunidad</b>
+          <p>Conectá a las personas con empleo, capacitación y recursos para su desarrollo.</p>
+          <div class="more" style="color:var(--green)">Conocé más →</div>
+        </article>
+        <article class="solution js-action" data-label="Cumplimiento y Operación" style="border-color:rgba(15,99,255,.2)">
+          <div class="sicon" style="background:#edf3ff;color:var(--blue)">🛡️</div>
+          <h3 style="color:var(--blue)">Operaciones</h3>
+          <b>Asegurá el cumplimiento y la operación</b>
+          <p>Controlá vencimientos, inspecciones, mantenimiento y documentación en un solo lugar.</p>
+          <div class="more" style="color:var(--blue)">Conocé más →</div>
+        </article>
+        <article class="solution js-action" data-label="Prestadores Homologados">
+          <div class="sicon" style="background:#f1f2f8;color:var(--gray)">🤝</div>
+          <h3 style="color:#3e435d">Prestadores</h3>
+          <b>Red de prestadores verificados</b>
+          <p>Encontrá proveedores confiables con precios justos y servicios de calidad garantizada.</p>
+          <div class="more" style="color:#3e435d">Conocé más →</div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── AUDIENCE ───────────────────────────────────────────────────────── -->
+  <section class="audience" id="organizaciones">
+    <div class="container">
+      <div class="section-head">
+        <div class="tag">Organizaciones</div>
+        <h2>Para organizaciones que transforman comunidades.</h2>
+        <p>Diseñado para las necesidades reales de quienes trabajan con personas.</p>
+      </div>
+      <div class="audience-grid">
+        <div class="audience-card js-action" data-label="Centros de Primera Infancia">
+          <div class="audience-icon">🏠</div>
+          <div><b>Centros de Primera Infancia (CPI)</b><small>Gestión integral de niños, familias y equipos pedagógicos</small></div>
+        </div>
+        <div class="audience-card js-action" data-label="Centros de Inclusión Social">
+          <div class="audience-icon">♟️</div>
+          <div><b>Centros de Inclusión Social (CIS)</b><small>Seguimiento de casos, servicios y vinculación comunitaria</small></div>
+        </div>
+        <div class="audience-card js-action" data-label="Centros de Día">
+          <div class="audience-icon">☀️</div>
+          <div><b>Centros de Día</b><small>Asistencia, actividades y bienestar de las personas asistidas</small></div>
+        </div>
+        <div class="audience-card js-action" data-label="Municipios y Provincias">
+          <div class="audience-icon">🏛️</div>
+          <div><b>Municipios y Provincias</b><small>Trazabilidad, informes y cumplimiento a nivel territorial</small></div>
+        </div>
+        <div class="audience-card js-action" data-label="Fundaciones y ONGs">
+          <div class="audience-icon">💜</div>
+          <div><b>Fundaciones y ONGs</b><small>Indicadores de impacto y gestión de beneficiarios</small></div>
+        </div>
+        <div class="audience-card js-action" data-label="Hogares y Residencias">
+          <div class="audience-icon">⌘</div>
+          <div><b>Hogares y Residencias</b><small>Seguimiento personalizado y comunicación con familias</small></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CTA FINAL ──────────────────────────────────────────────────────── -->
+  <section class="cta-section">
+    <div class="container">
+      <div class="cta-card">
+        <div>
+          <h2>Más eficiencia. Más impacto.<br>Mejores decisiones.</h2>
+          <p>KORATIC es la plataforma que potencia la gestión de tu centro y el bienestar de tu comunidad.</p>
+        </div>
+        <div class="cta-actions">
+          <button class="btn btn-ghost js-action" data-label="Ingresar a KORATIC">Ingresar a KORATIC →</button>
+          <button class="btn btn-primary js-action" data-label="Solicitar demo" style="background:rgba(255,255,255,.15);backdrop-filter:blur(8px);border:1.5px solid rgba(255,255,255,.36)">▣ Solicitar demo</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ── FOOTER ─────────────────────────────────────────────────────────── -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="logo">
+          <span class="mark"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          <strong>KORATIC</strong>
+        </div>
+        <p class="footer-desc">Infraestructura Integral de Gestión para organizaciones que trabajan con personas y comunidades.</p>
+      </div>
+      <div>
+        <h4>Soluciones</h4>
+        <div class="footer-links">
+          <a href="#" class="js-action" data-label="KORAI">KORAI</a>
+          <a href="#" class="js-action" data-label="Pulso TIC">Pulso TIC</a>
+          <a href="#" class="js-action" data-label="OportunAI">OportunAI</a>
+          <a href="#" class="js-action" data-label="Operaciones">Operaciones</a>
+        </div>
+      </div>
+      <div>
+        <h4>Recursos</h4>
+        <div class="footer-links">
+          <a href="#" class="js-action" data-label="Novedades">Novedades</a>
+          <a href="#" class="js-action" data-label="Casos de uso">Casos de uso</a>
+          <a href="#" class="js-action" data-label="Centro de ayuda">Centro de ayuda</a>
+          <a href="#" class="js-action" data-label="Blog">Blog</a>
+        </div>
+      </div>
+      <div>
+        <h4>Empresa</h4>
+        <div class="footer-links">
+          <a href="#" class="js-action" data-label="Nosotros">Nosotros</a>
+          <a href="#" class="js-action" data-label="Contacto">Contacto</a>
+          <a href="#" class="js-action" data-label="Trabajá con nosotros">Trabajá con nosotros</a>
+        </div>
+      </div>
+      <div>
+        <h4>Seguinos</h4>
+        <div class="social">
+          <button class="social-btn js-action" data-label="LinkedIn">in</button>
+          <button class="social-btn js-action" data-label="Instagram">◎</button>
+          <button class="social-btn js-action" data-label="YouTube">▶</button>
+        </div>
+      </div>
+    </div>
+    <div class="legal">
+      <span>© 2025 KORATIC. Todos los derechos reservados.</span>
+      <span>Términos y condiciones · Política de privacidad</span>
+    </div>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// Progress bar
+const bar = document.getElementById('bar');
+window.addEventListener('scroll', () => {
+  const h = document.documentElement;
+  const max = h.scrollHeight - h.clientHeight;
+  bar.style.width = max > 0 ? ((h.scrollTop / max) * 100) + '%' : '0%';
+}, { passive: true });
+
+// Toast
+const toast = document.getElementById('toast');
+let toastTimer;
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 1400);
+}
+document.querySelectorAll('.js-action').forEach(el => {
+  el.addEventListener('click', () => showToast(el.dataset.label || 'Próximamente'));
+});
+
+// Hamburger menu
+const ham = document.getElementById('ham');
+const mnav = document.getElementById('mnav');
+ham.addEventListener('click', () => {
+  const open = mnav.classList.toggle('open');
+  ham.classList.toggle('open', open);
+  document.body.style.overflow = open ? 'hidden' : '';
+});
+document.querySelectorAll('.js-nav').forEach(a => {
+  a.addEventListener('click', () => {
+    mnav.classList.remove('open');
+    ham.classList.remove('open');
+    document.body.style.overflow = '';
+  });
+});
+
+// Smooth scroll for anchor links
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    const target = document.querySelector(a.getAttribute('href'));
+    if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth' }); }
+  });
+});
+</script>
+</body>
+</html>

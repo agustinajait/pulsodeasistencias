@@ -1629,8 +1629,8 @@ export default function AdminPage() {
                           ))}
                         </select>
                         <select
-                          value={(child as any).estado ?? "INSCRIPTX"}
-                          className={`text-[11px] border rounded px-1.5 py-0.5 focus:outline-none ${(child as any).estado === "EN REVISION" ? "border-amber-400 bg-amber-50 text-amber-700" : (child as any).estado === "ALERTA" ? "border-red-400 bg-red-50 text-red-700" : "border-border bg-background text-foreground"}`}
+                          value={estadoOverrides[child.id] ?? (child as any).estado ?? "INSCRIPTX"}
+                          className={`text-[11px] border rounded px-1.5 py-0.5 focus:outline-none ${(estadoOverrides[child.id] ?? (child as any).estado) === "EN REVISION" ? "border-amber-400 bg-amber-50 text-amber-700" : (estadoOverrides[child.id] ?? (child as any).estado) === "ALERTA" ? "border-red-400 bg-red-50 text-red-700" : "border-border bg-background text-foreground"}`}
                           data-testid={`select-estado-${child.id}`}
                           onChange={(e) => {
                             const nuevoEstado = e.target.value;

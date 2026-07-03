@@ -904,6 +904,9 @@ export default function AdminPage() {
     queryClient.invalidateQueries({ queryKey: getGetAlertsQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetRecentContactsQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetRoomsSummaryQueryKey() });
+    // Invalidate all children queries with exact params used in this component
+    queryClient.invalidateQueries({ queryKey: getListChildrenQueryKey({ ...centerParam, active: true }) });
+    queryClient.invalidateQueries({ queryKey: getListChildrenQueryKey({ ...centerParam, active: false }) });
     queryClient.invalidateQueries({ queryKey: getListChildrenQueryKey() });
     queryClient.invalidateQueries({ queryKey: getListRoomsQueryKey() });
     queryClient.invalidateQueries({ queryKey: getListCentersQueryKey() });
@@ -1635,7 +1638,7 @@ export default function AdminPage() {
                               { id: child.id, data: { estado: nuevoEstado } as any },
                               { onSuccess: () => {
                                 toast({ title: `${child.apellido} ${child.nombre} → ${labels[nuevoEstado] ?? nuevoEstado}`, duration: 3000 });
-                                setTimeout(invalidateAll, 1500);
+                                invalidateAll();
                               }}
                             );
                           }}

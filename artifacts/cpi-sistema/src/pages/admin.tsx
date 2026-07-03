@@ -1042,6 +1042,18 @@ export default function AdminPage() {
     return applyVacunasFilter(byRoom);
   }, [allChildren.data, search, nominaRoomId, nominaVacunas, estadoOverrides]);
 
+  const salaStats = useMemo(() => {
+    const map: Record<number, { activos: number; revision: number; alerta: number }> = {};
+    (allChildren.data ?? []).forEach((c: Child) => {
+      if (!map[c.roomId]) map[c.roomId] = { activos: 0, revision: 0, alerta: 0 };
+      const est = estadoOverrides[c.id] ?? c.estado ?? "";
+      if (est === "EN REVISION") map[c.roomId].revision++;
+      else if (est === "ALERTA") map[c.roomId].alerta++;
+      else map[c.roomId].activos++;
+    });
+    return map;
+  }, [allChildren.data, estadoOverrides]);
+
   const filteredBajas = useMemo(() => {
     const q = search.toLowerCase();
     const base = (dischargedChildren.data ?? []).filter(
@@ -1441,134 +1453,100 @@ export default function AdminPage() {
 
           {/* NÓMINA */}
           <TabsContent value="nomina">
-            <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-              <div className="flex gap-1.5">
-                <button
-                  onClick={() => { setNominaTab("activos"); setBulkDeleteMode(false); setSelectedIds(new Set()); }}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${nominaTab === "activos" ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}
-                  data-testid="btn-nomina-activos"
-                >
-                  Activos ({filteredActive.length})
-                </button>
-                <button
-                  onClick={() => { setNominaTab("revision"); setBulkDeleteMode(false); setSelectedIds(new Set()); }}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${nominaTab === "revision" ? "bg-amber-500 text-white" : "bg-muted text-muted-foreground"}`}
-                  data-testid="btn-nomina-revision"
-                >
-                  En revisión ({filteredRevision.length})
-                </button>
-                <button
-                  onClick={() => { setNominaTab("alerta"); setBulkDeleteMode(false); setSelectedIds(new Set()); }}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${nominaTab === "alerta" ? "bg-red-600 text-white" : "bg-muted text-muted-foreground"}`}
-                  data-testid="btn-nomina-alerta"
-                >
-                  Alerta ({filteredAlerta.length})
-                </button>
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                {!bulkDeleteMode ? (
-                  <>
-                    <button
-                      onClick={() => exportCSV(allChildren.data ?? [], `nomina-activos-${TODAY}.csv`)}
-                      disabled={!allChildren.data?.length}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors disabled:opacity-40"
-                      data-testid="btn-export-csv"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      Exportar CSV
-                    </button>
-                    <ImportarCSVDialog rooms={roomSummary.data ?? []} onSuccess={invalidateAll} />
-                    <NuevaAltaDialog onSuccess={invalidateAll} onOpenDocs={(id) => setSelectedChild(id)} centerId={activeCenterId} />
-                    <button
-                      onClick={() => { setBulkDeleteMode(true); setSelectedIds(new Set()); setConfirmBulkDelete(false); }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-xs font-semibold text-red-600 hover:bg-red-100 transition-colors"
-                      data-testid="btn-bulk-delete-mode"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      Eliminar varios
-                    </button>
-                  </>
-                ) : (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs text-muted-foreground font-medium">{selectedIds.size} seleccionado{selectedIds.size !== 1 ? "s" : ""}</span>
-                    <button
-                      onClick={() => {
-                        const currentList = nominaTab === "activos" ? filteredActive : nominaTab === "revision" ? filteredRevision : filteredAlerta;
-                        const allIds = new Set<number>(currentList.map((c: Child) => c.id));
-                        setSelectedIds(selectedIds.size === allIds.size ? new Set() : allIds);
-                      }}
-                      className="px-2.5 py-1.5 rounded-lg border border-border bg-background text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors"
-                    >
-                      {selectedIds.size === (nominaTab === "activos" ? filteredActive : nominaTab === "revision" ? filteredRevision : filteredAlerta).length ? "Deseleccionar todo" : "Seleccionar todo"}
-                    </button>
-                    {selectedIds.size > 0 && !confirmBulkDelete && (
+            {nominaRoomId === null ? (
+              /* ── VISTA CENTRO: resumen + tarjetas de sala ── */
+              <div>
+                <div className="flex justify-end gap-2 mb-5 flex-wrap">
+                  <ImportarCSVDialog rooms={roomSummary.data ?? []} onSuccess={invalidateAll} />
+                  <NuevaAltaDialog onSuccess={invalidateAll} onOpenDocs={(id) => setSelectedChild(id)} centerId={activeCenterId} />
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                  <StatCard value={filteredActive.length} label="Activos" color="text-green-600" />
+                  <StatCard value={filteredRevision.length} label="En revisión" color="text-amber-600" />
+                  <StatCard value={filteredAlerta.length} label="Alerta" color="text-red-600" />
+                  <StatCard value={dischargedChildren.data?.length ?? 0} label="Egresos" />
+                </div>
+                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-3">Salas</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {(roomSummary.data ?? []).map((r: RoomSummary) => {
+                    const st = salaStats[r.id] ?? { activos: 0, revision: 0, alerta: 0 };
+                    const vacantes = r.capacity - st.activos;
+                    return (
                       <button
-                        onClick={() => setConfirmBulkDelete(true)}
-                        className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 transition-colors"
-                        data-testid="btn-bulk-delete-confirm"
+                        key={r.id}
+                        onClick={() => { setNominaRoomId(r.id); setNominaTab("activos"); setBulkDeleteMode(false); setSelectedIds(new Set()); }}
+                        className="bg-card border border-border rounded-xl p-4 text-left hover:shadow-md hover:border-primary/40 transition-all group"
+                        data-testid={`btn-nomina-sala-${r.id}`}
                       >
-                        Eliminar {selectedIds.size}
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="font-semibold text-sm group-hover:text-primary transition-colors">{r.name}</span>
+                          <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                        </div>
+                        <div className="flex gap-4 text-sm">
+                          <div><span className="font-bold text-foreground">{st.activos}</span> <span className="text-xs text-muted-foreground">activos</span></div>
+                          {st.revision > 0 && <div><span className="font-bold text-amber-600">{st.revision}</span> <span className="text-xs text-muted-foreground">en revisión</span></div>}
+                          {st.alerta > 0 && <div><span className="font-bold text-red-600">{st.alerta}</span> <span className="text-xs text-muted-foreground">alerta</span></div>}
+                          <div><span className="text-xs text-muted-foreground">{vacantes} vacante{vacantes !== 1 ? "s" : ""}</span></div>
+                        </div>
                       </button>
-                    )}
-                    {confirmBulkDelete && (
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs text-red-600 font-semibold">¿Confirmar eliminación de {selectedIds.size}?</span>
-                        <button
-                          onClick={handleBulkDelete}
-                          disabled={bulkDeleting}
-                          className="px-2.5 py-1.5 rounded-lg bg-red-600 text-white text-xs font-bold hover:bg-red-700 disabled:opacity-50"
-                        >{bulkDeleting ? "Eliminando..." : "Sí, eliminar"}</button>
-                        <button
-                          onClick={() => setConfirmBulkDelete(false)}
-                          className="px-2.5 py-1.5 rounded-lg bg-muted text-muted-foreground text-xs font-semibold hover:bg-muted/80"
-                        >Cancelar</button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              /* ── VISTA SALA: listado con tabs de estado ── */
+              <div>
+                {/* Header */}
+                <div className="flex items-center gap-2 mb-4">
+                  <button
+                    onClick={() => { setNominaRoomId(null); setBulkDeleteMode(false); setSelectedIds(new Set()); setSearch(""); }}
+                    className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Nómina
+                  </button>
+                  <span className="text-muted-foreground">/</span>
+                  <span className="font-semibold text-sm">{roomSummary.data?.find((r: RoomSummary) => r.id === nominaRoomId)?.name ?? "Sala"}</span>
+                </div>
+                {/* Tabs + actions */}
+                <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+                  <div className="flex gap-1.5">
+                    <button onClick={() => { setNominaTab("activos"); setBulkDeleteMode(false); setSelectedIds(new Set()); }} className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${nominaTab === "activos" ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`} data-testid="btn-nomina-activos">Activos ({filteredActive.length})</button>
+                    <button onClick={() => { setNominaTab("revision"); setBulkDeleteMode(false); setSelectedIds(new Set()); }} className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${nominaTab === "revision" ? "bg-amber-500 text-white" : "bg-muted text-muted-foreground"}`} data-testid="btn-nomina-revision">En revisión ({filteredRevision.length})</button>
+                    <button onClick={() => { setNominaTab("alerta"); setBulkDeleteMode(false); setSelectedIds(new Set()); }} className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${nominaTab === "alerta" ? "bg-red-600 text-white" : "bg-muted text-muted-foreground"}`} data-testid="btn-nomina-alerta">Alerta ({filteredAlerta.length})</button>
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    {!bulkDeleteMode ? (
+                      <>
+                        <button onClick={() => exportCSV(allChildren.data ?? [], `nomina-activos-${TODAY}.csv`)} disabled={!allChildren.data?.length} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors disabled:opacity-40" data-testid="btn-export-csv"><Download className="w-3.5 h-3.5" />Exportar CSV</button>
+                        <ImportarCSVDialog rooms={roomSummary.data ?? []} onSuccess={invalidateAll} />
+                        <NuevaAltaDialog onSuccess={invalidateAll} onOpenDocs={(id) => setSelectedChild(id)} centerId={activeCenterId} />
+                        <button onClick={() => { setBulkDeleteMode(true); setSelectedIds(new Set()); setConfirmBulkDelete(false); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-xs font-semibold text-red-600 hover:bg-red-100 transition-colors" data-testid="btn-bulk-delete-mode"><Trash2 className="w-3.5 h-3.5" />Eliminar varios</button>
+                      </>
+                    ) : (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs text-muted-foreground font-medium">{selectedIds.size} seleccionado{selectedIds.size !== 1 ? "s" : ""}</span>
+                        <button onClick={() => { const currentList = nominaTab === "activos" ? filteredActive : nominaTab === "revision" ? filteredRevision : filteredAlerta; const allIds = new Set<number>(currentList.map((c: Child) => c.id)); setSelectedIds(selectedIds.size === allIds.size ? new Set() : allIds); }} className="px-2.5 py-1.5 rounded-lg border border-border bg-background text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors">{selectedIds.size === (nominaTab === "activos" ? filteredActive : nominaTab === "revision" ? filteredRevision : filteredAlerta).length ? "Deseleccionar todo" : "Seleccionar todo"}</button>
+                        {selectedIds.size > 0 && !confirmBulkDelete && (<button onClick={() => setConfirmBulkDelete(true)} className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 transition-colors" data-testid="btn-bulk-delete-confirm">Eliminar {selectedIds.size}</button>)}
+                        {confirmBulkDelete && (<div className="flex items-center gap-1.5"><span className="text-xs text-red-600 font-semibold">¿Confirmar eliminación de {selectedIds.size}?</span><button onClick={handleBulkDelete} disabled={bulkDeleting} className="px-2.5 py-1.5 rounded-lg bg-red-600 text-white text-xs font-bold hover:bg-red-700 disabled:opacity-50">{bulkDeleting ? "Eliminando..." : "Sí, eliminar"}</button><button onClick={() => setConfirmBulkDelete(false)} className="px-2.5 py-1.5 rounded-lg bg-muted text-muted-foreground text-xs font-semibold hover:bg-muted/80">Cancelar</button></div>)}
+                        <button onClick={() => { setBulkDeleteMode(false); setSelectedIds(new Set()); setConfirmBulkDelete(false); }} className="px-2.5 py-1.5 rounded-lg border border-border text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors">Cancelar</button>
                       </div>
                     )}
-                    <button
-                      onClick={() => { setBulkDeleteMode(false); setSelectedIds(new Set()); setConfirmBulkDelete(false); }}
-                      className="px-2.5 py-1.5 rounded-lg border border-border text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors"
-                    >
-                      Cancelar
-                    </button>
                   </div>
-                )}
-              </div>
-            </div>
-            <div className="flex gap-1.5 mb-3 overflow-x-auto flex-nowrap">
-              <button
-                onClick={() => { setNominaRoomId(null); setNominaTab("activos"); }}
-                className={`px-2.5 py-1 rounded-md text-xs font-semibold border shrink-0 transition-all ${nominaRoomId === null ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-muted-foreground hover:border-primary/50"}`}
-                data-testid="btn-nomina-room-all"
-              >
-                Todas las salas ({allChildren.data?.length ?? 0})
-              </button>
-              {(roomSummary.data ?? []).map((r: RoomSummary) => (
-                <button
-                  key={r.id}
-                  onClick={() => { setNominaRoomId(r.id); setNominaTab("activos"); }}
-                  className={`px-2.5 py-1 rounded-md text-xs font-semibold border shrink-0 transition-all ${nominaRoomId === r.id ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-muted-foreground hover:border-primary/50"}`}
-                  data-testid={`btn-nomina-room-${r.id}`}
-                >
-                  {r.name} ({r.total})
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-1.5 mb-3 overflow-x-auto flex-nowrap">
-              {([["todos", "Todos"], ["con", "Con carnet vacunas"], ["sin", "Sin carnet vacunas"]] as const).map(([val, label]) => (
-                <button
-                  key={val}
-                  onClick={() => setNominaVacunas(val)}
-                  className={`px-2.5 py-1 rounded-md text-xs font-semibold border shrink-0 transition-all ${nominaVacunas === val ? "bg-green-600 text-white border-green-600" : "bg-background border-border text-muted-foreground hover:border-green-500/50"}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" data-testid="input-nomina-search" />
-            </div>
-            <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
+                </div>
+                {/* Vacunas filter */}
+                <div className="flex gap-1.5 mb-3 overflow-x-auto flex-nowrap">
+                  {([["todos", "Todos"], ["con", "Con carnet vacunas"], ["sin", "Sin carnet vacunas"]] as const).map(([val, label]) => (
+                    <button key={val} onClick={() => setNominaVacunas(val)} className={`px-2.5 py-1 rounded-md text-xs font-semibold border shrink-0 transition-all ${nominaVacunas === val ? "bg-green-600 text-white border-green-600" : "bg-background border-border text-muted-foreground hover:border-green-500/50"}`}>{label}</button>
+                  ))}
+                </div>
+                {/* Search */}
+                <div className="relative mb-3">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" data-testid="input-nomina-search" />
+                </div>
+                {/* Children list */}
+                <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
               {(nominaTab === "activos" ? filteredActive : nominaTab === "revision" ? filteredRevision : filteredAlerta).map((child: Child) => (
                 <div
                   key={child.id}
@@ -1694,6 +1672,8 @@ export default function AdminPage() {
                 <div className="text-center py-10 text-muted-foreground text-sm">No hay niños en alerta</div>
               )}
             </div>
+              </div>
+            )}
           </TabsContent>
 
           {/* ASISTENCIA */}

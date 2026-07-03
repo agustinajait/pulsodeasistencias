@@ -415,14 +415,9 @@ router.patch("/children/:id", async (req, res) => {
       return;
     }
 
-    // diasConcurrencia is handled outside Drizzle schema to avoid RETURNING issues
-    let diasConcurrencia: string | null = null;
+    // diasConcurrencia handled via raw SQL (not in Drizzle schema)
     if (body.diasConcurrencia === null || typeof body.diasConcurrencia === "string") {
       await pool.query(`UPDATE children SET dias_concurrencia=$1 WHERE id=$2`, [body.diasConcurrencia ?? null, id]);
-      diasConcurrencia = (body.diasConcurrencia as string | null) ?? null;
-    } else {
-      const { rows } = await pool.query(`SELECT dias_concurrencia FROM children WHERE id=$1`, [id]);
-      diasConcurrencia = rows[0]?.dias_concurrencia ?? null;
     }
 
     const rooms = await db
@@ -431,7 +426,7 @@ router.patch("/children/:id", async (req, res) => {
       .where(eq(roomsTable.id, updated.roomId))
       .limit(1);
 
-    res.json({ ...updated, diasConcurrencia, ecoNumber: rooms[0]?.ecoNumber ?? 0 });
+    res.json({ ...updated, ecoNumber: rooms[0]?.ecoNumber ?? 0 });
   } catch (err) {
     req.log.error(err, "Error updating child");
     res.status(500).json({ error: "Internal server error" });

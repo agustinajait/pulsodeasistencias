@@ -1500,10 +1500,10 @@ export default function AdminPage() {
                 <div className="flex items-center gap-2 mb-4">
                   <button
                     onClick={() => { setNominaRoomId(null); setBulkDeleteMode(false); setSelectedIds(new Set()); setSearch(""); }}
-                    className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background text-sm font-semibold text-foreground hover:bg-muted transition-colors"
                   >
                     <ChevronLeft className="w-4 h-4" />
-                    Nómina
+                    Todas las salas
                   </button>
                   <span className="text-muted-foreground">/</span>
                   <span className="font-semibold text-sm">{roomSummary.data?.find((r: RoomSummary) => r.id === nominaRoomId)?.name ?? "Sala"}</span>

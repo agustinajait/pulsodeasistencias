@@ -6,9 +6,11 @@ import { CreateChildBody, UpdateChildBody, DischargeChildBody } from "@workspace
 
 const router = Router();
 
-// Ensure asistencia_parcial column exists
-pool.query(`ALTER TABLE children ADD COLUMN IF NOT EXISTS asistencia_parcial BOOLEAN NOT NULL DEFAULT FALSE`).catch(() => {});
-pool.query(`ALTER TABLE children ADD COLUMN IF NOT EXISTS dias_concurrencia VARCHAR(50)`).catch(() => {});
+async function ensureChildColumns() {
+  await pool.query(`ALTER TABLE children ADD COLUMN IF NOT EXISTS asistencia_parcial BOOLEAN NOT NULL DEFAULT FALSE`);
+  await pool.query(`ALTER TABLE children ADD COLUMN IF NOT EXISTS dias_concurrencia VARCHAR(50)`);
+}
+const _ensureChildColumnsPromise = ensureChildColumns().catch(() => {});
 
 
 const TODAY = () => new Date().toISOString().slice(0, 10);
@@ -283,6 +285,7 @@ router.post("/children", async (req, res) => {
 // GET /children/:id
 router.get("/children/:id", async (req, res) => {
   try {
+    await _ensureChildColumnsPromise;
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
       res.status(400).json({ error: "Invalid id" });
@@ -356,6 +359,7 @@ router.get("/children/:id", async (req, res) => {
 // PATCH /children/:id
 router.patch("/children/:id", async (req, res) => {
   try {
+    await _ensureChildColumnsPromise;
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
       res.status(400).json({ error: "Invalid id" });

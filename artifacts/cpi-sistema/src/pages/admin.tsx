@@ -746,7 +746,7 @@ export default function AdminPage() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [selectedChild, setSelectedChild] = useState<number | null>(null);
-  const [nominaTab, setNominaTab] = useState<"activos" | "revision" | "alerta" | "bajas">("activos");
+  const [nominaTab, setNominaTab] = useState<"activos" | "revision" | "alerta">("activos");
   const [estadoOverrides, setEstadoOverrides] = useState<Record<number, string>>({});
   const [nominaRoomId, setNominaRoomId] = useState<number | null>(null);
   const [nominaVacunas, setNominaVacunas] = useState<"todos" | "con" | "sin">("todos");
@@ -1448,7 +1448,7 @@ export default function AdminPage() {
                   className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${nominaTab === "activos" ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}
                   data-testid="btn-nomina-activos"
                 >
-                  Activos ({allChildren.data?.length ?? 0})
+                  Activos ({filteredActive.length})
                 </button>
                 <button
                   onClick={() => { setNominaTab("revision"); setBulkDeleteMode(false); setSelectedIds(new Set()); }}
@@ -1463,13 +1463,6 @@ export default function AdminPage() {
                   data-testid="btn-nomina-alerta"
                 >
                   Alerta ({filteredAlerta.length})
-                </button>
-                <button
-                  onClick={() => { setNominaTab("bajas"); setBulkDeleteMode(false); setSelectedIds(new Set()); }}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${nominaTab === "bajas" ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}
-                  data-testid="btn-nomina-bajas"
-                >
-                  Egresos ({dischargedChildren.data?.length ?? 0})
                 </button>
               </div>
               <div className="flex gap-2 flex-wrap">
@@ -1500,13 +1493,13 @@ export default function AdminPage() {
                     <span className="text-xs text-muted-foreground font-medium">{selectedIds.size} seleccionado{selectedIds.size !== 1 ? "s" : ""}</span>
                     <button
                       onClick={() => {
-                        const currentList = nominaTab === "activos" ? filteredActive : nominaTab === "revision" ? filteredRevision : nominaTab === "alerta" ? filteredAlerta : filteredBajas;
+                        const currentList = nominaTab === "activos" ? filteredActive : nominaTab === "revision" ? filteredRevision : filteredAlerta;
                         const allIds = new Set<number>(currentList.map((c: Child) => c.id));
                         setSelectedIds(selectedIds.size === allIds.size ? new Set() : allIds);
                       }}
                       className="px-2.5 py-1.5 rounded-lg border border-border bg-background text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors"
                     >
-                      {selectedIds.size === (nominaTab === "activos" ? filteredActive : nominaTab === "revision" ? filteredRevision : nominaTab === "alerta" ? filteredAlerta : filteredBajas).length ? "Deseleccionar todo" : "Seleccionar todo"}
+                      {selectedIds.size === (nominaTab === "activos" ? filteredActive : nominaTab === "revision" ? filteredRevision : filteredAlerta).length ? "Deseleccionar todo" : "Seleccionar todo"}
                     </button>
                     {selectedIds.size > 0 && !confirmBulkDelete && (
                       <button
@@ -1543,16 +1536,16 @@ export default function AdminPage() {
             </div>
             <div className="flex gap-1.5 mb-3 overflow-x-auto flex-nowrap">
               <button
-                onClick={() => setNominaRoomId(null)}
+                onClick={() => { setNominaRoomId(null); setNominaTab("activos"); }}
                 className={`px-2.5 py-1 rounded-md text-xs font-semibold border shrink-0 transition-all ${nominaRoomId === null ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-muted-foreground hover:border-primary/50"}`}
                 data-testid="btn-nomina-room-all"
               >
-                Todas las salas ({(roomSummary.data ?? []).reduce((sum: number, r: RoomSummary) => sum + r.total, 0)})
+                Todas las salas ({allChildren.data?.length ?? 0})
               </button>
               {(roomSummary.data ?? []).map((r: RoomSummary) => (
                 <button
                   key={r.id}
-                  onClick={() => setNominaRoomId(r.id)}
+                  onClick={() => { setNominaRoomId(r.id); setNominaTab("activos"); }}
                   className={`px-2.5 py-1 rounded-md text-xs font-semibold border shrink-0 transition-all ${nominaRoomId === r.id ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-muted-foreground hover:border-primary/50"}`}
                   data-testid={`btn-nomina-room-${r.id}`}
                 >
@@ -1576,7 +1569,7 @@ export default function AdminPage() {
               <Input placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" data-testid="input-nomina-search" />
             </div>
             <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
-              {(nominaTab === "activos" ? filteredActive : nominaTab === "revision" ? filteredRevision : nominaTab === "alerta" ? filteredAlerta : filteredBajas).map((child: Child) => (
+              {(nominaTab === "activos" ? filteredActive : nominaTab === "revision" ? filteredRevision : filteredAlerta).map((child: Child) => (
                 <div
                   key={child.id}
                   className={`flex items-center gap-3 px-4 py-3 border-b border-border last:border-0 hover:bg-muted/50 transition-colors ${bulkDeleteMode && selectedIds.has(child.id) ? "bg-red-50" : ""}`}

@@ -1853,7 +1853,7 @@ export default function AdminPage() {
                       <button
                         onClick={() => reinstateChild.mutate(
                           { data: { estado: "EN REVISION" } as any, id: child.id },
-                          { onSuccess: () => { toast({ title: "Pasado a En revisión" }); qc.invalidateQueries({ queryKey: getListChildrenQueryKey() }); } }
+                          { onSuccess: () => { toast({ title: "Pasado a En revisión" }); invalidateAll(); } }
                         )}
                         disabled={reinstateChild.isPending}
                         className="ml-auto text-xs px-2.5 py-1 rounded-md bg-amber-100 text-amber-700 font-semibold border border-amber-300 hover:bg-amber-200 transition-colors disabled:opacity-50"

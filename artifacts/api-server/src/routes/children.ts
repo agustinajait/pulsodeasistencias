@@ -9,6 +9,7 @@ const router = Router();
 async function ensureChildColumns() {
   await pool.query(`ALTER TABLE children ADD COLUMN IF NOT EXISTS asistencia_parcial BOOLEAN NOT NULL DEFAULT FALSE`);
   await pool.query(`ALTER TABLE children ADD COLUMN IF NOT EXISTS dias_concurrencia VARCHAR(50)`);
+  // asistencia_parcial is in Drizzle schema; dias_concurrencia is handled via raw SQL
 }
 const _ensureChildColumnsPromise = ensureChildColumns().catch(() => {});
 
@@ -340,8 +341,12 @@ router.get("/children/:id", async (req, res) => {
       resultado: c.resultado ?? null,
     }));
 
+    const { rows: extraRows } = await pool.query(`SELECT dias_concurrencia FROM children WHERE id=$1`, [id]);
+    const diasConcurrencia = extraRows[0]?.dias_concurrencia ?? null;
+
     res.json({
       ...child,
+      diasConcurrencia,
       ecoNumber,
       fnac: child.fnac ?? null,
       inscripto: child.inscripto ?? null,
@@ -398,7 +403,6 @@ router.patch("/children/:id", async (req, res) => {
     if (typeof vacunasUrl === "string") (updates as Record<string, unknown>).vacunasUrl = vacunasUrl;
     const body = req.body as Record<string, unknown>;
     if (typeof body.asistenciaParcial === "boolean") updates.asistenciaParcial = body.asistenciaParcial;
-    if (body.diasConcurrencia === null || typeof body.diasConcurrencia === "string") updates.diasConcurrencia = body.diasConcurrencia as string | null;
 
     const [updated] = await db
       .update(childrenTable)
@@ -411,13 +415,23 @@ router.patch("/children/:id", async (req, res) => {
       return;
     }
 
+    // diasConcurrencia is handled outside Drizzle schema to avoid RETURNING issues
+    let diasConcurrencia: string | null = null;
+    if (body.diasConcurrencia === null || typeof body.diasConcurrencia === "string") {
+      await pool.query(`UPDATE children SET dias_concurrencia=$1 WHERE id=$2`, [body.diasConcurrencia ?? null, id]);
+      diasConcurrencia = (body.diasConcurrencia as string | null) ?? null;
+    } else {
+      const { rows } = await pool.query(`SELECT dias_concurrencia FROM children WHERE id=$1`, [id]);
+      diasConcurrencia = rows[0]?.dias_concurrencia ?? null;
+    }
+
     const rooms = await db
       .select()
       .from(roomsTable)
       .where(eq(roomsTable.id, updated.roomId))
       .limit(1);
 
-    res.json({ ...updated, ecoNumber: rooms[0]?.ecoNumber ?? 0 });
+    res.json({ ...updated, diasConcurrencia, ecoNumber: rooms[0]?.ecoNumber ?? 0 });
   } catch (err) {
     req.log.error(err, "Error updating child");
     res.status(500).json({ error: "Internal server error" });

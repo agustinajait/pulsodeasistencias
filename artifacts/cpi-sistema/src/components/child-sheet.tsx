@@ -1429,41 +1429,6 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
               </div>
             )}
 
-            {/* Baja frecuencia badge */}
-            {(c as any).asistenciaParcial && (
-              <div className="bg-sky-50 border border-sky-300 rounded-lg px-3 py-2 space-y-2">
-                <div className="flex items-center gap-2 text-sm font-semibold text-sky-700">
-                  <span className="flex-1">Baja frecuencia</span>
-                  <button
-                    className="text-xs underline"
-                    onClick={() => updateChild.mutate({ id: childId, data: { asistenciaParcial: false, diasConcurrencia: null } as any }, { onSuccess: () => { toast({ title: "Baja frecuencia desactivada" }); invalidateAll(); } })}
-                  >
-                    Quitar
-                  </button>
-                </div>
-                <div className="flex gap-1.5">
-                  {["L", "MA", "MI", "JU", "VI"].map((dia) => {
-                    const dias: string[] = ((c as any).diasConcurrencia ?? "").split(",").filter(Boolean);
-                    const activo = dias.includes(dia);
-                    return (
-                      <button
-                        key={dia}
-                        onClick={() => {
-                          const next = activo ? dias.filter((d) => d !== dia) : [...dias, dia];
-                          updateChild.mutate({ id: childId, data: { diasConcurrencia: next.join(",") || null } as any }, { onSuccess: invalidateAll });
-                        }}
-                        className={`px-2 py-0.5 rounded text-[11px] font-bold border transition-colors ${activo ? "bg-sky-500 text-white border-sky-500" : "bg-white text-sky-600 border-sky-300 hover:bg-sky-100"}`}
-                      >
-                        {dia}
-                      </button>
-                    );
-                  })}
-                </div>
-                {(c as any).diasConcurrencia && (
-                  <p className="text-[11px] text-sky-600">Concurre: {(c as any).diasConcurrencia.split(",").join(" · ")}</p>
-                )}
-              </div>
-            )}
 
             {/* Estado badge */}
             {(c as any).estado === "EN REVISION" && (
@@ -1513,6 +1478,49 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                       <span className="text-sm text-foreground">{value}</span>
                     </div>
                   ))}
+                </div>
+
+                {/* Concurrencia */}
+                <div className="bg-muted/50 rounded-lg px-4 py-3 space-y-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex-1">Concurrencia</h4>
+                    <button
+                      onClick={() => {
+                        const nuevo = !(c as any).asistenciaParcial;
+                        updateChild.mutate(
+                          { id: childId, data: { asistenciaParcial: nuevo, ...(nuevo ? {} : { diasConcurrencia: null }) } as any },
+                          { onSuccess: () => { toast({ title: nuevo ? "Baja frecuencia activada" : "Baja frecuencia desactivada" }); invalidateAll(); } }
+                        );
+                      }}
+                      className={`text-[11px] px-2 py-0.5 rounded border font-semibold transition-colors ${(c as any).asistenciaParcial ? "bg-sky-500 text-white border-sky-500" : "bg-white text-sky-600 border-sky-300 hover:bg-sky-100"}`}
+                    >
+                      {(c as any).asistenciaParcial ? "Baja frec. ✓" : "Baja frecuencia"}
+                    </button>
+                  </div>
+                  <div className="flex gap-1.5">
+                    {["L", "MA", "MI", "JU", "VI"].map((dia) => {
+                      const dias: string[] = ((c as any).diasConcurrencia ?? "").split(",").filter(Boolean);
+                      const activo = dias.includes(dia);
+                      return (
+                        <button
+                          key={dia}
+                          onClick={() => {
+                            const next = activo ? dias.filter((d) => d !== dia) : [...dias, dia];
+                            updateChild.mutate(
+                              { id: childId, data: { diasConcurrencia: next.join(",") || null } as any },
+                              { onSuccess: invalidateAll }
+                            );
+                          }}
+                          className={`w-9 h-9 rounded text-xs font-bold border transition-colors ${activo ? "bg-sky-500 text-white border-sky-500" : "bg-background text-muted-foreground border-border hover:border-sky-300 hover:text-sky-600"}`}
+                        >
+                          {dia}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {(c as any).diasConcurrencia && (
+                    <p className="text-[11px] text-sky-600 font-medium">Concurre: {(c as any).diasConcurrencia.split(",").join(" · ")}</p>
+                  )}
                 </div>
 
                 {/* Family */}
@@ -2094,21 +2102,6 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                       data-testid="btn-toggle-alerta"
                     >
                       {(c as any).estado === "ALERTA" ? "Quitar alerta" : "Alerta"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        const nuevo = !(c as any).asistenciaParcial;
-                        updateChild.mutate(
-                          { id: childId, data: { asistenciaParcial: nuevo } as any },
-                          { onSuccess: () => { toast({ title: nuevo ? "Marcado como asistencia parcial" : "Asistencia parcial desactivada" }); invalidateAll(); } }
-                        );
-                      }}
-                      className={`col-span-1 ${(c as any).asistenciaParcial ? "border-sky-400 text-sky-700 bg-sky-50" : "border-sky-300 text-sky-700"}`}
-                      data-testid="btn-toggle-parcial"
-                    >
-                      {(c as any).asistenciaParcial ? "Quitar baja frec." : "Baja frecuencia"}
                     </Button>
                     <Button size="sm" variant="destructive" onClick={() => setView("baja")} data-testid="btn-registrar-baja">Registrar egreso</Button>
                   </>

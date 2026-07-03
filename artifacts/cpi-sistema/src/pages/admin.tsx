@@ -1598,7 +1598,9 @@ export default function AdminPage() {
                     >
                       {child.apellido} {child.nombre}
                       {(child as any).asistenciaParcial && (
-                        <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 font-semibold border border-sky-200">Parcial</span>
+                        <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 font-semibold border border-sky-200" title={(child as any).diasConcurrencia ? `Concurre: ${(child as any).diasConcurrencia.split(",").join(" · ")}` : undefined}>
+                          Baja frec.{(child as any).diasConcurrencia ? ` · ${(child as any).diasConcurrencia}` : ""}
+                        </span>
                       )}
                     </div>
                     <div className="text-xs text-muted-foreground mb-1">

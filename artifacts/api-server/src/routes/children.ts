@@ -8,6 +8,7 @@ const router = Router();
 
 // Ensure asistencia_parcial column exists
 pool.query(`ALTER TABLE children ADD COLUMN IF NOT EXISTS asistencia_parcial BOOLEAN NOT NULL DEFAULT FALSE`).catch(() => {});
+pool.query(`ALTER TABLE children ADD COLUMN IF NOT EXISTS dias_concurrencia VARCHAR(50)`).catch(() => {});
 
 
 const TODAY = () => new Date().toISOString().slice(0, 10);
@@ -393,6 +394,7 @@ router.patch("/children/:id", async (req, res) => {
     if (typeof vacunasUrl === "string") (updates as Record<string, unknown>).vacunasUrl = vacunasUrl;
     const body = req.body as Record<string, unknown>;
     if (typeof body.asistenciaParcial === "boolean") updates.asistenciaParcial = body.asistenciaParcial;
+    if (body.diasConcurrencia === null || typeof body.diasConcurrencia === "string") updates.diasConcurrencia = body.diasConcurrencia as string | null;
 
     const [updated] = await db
       .update(childrenTable)

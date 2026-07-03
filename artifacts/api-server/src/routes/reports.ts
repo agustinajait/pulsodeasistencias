@@ -22,10 +22,10 @@ async function ensureTable() {
   `);
   await pool.query(`ALTER TABLE child_reports ADD COLUMN IF NOT EXISTS textos JSONB NOT NULL DEFAULT '{}'`);
   await pool.query(`ALTER TABLE child_reports ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'borrador'`).catch(() => {});
-  await pool.query(`ALTER TABLE child_reports ADD COLUMN IF NOT EXISTS firma_lider_data TEXT`).catch(() => {});
-  await pool.query(`ALTER TABLE child_reports ADD COLUMN IF NOT EXISTS firma_lider_at TIMESTAMPTZ`).catch(() => {});
-  await pool.query(`ALTER TABLE child_reports ADD COLUMN IF NOT EXISTS firma_facilitadora_data TEXT`).catch(() => {});
-  await pool.query(`ALTER TABLE child_reports ADD COLUMN IF NOT EXISTS firma_facilitadora_at TIMESTAMPTZ`).catch(() => {});
+  await pool.query(`ALTER TABLE child_reports ADD COLUMN IF NOT EXISTS firma_lider_data TEXT`);
+  await pool.query(`ALTER TABLE child_reports ADD COLUMN IF NOT EXISTS firma_lider_at TIMESTAMPTZ`);
+  await pool.query(`ALTER TABLE child_reports ADD COLUMN IF NOT EXISTS firma_facilitadora_data TEXT`);
+  await pool.query(`ALTER TABLE child_reports ADD COLUMN IF NOT EXISTS firma_facilitadora_at TIMESTAMPTZ`);
   await pool.query(`
     DO $$ BEGIN
       ALTER TABLE child_reports ALTER COLUMN period TYPE VARCHAR(100);
@@ -95,9 +95,7 @@ router.post("/children/:id/reports", async (req, res) => {
     const result = await pool.query(
       `INSERT INTO child_reports (child_id, period, eco_number, lider, facilitadora, hitos, textos, observaciones, status)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'borrador')
-       RETURNING id, child_id AS "childId", period, eco_number AS "ecoNumber", lider, facilitadora, hitos, textos, observaciones, status, created_at AS "createdAt", updated_at AS "updatedAt",
-                 firma_lider_data AS "firmaLiderData", firma_lider_at AS "firmaLiderAt",
-                 firma_facilitadora_data AS "firmaFacilitadoraData", firma_facilitadora_at AS "firmaFacilitadoraAt"`,
+       RETURNING id, child_id AS "childId", period, eco_number AS "ecoNumber", lider, facilitadora, hitos, textos, observaciones, status, created_at AS "createdAt", updated_at AS "updatedAt"`,
       [childId, period, ecoNumber ?? null, lider ?? null, facilitadora ?? null, JSON.stringify(hitos ?? {}), JSON.stringify(textos ?? {}), observaciones ?? null]
     );
     res.status(201).json(result.rows[0]);
@@ -126,15 +124,9 @@ router.put("/children/:id/reports/:reportId", async (req, res) => {
            textos = COALESCE($7::jsonb, textos),
            observaciones = $8,
            status = COALESCE($9, status),
-           firma_lider_data = CASE WHEN lider IS DISTINCT FROM $4 THEN NULL ELSE firma_lider_data END,
-           firma_lider_at = CASE WHEN lider IS DISTINCT FROM $4 THEN NULL ELSE firma_lider_at END,
-           firma_facilitadora_data = CASE WHEN facilitadora IS DISTINCT FROM $5 THEN NULL ELSE firma_facilitadora_data END,
-           firma_facilitadora_at = CASE WHEN facilitadora IS DISTINCT FROM $5 THEN NULL ELSE firma_facilitadora_at END,
            updated_at = NOW()
        WHERE id = $1
-       RETURNING id, child_id AS "childId", period, eco_number AS "ecoNumber", lider, facilitadora, hitos, textos, observaciones, status, created_at AS "createdAt", updated_at AS "updatedAt",
-                 firma_lider_data AS "firmaLiderData", firma_lider_at AS "firmaLiderAt",
-                 firma_facilitadora_data AS "firmaFacilitadoraData", firma_facilitadora_at AS "firmaFacilitadoraAt"`,
+       RETURNING id, child_id AS "childId", period, eco_number AS "ecoNumber", lider, facilitadora, hitos, textos, observaciones, status, created_at AS "createdAt", updated_at AS "updatedAt"`,
       [reportId, period ?? null, ecoNumber ?? null, lider ?? null, facilitadora ?? null, hitos ? JSON.stringify(hitos) : null, textos ? JSON.stringify(textos) : null, observaciones ?? null, newStatus]
     );
     if (!result.rows.length) { res.status(404).json({ error: "Report not found" }); return; }

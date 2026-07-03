@@ -286,7 +286,6 @@ router.post("/children", async (req, res) => {
 // GET /children/:id
 router.get("/children/:id", async (req, res) => {
   try {
-    await _ensureChildColumnsPromise;
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
       res.status(400).json({ error: "Invalid id" });
@@ -341,11 +340,13 @@ router.get("/children/:id", async (req, res) => {
       resultado: c.resultado ?? null,
     }));
 
-    const { rows: extraRows } = await pool.query(`SELECT dias_concurrencia FROM children WHERE id=$1`, [id]);
-    const diasConcurrencia = extraRows[0]?.dias_concurrencia ?? null;
+    const { rows: extraRows } = await pool.query(`SELECT asistencia_parcial, dias_concurrencia FROM children WHERE id=$1`, [id]);
+    const asistenciaParcial: boolean = extraRows[0]?.asistencia_parcial ?? false;
+    const diasConcurrencia: string | null = extraRows[0]?.dias_concurrencia ?? null;
 
     res.json({
       ...child,
+      asistenciaParcial,
       diasConcurrencia,
       ecoNumber,
       fnac: child.fnac ?? null,
@@ -364,7 +365,6 @@ router.get("/children/:id", async (req, res) => {
 // PATCH /children/:id
 router.patch("/children/:id", async (req, res) => {
   try {
-    await _ensureChildColumnsPromise;
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
       res.status(400).json({ error: "Invalid id" });
@@ -402,7 +402,6 @@ router.patch("/children/:id", async (req, res) => {
     const vacunasUrl = (req.body as Record<string, unknown>).vacunasUrl;
     if (typeof vacunasUrl === "string") (updates as Record<string, unknown>).vacunasUrl = vacunasUrl;
     const body = req.body as Record<string, unknown>;
-    if (typeof body.asistenciaParcial === "boolean") updates.asistenciaParcial = body.asistenciaParcial;
 
     const [updated] = await db
       .update(childrenTable)
@@ -415,7 +414,10 @@ router.patch("/children/:id", async (req, res) => {
       return;
     }
 
-    // diasConcurrencia handled via raw SQL (not in Drizzle schema)
+    // asistenciaParcial and diasConcurrencia handled via raw SQL (not in Drizzle schema)
+    if (typeof body.asistenciaParcial === "boolean") {
+      await pool.query(`UPDATE children SET asistencia_parcial=$1 WHERE id=$2`, [body.asistenciaParcial, id]);
+    }
     if (body.diasConcurrencia === null || typeof body.diasConcurrencia === "string") {
       await pool.query(`UPDATE children SET dias_concurrencia=$1 WHERE id=$2`, [body.diasConcurrencia ?? null, id]);
     }

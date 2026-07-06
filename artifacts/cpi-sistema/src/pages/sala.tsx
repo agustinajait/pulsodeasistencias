@@ -171,7 +171,7 @@ export default function SalaPage() {
     const m: Record<number, AttendanceRecord> = { ...attMap };
     Object.entries(optimisticAtt).forEach(([id, patch]) => {
       const numId = Number(id);
-      m[numId] = { ...(m[numId] ?? { childId: numId, fecha: TODAY }), ...patch } as AttendanceRecord;
+      m[numId] = { ...(m[numId] ?? { childId: numId, fecha: listaDate }), ...patch } as AttendanceRecord;
     });
     return m;
   }, [attMap, optimisticAtt]);
@@ -796,16 +796,18 @@ export default function SalaPage() {
       </div>
 
       {/* Sticky bottom bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur border-t border-border py-3 px-4 flex justify-center z-50">
-        <Button
-          className="max-w-sm w-full h-11 font-semibold"
-          onClick={handleCerrar}
-          disabled={closingDay}
-          data-testid="button-cerrar-asistencia"
-        >
-          {closingDay ? "Cerrando..." : "Cerrar asistencia del día"}
-        </Button>
-      </div>
+      {listaDate === TODAY && (
+        <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur border-t border-border py-3 px-4 flex justify-center z-50">
+          <Button
+            className="max-w-sm w-full h-11 font-semibold"
+            onClick={handleCerrar}
+            disabled={closingDay}
+            data-testid="button-cerrar-asistencia"
+          >
+            {closingDay ? "Cerrando..." : "Cerrar asistencia del día"}
+          </Button>
+        </div>
+      )}
 
       {/* Child sheet */}
       {selectedChild !== null && (

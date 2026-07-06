@@ -66,6 +66,7 @@ export default function SalaPage() {
   const coordinadorNombre: string = profileQ.data?.coordinadorNombre ?? "";
 
   const [search, setSearch] = useState("");
+  const [listaDate, setListaDate] = useState(TODAY);
   const [calMonth, setCalMonth] = useState(MES_ACTUAL);
   const [selectedChild, setSelectedChild] = useState<number | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -111,8 +112,8 @@ export default function SalaPage() {
   );
 
   const attendance = useListAttendance(
-    { roomId: roomId ?? undefined, date: TODAY },
-    { query: { enabled: !!roomId, queryKey: getListAttendanceQueryKey({ roomId: roomId ?? undefined, date: TODAY }) } }
+    { roomId: roomId ?? undefined, date: listaDate },
+    { query: { enabled: !!roomId, queryKey: getListAttendanceQueryKey({ roomId: roomId ?? undefined, date: listaDate }) } }
   );
 
   const calAtt = useListAttendance(
@@ -162,7 +163,7 @@ export default function SalaPage() {
     const m: Record<number, AttendanceRecord> = { ...attMap };
     Object.entries(optimisticAtt).forEach(([id, patch]) => {
       const numId = Number(id);
-      m[numId] = { ...(m[numId] ?? { childId: numId, fecha: TODAY }), ...patch } as AttendanceRecord;
+      m[numId] = { ...(m[numId] ?? { childId: numId, fecha: listaDate }), ...patch } as AttendanceRecord;
     });
     return m;
   }, [attMap, optimisticAtt]);
@@ -406,6 +407,50 @@ export default function SalaPage() {
                 })}
               </div>
             )}
+
+            {/* Selector de fecha */}
+            <div className="flex items-center gap-2 mb-3 bg-card border border-border rounded-xl px-3 py-2">
+              <button
+                onClick={() => {
+                  const d = new Date(listaDate + "T12:00:00");
+                  d.setDate(d.getDate() - 1);
+                  if (d.getDay() === 0) d.setDate(d.getDate() - 1);
+                  if (d.getDay() === 6) d.setDate(d.getDate() - 1);
+                  setListaDate(d.toISOString().slice(0, 10));
+                  setOptimisticAtt({});
+                }}
+                className="p-1 rounded hover:bg-muted transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+              </button>
+              <div className="flex-1 text-center">
+                <span className="text-sm font-semibold capitalize">
+                  {listaDate === TODAY ? "Hoy — " : ""}{formatDateLabel(listaDate)}
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  const d = new Date(listaDate + "T12:00:00");
+                  d.setDate(d.getDate() + 1);
+                  if (d.getDay() === 0) d.setDate(d.getDate() + 1);
+                  if (d.getDay() === 6) d.setDate(d.getDate() + 1);
+                  const next = d.toISOString().slice(0, 10);
+                  if (next <= TODAY) { setListaDate(next); setOptimisticAtt({}); }
+                }}
+                disabled={listaDate >= TODAY}
+                className="p-1 rounded hover:bg-muted transition-colors disabled:opacity-30 disabled:pointer-events-none"
+              >
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
+              {listaDate !== TODAY && (
+                <button
+                  onClick={() => { setListaDate(TODAY); setOptimisticAtt({}); }}
+                  className="ml-1 text-xs font-semibold text-primary hover:underline"
+                >
+                  Hoy
+                </button>
+              )}
+            </div>
 
             <div className="relative mb-3">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -709,16 +754,18 @@ export default function SalaPage() {
       </div>
 
       {/* Sticky bottom bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur border-t border-border py-3 px-4 flex justify-center z-50">
-        <Button
-          className="max-w-sm w-full h-11 font-semibold"
-          onClick={handleCerrar}
-          disabled={closingDay}
-          data-testid="button-cerrar-asistencia"
-        >
-          {closingDay ? "Cerrando..." : "Cerrar asistencia del día"}
-        </Button>
-      </div>
+      {listaDate === TODAY && (
+        <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur border-t border-border py-3 px-4 flex justify-center z-50">
+          <Button
+            className="max-w-sm w-full h-11 font-semibold"
+            onClick={handleCerrar}
+            disabled={closingDay}
+            data-testid="button-cerrar-asistencia"
+          >
+            {closingDay ? "Cerrando..." : "Cerrar asistencia del día"}
+          </Button>
+        </div>
+      )}
 
       {/* Child sheet */}
       {selectedChild !== null && (

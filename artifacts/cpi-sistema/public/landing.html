@@ -1,350 +1,610 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>KORATIC · Experiencia Web</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>KORATIC · Infraestructura integral de gestión</title>
+<meta name="description" content="La plataforma de gestión integral para centros y organizaciones sociales. Asistencia, nómina, informes y alertas en un solo lugar."/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900;1000&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
 <style>
-:root{
-  --navy:#080d34;
-  --ink:#111744;
-  --muted:#5a617e;
-  --purple:#5427d9;
-  --purple2:#704dff;
-  --purple3:#f1ecff;
-  --orange:#ff6a19;
-  --green:#149849;
-  --blue:#0f63ff;
-  --gray:#585d75;
-  --line:#e6e4f4;
-  --soft:#faf8ff;
-  --shadow:0 24px 70px rgba(28,20,95,.12);
-}
-*{box-sizing:border-box}
-html{scroll-behavior:smooth}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
 body{
-  margin:0;
-  font-family:'Nunito',system-ui,-apple-system,sans-serif;
-  color:var(--ink);
-  background:
-    radial-gradient(circle at 8% 0%,rgba(112,77,255,.16),transparent 27%),
-    radial-gradient(circle at 90% 8%,rgba(112,77,255,.12),transparent 28%),
-    linear-gradient(180deg,#fff 0%,#fbfaff 56%,#fff 100%);
-  -webkit-font-smoothing:antialiased;
+  font-family:'Nunito',system-ui,sans-serif;
+  background:#07090f;color:#fff;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
 }
-button{font-family:'Nunito',inherit}
-.logo{display:flex;align-items:center;gap:12px}
-.mark-img{object-fit:contain;flex:0 0 auto;width:46px;height:46px}
-.brand .mark-img{width:42px;height:42px}
-.logo strong{font-size:36px;font-weight:900;letter-spacing:-.04em;color:var(--navy)}
-.loader{width:48px;height:48px;border-radius:50%;border:4px solid #e6ddff;border-top-color:var(--purple);animation:spin .85s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.splash h1{margin:0;font-size:22px;line-height:1.15;letter-spacing:-.02em;color:var(--navy);font-weight:800}
-.splash p{margin:0;color:var(--muted);font-size:14px;line-height:1.45;font-weight:500}
-.progress{position:fixed;top:0;left:0;width:100%;height:3px;z-index:100;background:transparent}
-.progress span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--purple),#9a7dff)}
-.header{
-  position:sticky;
-  top:0;
-  z-index:80;
-  height:88px;
-  display:flex;
-  align-items:center;
-  background:rgba(255,255,255,.82);
-  border-bottom:1px solid rgba(231,228,246,.80);
-  backdrop-filter:blur(16px);
-}
-.container{width:min(1180px,calc(100% - 56px));margin:0 auto}
-.header-row{display:flex;align-items:center;justify-content:space-between;gap:28px}
-.brand{display:flex;align-items:center;gap:16px;min-width:270px}
-.brand .logo strong{font-size:30px}
-.divider{width:1px;height:42px;background:#dedbef}
-.claim{font-size:13px;line-height:1.25;color:#424964;font-weight:600}
-.nav{display:flex;align-items:center;gap:30px}
-.nav button{
-  border:0;background:transparent;color:var(--navy);font-size:14px;font-weight:800;cursor:pointer;
-  padding:12px 0;transition:.14s ease;
-}
-.nav button:hover{color:var(--purple);transform:translateY(-1px)}
-.header-actions{display:flex;align-items:center;gap:12px}
-.btn{
-  height:54px;
-  border-radius:14px;
-  border:0;
-  padding:0 24px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  gap:12px;
-  font-size:14px;
-  font-weight:800;
-  cursor:pointer;
-  transition:transform .14s ease,box-shadow .14s ease,background .14s ease,color .14s ease;
-  font-family:'Nunito',sans-serif;
-  text-decoration:none;
-}
-.btn:active{transform:scale(.97)}
-.btn-primary{background:linear-gradient(135deg,#612eea,#4018bf);color:#fff;box-shadow:0 18px 38px rgba(84,39,217,.22)}
-.btn-outline{background:#fff;color:var(--navy);border:1px solid #dedff0;box-shadow:0 10px 22px rgba(17,23,68,.04)}
-.btn:hover{transform:translateY(-2px)}
 
-/* ── HERO CON FONDO ANIMADO ── */
+/* ── VARIABLES ── */
+:root{
+  --green:#39E07A;
+  --purple:#704dff;
+  --navy:#07090f;
+  --dark2:#0d1117;
+  --dark3:#111820;
+  --muted:rgba(255,255,255,.5);
+  --border:rgba(255,255,255,.08);
+}
+
+/* ── NAV ── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 48px;height:72px;
+  background:rgba(7,9,15,.85);
+  backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+}
+.nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.nav-logo img{width:36px;height:36px;object-fit:contain}
+.nav-wordmark{font-size:1.1rem;font-weight:900;letter-spacing:-.02em;color:#fff}
+.nav-links{display:flex;align-items:center;gap:32px}
+.nav-links a{font-size:.85rem;font-weight:700;color:rgba(255,255,255,.6);text-decoration:none;letter-spacing:.08em;text-transform:uppercase;transition:color .15s}
+.nav-links a:hover{color:#fff}
+.btn-nav{
+  display:inline-flex;align-items:center;
+  padding:10px 24px;border-radius:6px;
+  background:var(--green);color:#07090f;
+  font-family:'Nunito',sans-serif;font-size:.8rem;font-weight:900;
+  text-decoration:none;letter-spacing:.06em;text-transform:uppercase;
+  transition:opacity .15s,transform .12s;
+}
+.btn-nav:hover{opacity:.88;transform:translateY(-1px)}
+.hamburger{display:none;background:none;border:none;cursor:pointer;padding:4px}
+.hamburger span{display:block;width:22px;height:2px;background:#fff;margin:5px 0;border-radius:2px}
+
+/* ── HERO ── */
 .hero{
   position:relative;
-  padding:160px 0 100px;
-  overflow:hidden;
-  min-height:100vh;
-  display:flex;align-items:center;
-  background:#07092e;
+  min-height:100vh;display:flex;align-items:flex-end;
+  padding:0 0 80px;
+  overflow:hidden;background:#07090f;
 }
-#hero-canvas{
-  position:absolute;inset:0;width:100%;height:100%;
-  opacity:.55;pointer-events:none;
-}
+#hero-canvas{position:absolute;inset:0;width:100%;height:100%;opacity:.4}
 .hero-video{
   position:absolute;inset:0;width:100%;height:100%;
-  object-fit:cover;opacity:.18;pointer-events:none;
+  object-fit:cover;opacity:.22;pointer-events:none;
 }
 .hero-overlay{
   position:absolute;inset:0;
-  background:linear-gradient(135deg,rgba(7,9,46,.85) 0%,rgba(40,10,100,.6) 50%,rgba(7,9,46,.9) 100%);
-  pointer-events:none;
+  background:linear-gradient(to right, rgba(7,9,15,.95) 42%, rgba(7,9,15,.4) 100%),
+             linear-gradient(to top, rgba(7,9,15,1) 0%, transparent 60%);
 }
-.hero-inner{position:relative;z-index:2}
-.hero-grid{display:grid;grid-template-columns:1fr 1.08fr;gap:58px;align-items:center}
-.eyebrow{
-  display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 14px;
-  border-radius:999px;background:rgba(112,77,255,.2);
-  border:1px solid rgba(112,77,255,.35);
-  color:#c4aaff;font-size:12px;font-weight:800;margin-bottom:24px;
+.hero-content{
+  position:relative;z-index:2;
+  max-width:1200px;margin:0 auto;width:100%;padding:0 48px;
 }
-.hero h1{margin:0;color:#fff;font-size:clamp(48px,5vw,72px);line-height:1.0;letter-spacing:-.05em;font-weight:900}
-.hero h1 span{
-  background:linear-gradient(135deg,#a78bff,#704dff);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+.hero-eyebrow{
+  font-size:.72rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--green);margin-bottom:28px;
 }
-.hero p{margin:24px 0 32px;color:rgba(255,255,255,.65);font-size:18px;line-height:1.65;max-width:560px;font-weight:500}
-.hero-actions{display:flex;gap:16px;flex-wrap:wrap}
-.hero-actions .btn{height:60px;border-radius:16px;font-size:15px;min-width:220px}
-.hero-actions .btn-outline{background:rgba(255,255,255,.07);color:#fff;border-color:rgba(255,255,255,.2)}
-.hero-actions .btn-outline:hover{background:rgba(255,255,255,.14)}
-.preview{
-  position:relative;
-  min-height:520px;
-  border-radius:34px;
-  background:
-    radial-gradient(circle at 82% 18%,rgba(112,77,255,.18),transparent 32%),
-    linear-gradient(135deg,#f5f0ff,#fff 56%,#efe8ff);
-  border:1px solid #eee9fb;
-  box-shadow:var(--shadow);
-  overflow:hidden;
+.hero h1{
+  font-size:clamp(52px,7vw,96px);font-weight:900;line-height:.97;
+  letter-spacing:-.04em;color:#fff;margin-bottom:32px;max-width:900px;
 }
-.preview:before{
-  content:"";
-  position:absolute;
-  inset:-120px -120px auto auto;
-  width:420px;height:420px;border-radius:999px;
-  border:1px solid rgba(84,39,217,.08);
-  box-shadow:0 0 0 22px rgba(84,39,217,.025),0 0 0 44px rgba(84,39,217,.018),0 0 0 66px rgba(84,39,217,.012);
+.hero h1 .accent{color:var(--green)}
+.hero-sub{
+  font-size:clamp(15px,1.4vw,18px);font-weight:500;line-height:1.7;
+  color:rgba(255,255,255,.6);max-width:520px;margin-bottom:48px;
 }
-.side{position:absolute;left:56px;top:70px;bottom:70px;width:64px;border-radius:22px;background:linear-gradient(180deg,#5a2ee5,#311196);color:#fff;display:grid;place-items:center;padding:22px 0;box-shadow:0 24px 48px rgba(84,39,217,.28)}
-.side span{font-size:20px}
-.main-card{
-  position:absolute;left:200px;top:140px;width:260px;min-height:240px;border-radius:34px;background:rgba(255,255,255,.90);
-  border:1px solid rgba(255,255,255,.95);box-shadow:0 30px 70px rgba(38,28,116,.16);
-  display:grid;place-items:center;text-align:center;padding:26px;
+.hero-actions{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.btn-primary{
+  display:inline-flex;align-items:center;gap:10px;
+  padding:16px 32px;border-radius:6px;
+  background:var(--green);color:#07090f;
+  font-family:'Nunito',sans-serif;font-size:.85rem;font-weight:900;
+  text-decoration:none;letter-spacing:.06em;text-transform:uppercase;
+  border:none;cursor:pointer;
+  transition:opacity .15s,transform .12s;
 }
-.main-card .logo{justify-content:center;display:flex;flex-direction:column;gap:8px}.main-card .logo strong{font-size:36px}.main-card small{font-size:13px;line-height:1.35;font-weight:800;color:#292e50}
-.float{position:absolute;width:86px;height:86px;border-radius:24px;background:#fff;display:grid;place-items:center;font-size:36px;border:1px solid #f0edfb;box-shadow:0 20px 42px rgba(38,28,116,.12)}
-.f1{left:142px;top:92px;color:var(--orange)}.f2{right:70px;top:132px;color:var(--green)}.f3{right:92px;bottom:116px;color:var(--blue)}.f4{left:160px;bottom:88px;color:var(--purple)}
-.benefits{padding:18px 0 68px}
-.benefit-row{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
-.benefit{background:#fff;border:1px solid #eceaf7;border-radius:24px;padding:26px 22px;min-height:160px;box-shadow:0 12px 30px rgba(17,23,68,.04);cursor:pointer;transition:.16s}
-.benefit:hover{transform:translateY(-4px);box-shadow:0 22px 50px rgba(17,23,68,.08)}
-.benefit span{font-size:36px;color:var(--purple);display:block;margin-bottom:14px}
-.benefit b{display:block;color:var(--navy);font-size:15px;line-height:1.18;font-weight:800}
-.benefit small{display:block;margin-top:9px;color:var(--muted);font-size:13px;line-height:1.38;font-weight:500}
-.section-head{text-align:center;max-width:680px;margin:0 auto 34px}
-.section-head h2{margin:0;color:var(--navy);font-size:36px;line-height:1.08;letter-spacing:-.04em;font-weight:900}
-.section-head p{margin:12px 0 0;color:var(--muted);font-size:17px;line-height:1.5;font-weight:500}
-.solutions-wrap{padding:66px 0;background:linear-gradient(180deg,#fff,#fbfaff)}
-.solutions{display:grid;grid-template-columns:repeat(5,1fr);gap:16px}
-.solution{min-height:330px;border:1px solid #e8e6f5;border-radius:26px;padding:24px;background:#fff;box-shadow:0 12px 28px rgba(17,23,68,.04);display:flex;flex-direction:column;cursor:pointer;transition:.16s}
-.solution:hover{transform:translateY(-6px);box-shadow:0 26px 62px rgba(28,20,95,.11)}
-.sicon{width:60px;height:60px;border-radius:18px;display:grid;place-items:center;font-size:28px;background:#f4efff;color:var(--purple);margin-bottom:20px}
-.solution h3{margin:0;font-size:22px;line-height:1.05;letter-spacing:-.03em;font-weight:900}
-.solution b{display:block;margin-top:8px;color:var(--navy);font-size:13.5px;line-height:1.28;font-weight:700}
-.solution p{margin:20px 0 0;color:#4e536d;font-size:14px;line-height:1.55;font-weight:500}
-.solution .more{margin-top:auto;color:var(--purple);font-weight:800;font-size:14px}
-.audience{padding:44px 0}
-.audience-panel{border-radius:32px;background:linear-gradient(180deg,#f8f5ff,#fff);border:1px solid #ece9fb;padding:32px;box-shadow:var(--shadow)}
-.audience-panel h2{margin:0 0 24px;text-align:center;color:var(--navy);font-size:30px;letter-spacing:-.04em;font-weight:900}
-.audience-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
-.audience-card{text-align:center;border-radius:22px;border:1px solid #efedf9;background:#fff;padding:20px 10px;min-height:150px;cursor:pointer;transition:.15s}
-.audience-card:hover{transform:translateY(-4px);box-shadow:0 18px 38px rgba(28,20,95,.08)}
-.audience-card span{display:block;color:var(--purple);font-size:36px;margin-bottom:12px}
-.audience-card b{display:block;color:var(--navy);font-size:13px;line-height:1.18;font-weight:700}
-.final{margin:42px auto 0;border-radius:34px;padding:44px 54px;background:radial-gradient(circle at 94% 10%,rgba(255,255,255,.20),transparent 24%),linear-gradient(135deg,#622eea 0%,#17066f 100%);color:#fff;display:grid;grid-template-columns:1fr auto;gap:32px;align-items:center;box-shadow:0 28px 60px rgba(55,26,160,.25)}
-.final h2{margin:0;font-size:36px;line-height:1.08;letter-spacing:-.04em;font-weight:900}
-.final p{margin:12px 0 0;color:rgba(255,255,255,.82);font-size:17px;line-height:1.45;max-width:520px;font-weight:500}
-.final-actions{display:flex;gap:14px;flex-wrap:wrap;justify-content:flex-end}
-.final .btn-outline{background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.36)}
-.footer{margin-top:0;background:linear-gradient(180deg,#0d123e,#050822);padding:36px 0 26px;color:#fff}
-.footer-grid{display:grid;grid-template-columns:1.3fr repeat(3,1fr) auto;gap:38px;border-bottom:1px solid rgba(255,255,255,.10);padding-bottom:28px}
-.footer .logo strong{color:#fff;font-size:28px}.footer small{display:block;margin-top:8px;color:rgba(255,255,255,.68);font-size:13px;font-weight:500}.footer h4{margin:0 0 12px;font-size:14px;color:#fff;font-weight:800}.footer button{display:block;border:0;background:transparent;color:rgba(255,255,255,.72);padding:4px 0;cursor:pointer;text-align:left;font-family:'Nunito',sans-serif;font-size:14px;font-weight:500}
-.social{display:flex;gap:10px}.social button{width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.10);color:#fff;display:grid;place-items:center;text-align:center;font-weight:900}
-.legal{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;padding-top:18px;color:rgba(255,255,255,.58);font-size:12px;font-weight:500}
-.toast{position:fixed;left:50%;bottom:24px;z-index:200;transform:translateX(-50%) translateY(16px);opacity:0;width:min(90vw,420px);padding:14px 18px;border-radius:18px;color:#fff;background:rgba(8,13,52,.92);border:1px solid rgba(255,255,255,.12);box-shadow:0 18px 48px rgba(0,0,0,.28);backdrop-filter:blur(16px);text-align:center;font-size:14px;font-weight:800;pointer-events:none;transition:.18s}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-@media(max-width:980px){
-  .container{width:min(100% - 28px,720px)}
-  .nav,.claim,.divider{display:none}
-  .hero-grid{grid-template-columns:1fr;gap:30px}
-  .hero h1{font-size:48px}
-  .benefit-row{grid-template-columns:repeat(2,1fr)}
-  .solutions{grid-template-columns:1fr}
-  .solution{min-height:auto}
-  .audience-grid{grid-template-columns:repeat(2,1fr)}
-  .final{grid-template-columns:1fr;padding:34px 24px}
-  .final-actions{justify-content:flex-start}
-  .footer-grid{grid-template-columns:1fr 1fr}
+.btn-primary:hover{opacity:.88;transform:translateY(-2px)}
+.btn-ghost{
+  display:inline-flex;align-items:center;gap:10px;
+  padding:16px 32px;border-radius:6px;
+  background:transparent;color:rgba(255,255,255,.75);
+  font-family:'Nunito',sans-serif;font-size:.85rem;font-weight:700;
+  text-decoration:none;letter-spacing:.06em;text-transform:uppercase;
+  border:1px solid rgba(255,255,255,.2);cursor:pointer;
+  transition:border-color .15s,color .15s,transform .12s;
+}
+.btn-ghost:hover{border-color:rgba(255,255,255,.5);color:#fff;transform:translateY(-2px)}
+
+/* ── SECTION LABEL ── */
+.sec-label{
+  font-size:.68rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--green);margin-bottom:20px;display:flex;align-items:center;gap:12px;
+}
+.sec-label::after{content:'';flex:1;height:1px;background:var(--green);opacity:.3;max-width:60px}
+
+/* ── STATS STRIP ── */
+.stats-strip{
+  background:#0d1117;border-top:1px solid var(--border);
+  padding:0 48px;
+}
+.stats-inner{
+  max-width:1200px;margin:0 auto;
+  display:grid;grid-template-columns:repeat(4,1fr);
+  border-left:1px solid var(--border);
+}
+.stat-cell{
+  padding:40px 32px;border-right:1px solid var(--border);
+  border-bottom:1px solid var(--border);
+}
+.stat-num{
+  font-size:clamp(36px,4vw,56px);font-weight:900;letter-spacing:-.04em;
+  color:#fff;line-height:1;
+}
+.stat-num span{color:var(--green)}
+.stat-lbl{font-size:.8rem;font-weight:600;color:var(--muted);margin-top:8px;text-transform:uppercase;letter-spacing:.08em}
+
+/* ── PROBLEM SECTION ── */
+.problem{
+  background:#07090f;
+  padding:120px 48px;
+}
+.problem-inner{max-width:1200px;margin:0 auto}
+.problem h2{
+  font-size:clamp(36px,4.5vw,60px);font-weight:900;line-height:1.05;
+  letter-spacing:-.04em;color:#fff;margin-bottom:20px;max-width:700px;
+}
+.problem h2 .accent{color:var(--green)}
+.problem-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:80px;
+  align-items:start;margin-top:64px;
+}
+.problem-desc{
+  font-size:1.05rem;font-weight:500;line-height:1.75;
+  color:rgba(255,255,255,.55);padding-top:8px;
+}
+.problem-cards{display:flex;flex-direction:column;gap:1px;background:var(--border)}
+.problem-card{
+  background:#0d1117;padding:28px 32px;
+  display:flex;gap:20px;align-items:flex-start;
+  transition:background .2s;cursor:default;
+}
+.problem-card:hover{background:#111820}
+.p-icon{
+  width:36px;height:36px;border-radius:8px;
+  background:rgba(57,224,122,.1);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  margin-top:2px;
+}
+.p-icon svg{width:18px;height:18px;stroke:var(--green);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.p-title{font-size:.9rem;font-weight:800;color:#fff;margin-bottom:6px}
+.p-desc{font-size:.8rem;font-weight:500;color:var(--muted);line-height:1.6}
+
+/* ── SOLUTIONS ── */
+.solutions{background:#0d1117;padding:120px 48px}
+.solutions-inner{max-width:1200px;margin:0 auto}
+.solutions h2{
+  font-size:clamp(36px,4.5vw,60px);font-weight:900;line-height:1.05;
+  letter-spacing:-.04em;color:#fff;margin-bottom:64px;max-width:600px;
+}
+.solutions h2 .accent{color:var(--green)}
+.sol-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border)}
+.sol-card{
+  background:#0d1117;padding:36px 32px;
+  display:flex;flex-direction:column;gap:16px;
+  transition:background .2s;
+}
+.sol-card:hover{background:#111820}
+.sol-num{font-size:.68rem;font-weight:700;letter-spacing:.15em;color:var(--green);text-transform:uppercase}
+.sol-name{font-size:1.4rem;font-weight:900;color:#fff;letter-spacing:-.03em}
+.sol-tag{
+  display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;padding:3px 10px;border-radius:3px;
+  background:rgba(57,224,122,.12);color:var(--green);width:fit-content;
+}
+.sol-desc{font-size:.85rem;font-weight:500;color:var(--muted);line-height:1.65;flex:1}
+.sol-more{
+  font-size:.75rem;font-weight:800;color:rgba(255,255,255,.35);
+  text-transform:uppercase;letter-spacing:.1em;
+  display:flex;align-items:center;gap:6px;margin-top:8px;
+  text-decoration:none;transition:color .15s;
+}
+.sol-more:hover{color:var(--green)}
+
+/* ── FOR WHO ── */
+.forwho{background:#07090f;padding:120px 48px}
+.forwho-inner{max-width:1200px;margin:0 auto}
+.forwho h2{
+  font-size:clamp(36px,4.5vw,60px);font-weight:900;line-height:1.05;
+  letter-spacing:-.04em;color:#fff;margin-bottom:64px;max-width:700px;
+}
+.who-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border)}
+.who-card{
+  background:#07090f;padding:36px 32px;
+  transition:background .2s;
+}
+.who-card:hover{background:#0d1117}
+.who-role{
+  font-size:.68rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--green);margin-bottom:16px;
+}
+.who-title{font-size:1.1rem;font-weight:800;color:#fff;margin-bottom:10px;letter-spacing:-.02em}
+.who-desc{font-size:.85rem;font-weight:500;color:var(--muted);line-height:1.65}
+
+/* ── CTA ── */
+.cta{
+  background:#0d1117;border-top:1px solid var(--border);
+  padding:120px 48px;
+}
+.cta-inner{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1fr auto;gap:48px;align-items:center}
+.cta h2{
+  font-size:clamp(32px,4vw,54px);font-weight:900;line-height:1.05;
+  letter-spacing:-.04em;color:#fff;
+}
+.cta h2 .accent{color:var(--green)}
+.cta p{font-size:1rem;font-weight:500;color:var(--muted);line-height:1.65;margin-top:16px;max-width:500px}
+.cta-actions{display:flex;flex-direction:column;gap:12px;align-items:flex-end;flex-shrink:0}
+
+/* ── ECOSYSTEM ── */
+.ecosystem{
+  background:#07090f;border-top:1px solid var(--border);
+  padding:80px 48px;
+}
+.ecosystem-inner{max-width:1200px;margin:0 auto}
+.eco-label{
+  font-size:.68rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:32px;
+}
+.eco-row{display:flex;gap:1px;background:var(--border)}
+.eco-item{
+  flex:1;background:#07090f;padding:32px 36px;
+  display:flex;align-items:center;gap:20px;
+  text-decoration:none;transition:background .2s;
+}
+.eco-item:hover{background:#0d1117}
+.eco-dot{width:10px;height:10px;border-radius:50%;background:var(--green);flex-shrink:0}
+.eco-name{font-size:1rem;font-weight:900;color:#fff;letter-spacing:-.02em}
+.eco-desc{font-size:.8rem;font-weight:500;color:var(--muted);margin-top:4px}
+.eco-arrow{margin-left:auto;color:rgba(255,255,255,.2);font-size:1.2rem}
+
+/* ── FOOTER ── */
+footer{
+  background:#07090f;border-top:1px solid var(--border);
+  padding:48px;
+}
+.footer-inner{
+  max-width:1200px;margin:0 auto;
+  display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:48px;
+  padding-bottom:40px;border-bottom:1px solid var(--border);margin-bottom:28px;
+}
+.footer-brand img{width:40px;height:40px;object-fit:contain;margin-bottom:12px}
+.footer-brand-name{font-size:1rem;font-weight:900;color:#fff;margin-bottom:8px}
+.footer-brand-sub{font-size:.8rem;font-weight:500;color:var(--muted);line-height:1.5}
+footer h4{font-size:.68rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:16px}
+footer a{display:block;font-size:.85rem;font-weight:500;color:rgba(255,255,255,.6);text-decoration:none;margin-bottom:8px;transition:color .15s}
+footer a:hover{color:#fff}
+.footer-bottom{max-width:1200px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+.footer-copy{font-size:.75rem;font-weight:500;color:rgba(255,255,255,.3)}
+
+/* ── PROGRESS BAR ── */
+.progress{position:fixed;top:0;left:0;width:100%;height:2px;z-index:200}
+.progress span{display:block;height:100%;width:0;background:var(--green)}
+
+/* ── MOBILE MENU ── */
+.mobile-menu{
+  display:none;position:fixed;top:72px;left:0;right:0;z-index:99;
+  background:#07090f;border-bottom:1px solid var(--border);
+  flex-direction:column;padding:24px 48px 32px;gap:0;
+}
+.mobile-menu.open{display:flex}
+.mobile-menu a{
+  font-size:.9rem;font-weight:700;color:rgba(255,255,255,.7);
+  text-decoration:none;padding:14px 0;border-bottom:1px solid var(--border);
+  letter-spacing:.06em;text-transform:uppercase;
+}
+.mobile-menu .btn-primary{margin-top:20px;justify-content:center}
+
+/* ── TOAST ── */
+.toast{position:fixed;left:50%;bottom:24px;z-index:200;transform:translateX(-50%) translateY(16px);opacity:0;width:min(90vw,420px);padding:14px 18px;border-radius:8px;color:#07090f;background:var(--green);text-align:center;font-size:.85rem;font-weight:800;pointer-events:none;transition:.18s}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── RESPONSIVE ── */
+@media(max-width:960px){
+  nav{padding:0 24px}
+  .nav-links{display:none}
+  .hamburger{display:block}
+  .hero-content{padding:0 24px}
+  .stats-strip{padding:0 24px}
+  .stats-inner{grid-template-columns:repeat(2,1fr)}
+  .problem{padding:80px 24px}
+  .problem-grid{grid-template-columns:1fr;gap:40px}
+  .solutions{padding:80px 24px}
+  .sol-grid{grid-template-columns:1fr}
+  .forwho{padding:80px 24px}
+  .who-grid{grid-template-columns:1fr}
+  .cta{padding:80px 24px}
+  .cta-inner{grid-template-columns:1fr}
+  .cta-actions{align-items:flex-start}
+  .ecosystem{padding:60px 24px}
+  .eco-row{flex-direction:column}
+  footer{padding:40px 24px}
+  .footer-inner{grid-template-columns:1fr 1fr;gap:32px}
+  .mobile-menu{padding:24px}
+}
+@media(max-width:520px){
+  .stats-inner{grid-template-columns:1fr 1fr}
+  .footer-inner{grid-template-columns:1fr}
 }
 </style>
 </head>
 <body>
+
 <div class="progress"><span id="bar"></span></div>
 
-<header class="header">
-  <div class="container header-row">
-    <div class="brand">
-      <div class="logo"><img src="/korai-logo.png" class="mark-img" alt="Korai"><strong>KORATIC</strong></div>
-      <span class="divider"></span>
-      <span class="claim">Infraestructura<br>Integral de Gestión</span>
-    </div>
-    <nav class="nav">
-      <button data-jump="#soluciones">Soluciones</button>
-      <button data-jump="#organizaciones">Organizaciones</button>
-      <button class="action" data-label="Recursos">Recursos</button>
-      <button class="action" data-label="Nosotros">Nosotros</button>
-      <button class="action" data-label="Contacto">Contacto</button>
-    </nav>
-    <div class="header-actions">
-      <a href="/login" class="btn btn-outline">♙ Iniciar sesión</a>
-      <button class="btn btn-primary action" data-label="Registrarse">Registrarse</button>
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-logo">
+    <img src="/korai-logo.png" alt="Korai"/>
+    <span class="nav-wordmark">KORATIC</span>
+  </a>
+  <div class="nav-links">
+    <a href="#soluciones">Soluciones</a>
+    <a href="#para-quien">Para quién</a>
+    <a href="#ecosistema">Ecosistema</a>
+  </div>
+  <a href="/login" class="btn-nav">Iniciar sesión</a>
+  <button class="hamburger" onclick="toggleMenu()"><span></span><span></span><span></span></button>
+</nav>
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#soluciones" onclick="closeMenu()">Soluciones</a>
+  <a href="#para-quien" onclick="closeMenu()">Para quién</a>
+  <a href="#ecosistema" onclick="closeMenu()">Ecosistema</a>
+  <a href="/login" class="btn-primary" onclick="closeMenu()">Iniciar sesión</a>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+  <canvas id="hero-canvas"></canvas>
+  <!-- video de fondo: descomentá cuando subas el archivo -->
+  <!-- <video class="hero-video" autoplay loop muted playsinline src="/hero-video.mp4"></video> -->
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+    <div class="hero-eyebrow">Plataforma integral · Korai</div>
+    <h1>La gestión de tu centro,<br/><span class="accent">sin papel.</span></h1>
+    <p class="hero-sub">KORATIC integra asistencia, nómina, informes pedagógicos y alertas en un solo lugar. Para organizaciones que trabajan con personas y comunidades.</p>
+    <div class="hero-actions">
+      <a href="/login" class="btn-primary">Ingresar a KORATIC →</a>
+      <a href="#soluciones" class="btn-ghost">Ver soluciones</a>
     </div>
   </div>
-</header>
+</section>
 
-<main>
-  <section class="hero" id="inicio">
-    <canvas id="hero-canvas"></canvas>
-    <!-- cuando tengas video: <video class="hero-video" autoplay loop muted playsinline src="/hero-video.mp4"></video> -->
-    <div class="hero-overlay"></div>
-    <div class="container hero-inner">
-    <div class="hero-grid">
-      <div>
-        <div class="eyebrow">Plataforma integral para centros y organizaciones</div>
-        <h1>Gestioná toda tu organización desde <span>un solo lugar.</span></h1>
-        <p>KORATIC integra la gestión social, institucional y operativa de organizaciones que trabajan con personas y comunidades, garantizando trazabilidad, cumplimiento e indicadores de impacto.</p>
-        <div class="hero-actions">
-          <a href="/login" class="btn btn-primary">Ingresar a KORATIC →</a>
-          <button class="btn btn-outline action" data-label="Solicitar una demostración">▣ Solicitar una demostración</button>
+<!-- STATS -->
+<div class="stats-strip">
+  <div class="stats-inner">
+    <div class="stat-cell">
+      <div class="stat-num">270<span>+</span></div>
+      <div class="stat-lbl">Niños y niñas registrados</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-num">4</div>
+      <div class="stat-lbl">Centros activos</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-num">0</div>
+      <div class="stat-lbl">Planillas en papel</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-num">&lt;3<span>s</span></div>
+      <div class="stat-lbl">Para registrar asistencia</div>
+    </div>
+  </div>
+</div>
+
+<!-- PROBLEM -->
+<section class="problem">
+  <div class="problem-inner">
+    <div class="sec-label">00 / El problema</div>
+    <h2>La información existe.<br/>Pero no <span class="accent">se usa.</span></h2>
+    <div class="problem-grid">
+      <p class="problem-desc">
+        En muchos centros, los datos de asistencia, los legajos y los informes pedagógicos están en planillas dispersas, cuadernos o correos. La gestión consume tiempo que debería ir a las personas.
+        <br/><br/>
+        KORATIC propone una lógica distinta: toda la información del centro en un sistema integrado, accesible desde cualquier dispositivo, en tiempo real.
+      </p>
+      <div class="problem-cards">
+        <div class="problem-card">
+          <div class="p-icon">
+            <svg viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+          </div>
+          <div><div class="p-title">Datos fragmentados</div><div class="p-desc">Asistencia en planillas, legajos en carpetas, informes en Word. Nada conectado.</div></div>
         </div>
-      </div>
-      <div class="preview">
-        <div class="side"><span>⌂</span><span>⌘</span><span>☷</span><span>☑</span><span>▥</span><span>⚙</span></div>
-        <div class="float f1">👥</div><div class="float f2">💼</div><div class="float f3">🛡</div><div class="float f4">∞</div>
-        <div class="main-card"><div><div class="logo"><img src="/korai-logo.png" class="mark-img" alt="Korai"><strong>KORATIC</strong></div><small>Todo lo que tu centro necesita, en una sola plataforma.</small></div></div>
-      </div>
-    </div>
-    </div>
-  </section>
-
-  <section class="benefits">
-    <div class="container benefit-row">
-      <div class="benefit action" data-label="Seguro y confiable"><span>♢</span><b>Seguro y confiable</b><small>Tus datos siempre protegidos</small></div>
-      <div class="benefit action" data-label="100% en la nube"><span>☁</span><b>100% en la nube</b><small>Accedé desde cualquier lugar</small></div>
-      <div class="benefit action" data-label="Información en tiempo real"><span>▥</span><b>Información en tiempo real</b><small>Mejores decisiones, más impacto</small></div>
-      <div class="benefit action" data-label="Diseñado para centros"><span>♙</span><b>Diseñado para centros</b><small>Simple, flexible e intuitivo</small></div>
-    </div>
-  </section>
-
-  <section class="solutions-wrap" id="soluciones">
-    <div class="container">
-      <div class="section-head">
-        <h2>Cinco soluciones, un mismo propósito.</h2>
-        <p>Herramientas integradas para que tu centro gestione mejor y genere más impacto.</p>
-      </div>
-      <div class="solutions">
-        <article class="solution action" data-label="KORAI"><div class="sicon">✹</div><h3 style="color:var(--purple)">KORAI</h3><b>Conocé a las familias y personas de tu comunidad</b><p>Diagnóstico, seguimiento y planes de acción para mejorar su bienestar.</p><div class="more">Conocé más →</div></article>
-        <article class="solution action" data-label="Pulso"><div class="sicon" style="background:#fff0e6;color:var(--orange)">👥</div><h3 style="color:var(--orange)">Pulso</h3><b>Gestioná tu centro día a día</b><p>Asistencia, permanencia, alertas y toda la información que necesitás en tiempo real.</p><div class="more" style="color:var(--orange)">Conocé más →</div></article>
-        <article class="solution action" data-label="OportunAI"><div class="sicon" style="background:#eaf8ef;color:var(--green)">💼</div><h3 style="color:var(--green)">OportunAI</h3><b>Generá oportunidades para tu comunidad</b><p>Conectá a las personas con empleo, capacitación y recursos para su desarrollo.</p><div class="more" style="color:var(--green)">Conocé más →</div></article>
-        <article class="solution action" data-label="Cumplimiento y Operación"><div class="sicon" style="background:#edf3ff;color:var(--blue)">🛡</div><h3 style="color:var(--blue)">Cumplimiento y Operación</h3><b>Asegurá el cumplimiento y la operación de tu centro</b><p>Controlá vencimientos, inspecciones, mantenimiento y documentación en un solo lugar.</p><div class="more" style="color:var(--blue)">Conocé más →</div></article>
-        <article class="solution action" data-label="Prestadores Homologados"><div class="sicon" style="background:#f1f2f8;color:var(--gray)">👥</div><h3 style="color:#3e435d">Prestadores Homologados</h3><b>Encontrá y gestioná prestadores confiables</b><p>Red de proveedores verificados con precios justos y servicios de calidad.</p><div class="more" style="color:#3e435d">Conocé más →</div></article>
-      </div>
-    </div>
-  </section>
-
-  <section class="audience" id="organizaciones">
-    <div class="container">
-      <div class="audience-panel">
-        <h2>Para organizaciones que transforman comunidades</h2>
-        <div class="audience-grid">
-          <div class="audience-card action" data-label="Centros de Primera Infancia"><span>⌂</span><b>Centros de Primera Infancia (CPI)</b></div>
-          <div class="audience-card action" data-label="Centros de Inclusión Social"><span>♙</span><b>Centros de Inclusión Social (CIS)</b></div>
-          <div class="audience-card action" data-label="Centros de Día"><span>☼</span><b>Centros de Día</b></div>
-          <div class="audience-card action" data-label="Municipios y Provincias"><span>▥</span><b>Municipios y Provincias</b></div>
-          <div class="audience-card action" data-label="Fundaciones y Organizaciones"><span>♡</span><b>Fundaciones y Organizaciones</b></div>
-          <div class="audience-card action" data-label="Centros de Familia y Hogares"><span>⌘</span><b>Centros de Familia y Hogares</b></div>
+        <div class="problem-card">
+          <div class="p-icon">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div><div class="p-title">Sin trazabilidad</div><div class="p-desc">Las intervenciones suceden pero no quedan registradas. Difícil saber el historial de cada niño.</div></div>
         </div>
-      </div>
-      <div class="final">
-        <div><h2>Más eficiencia. Más impacto. Mejores decisiones.</h2><p>KORATIC es la plataforma que potencia la gestión de tu centro y el bienestar de tu comunidad.</p></div>
-        <div class="final-actions">
-          <a href="/login" class="btn btn-outline">Ingresar a KORATIC →</a>
-          <button class="btn btn-outline action" data-label="Solicitar una demostración">▣ Solicitar una demostración</button>
+        <div class="problem-card">
+          <div class="p-icon">
+            <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div><div class="p-title">Alertas tardías</div><div class="p-desc">Las ausencias reiteradas y situaciones críticas se detectan tarde, cuando ya es difícil intervenir.</div></div>
+        </div>
+        <div class="problem-card">
+          <div class="p-icon">
+            <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <div><div class="p-title">Sin indicadores de impacto</div><div class="p-desc">No hay forma simple de mostrar resultados a organismos financiadores o a la propia organización.</div></div>
         </div>
       </div>
     </div>
-  </section>
-</main>
+  </div>
+</section>
 
-<footer class="footer">
-  <div class="container">
-    <div class="footer-grid">
-      <div><div class="logo"><img src="/korai-logo.png" class="mark-img" alt="Korai"><strong>KORATIC</strong></div><small>Infraestructura Integral de Gestión</small></div>
-      <div><h4>Soluciones</h4><a href="https://korai.lat" target="_blank" style="display:block;border:0;background:transparent;color:rgba(255,255,255,.72);padding:4px 0;text-decoration:none;font-family:'Nunito',sans-serif;font-size:14px;font-weight:500">KORAI</a><button class="action" data-label="Pulso">Pulso</button><a href="https://oportunai.korai.lat" target="_blank" style="display:block;border:0;background:transparent;color:rgba(255,255,255,.72);padding:4px 0;text-decoration:none;font-family:'Nunito',sans-serif;font-size:14px;font-weight:500">OportunAI</a></div>
-      <div><h4>Recursos</h4><button class="action" data-label="Novedades">Novedades</button><button class="action" data-label="Casos de uso">Casos de uso</button><button class="action" data-label="Centro de ayuda">Centro de ayuda</button></div>
-      <div><h4>Empresa</h4><button class="action" data-label="Nosotros">Nosotros</button><button class="action" data-label="Contacto">Contacto</button><button class="action" data-label="Trabajá con nosotros">Trabajá con nosotros</button></div>
-      <div><h4>Seguinos</h4><div class="social"><button class="action" data-label="LinkedIn">in</button><button class="action" data-label="Instagram">◎</button><button class="action" data-label="YouTube">▶</button></div></div>
+<!-- SOLUTIONS -->
+<section class="solutions" id="soluciones">
+  <div class="solutions-inner">
+    <div class="sec-label">01 / Soluciones</div>
+    <h2>Cinco soluciones,<br/><span class="accent">un mismo propósito.</span></h2>
+    <div class="sol-grid">
+      <div class="sol-card">
+        <div class="sol-num">01</div>
+        <div class="sol-name">KORAI</div>
+        <span class="sol-tag">Diagnóstico social</span>
+        <div class="sol-desc">Conocé a las familias y personas de tu comunidad. Diagnóstico, seguimiento y planes de acción para mejorar su bienestar.</div>
+        <a href="https://korai.lat" target="_blank" class="sol-more">Conocé más →</a>
+      </div>
+      <div class="sol-card">
+        <div class="sol-num">02</div>
+        <div class="sol-name">Pulso</div>
+        <span class="sol-tag">Gestión de centros</span>
+        <div class="sol-desc">Asistencia, nómina, informes pedagógicos y alertas. Todo lo que necesita un centro de primera infancia, en un solo lugar.</div>
+        <a href="/login" class="sol-more">Ingresar →</a>
+      </div>
+      <div class="sol-card">
+        <div class="sol-num">03</div>
+        <div class="sol-name">OportunAI</div>
+        <span class="sol-tag">Oportunidades</span>
+        <div class="sol-desc">Conectá a las personas con empleo, capacitación y recursos para su desarrollo. Un diagnóstico simple que genera rutas de acción.</div>
+        <a href="https://oportunai.korai.lat" target="_blank" class="sol-more">Conocé más →</a>
+      </div>
+      <div class="sol-card">
+        <div class="sol-num">04</div>
+        <div class="sol-name">Cumplimiento</div>
+        <span class="sol-tag">Operación</span>
+        <div class="sol-desc">Controlá vencimientos, inspecciones, mantenimiento y documentación. Asegurá el funcionamiento del centro sin sorpresas.</div>
+        <div class="sol-more" style="cursor:default">Próximamente</div>
+      </div>
+      <div class="sol-card">
+        <div class="sol-num">05</div>
+        <div class="sol-name">Prestadores</div>
+        <span class="sol-tag">Red homologada</span>
+        <div class="sol-desc">Red de proveedores verificados con precios justos y servicios de calidad. Encontrá y gestioná prestadores confiables.</div>
+        <div class="sol-more" style="cursor:default">Próximamente</div>
+      </div>
+      <div class="sol-card" style="background:#0a0f0a;border-left:2px solid rgba(57,224,122,.2)">
+        <div class="sol-num" style="color:rgba(255,255,255,.2)">··</div>
+        <div class="sol-name" style="color:rgba(255,255,255,.3)">Más en desarrollo</div>
+        <div class="sol-desc" style="color:rgba(255,255,255,.2)">El ecosistema KORATIC sigue creciendo con nuevas herramientas para organizaciones sociales.</div>
+      </div>
     </div>
-    <div class="legal"><span>© 2026 KORATIC. Todos los derechos reservados.</span><span>Términos y condiciones · Política de privacidad</span></div>
+  </div>
+</section>
+
+<!-- FOR WHO -->
+<section class="forwho" id="para-quien">
+  <div class="forwho-inner">
+    <div class="sec-label">02 / Para quién</div>
+    <h2>Diseñado para<br/><span class="accent">cada rol del centro.</span></h2>
+    <div class="who-grid">
+      <div class="who-card">
+        <div class="who-role">Coordinación</div>
+        <div class="who-title">Visión completa del centro</div>
+        <div class="who-desc">Resumen de todos los centros, alertas prioritarias, evolución de asistencia y acceso a todos los legajos. Decisiones basadas en datos reales.</div>
+      </div>
+      <div class="who-card">
+        <div class="who-role">Sala líder</div>
+        <div class="who-title">Gestión de su sala</div>
+        <div class="who-desc">Registro de asistencia diaria, informes pedagógicos con firma digital, seguimiento de hitos de cada niño y niña a cargo.</div>
+      </div>
+      <div class="who-card">
+        <div class="who-role">Facilitadora</div>
+        <div class="who-title">Acompañamiento familiar</div>
+        <div class="who-desc">Casos de seguimiento, servicios derivados, historial de contacto con las familias y alertas de atención prioritaria.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+  <div class="cta-inner">
+    <div>
+      <div class="sec-label">03 / Acceso</div>
+      <h2>Más eficiencia.<br/><span class="accent">Más impacto.</span></h2>
+      <p>Si trabajás en un centro Korai, ya tenés acceso. Ingresá con tu usuario y empezá hoy.</p>
+    </div>
+    <div class="cta-actions">
+      <a href="/login" class="btn-primary">Ingresar a KORATIC →</a>
+      <a href="https://korai.lat" target="_blank" class="btn-ghost">Conocer Korai</a>
+    </div>
+  </div>
+</section>
+
+<!-- ECOSYSTEM -->
+<section class="ecosystem" id="ecosistema">
+  <div class="ecosystem-inner">
+    <div class="eco-label">Ecosistema Korai</div>
+    <div class="eco-row">
+      <a href="https://korai.lat" target="_blank" class="eco-item">
+        <span class="eco-dot"></span>
+        <div>
+          <div class="eco-name">KORAI</div>
+          <div class="eco-desc">El mapa vivo de las necesidades humanas</div>
+        </div>
+        <span class="eco-arrow">↗</span>
+      </a>
+      <a href="/login" class="eco-item">
+        <span class="eco-dot" style="background:var(--purple)"></span>
+        <div>
+          <div class="eco-name">Pulso (KORATIC)</div>
+          <div class="eco-desc">Gestión integral de centros de primera infancia</div>
+        </div>
+        <span class="eco-arrow">↗</span>
+      </a>
+      <a href="https://oportunai.korai.lat" target="_blank" class="eco-item">
+        <span class="eco-dot" style="background:#00C4DE"></span>
+        <div>
+          <div class="eco-name">OportunAI</div>
+          <div class="eco-desc">Conectamos personas con oportunidades</div>
+        </div>
+        <span class="eco-arrow">↗</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <img src="/korai-logo.png" alt="Korai"/>
+      <div class="footer-brand-name">KORATIC</div>
+      <div class="footer-brand-sub">Infraestructura Integral de Gestión<br/>para organizaciones sociales.</div>
+    </div>
+    <div>
+      <h4>Soluciones</h4>
+      <a href="https://korai.lat" target="_blank">KORAI</a>
+      <a href="/login">Pulso</a>
+      <a href="https://oportunai.korai.lat" target="_blank">OportunAI</a>
+    </div>
+    <div>
+      <h4>Organizaciones</h4>
+      <a href="#para-quien">Centros de Primera Infancia</a>
+      <a href="#para-quien">Centros de Inclusión Social</a>
+      <a href="#para-quien">Fundaciones y ONGs</a>
+    </div>
+    <div>
+      <h4>Empresa</h4>
+      <a href="https://korai.lat" target="_blank">Nosotros</a>
+      <a href="https://korai.lat" target="_blank">Contacto</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span class="footer-copy">© 2026 KORATIC · Korai · Todos los derechos reservados.</span>
+    <span class="footer-copy">Términos y condiciones · Política de privacidad</span>
   </div>
 </footer>
 
-<div class="toast" id="toast">Interacción</div>
+<div class="toast" id="toast"></div>
+
 <script>
-/* ── CANVAS: red de nodos animada ── */
+/* canvas animado - red de nodos */
 (function(){
-  const canvas=document.getElementById('hero-canvas');
-  if(!canvas)return;
-  const ctx=canvas.getContext('2d');
+  const c=document.getElementById('hero-canvas');
+  if(!c)return;
+  const ctx=c.getContext('2d');
   let W,H,nodes=[];
-  const COUNT=72,DIST=160,SPEED=.35;
-  function resize(){
-    W=canvas.width=canvas.offsetWidth;
-    H=canvas.height=canvas.offsetHeight;
-  }
-  function mkNode(){
-    return{
-      x:Math.random()*W,y:Math.random()*H,
-      vx:(Math.random()-.5)*SPEED,vy:(Math.random()-.5)*SPEED,
-      r:Math.random()*2+1
-    };
-  }
-  function init(){resize();nodes=[];for(let i=0;i<COUNT;i++)nodes.push(mkNode())}
+  const N=80,D=150,S=.3;
+  function resize(){W=c.width=c.offsetWidth;H=c.height=c.offsetHeight}
+  function mk(){return{x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*S,vy:(Math.random()-.5)*S,r:Math.random()*1.5+.5}}
+  function init(){resize();nodes=[];for(let i=0;i<N;i++)nodes.push(mk())}
   function draw(){
     ctx.clearRect(0,0,W,H);
     for(let i=0;i<nodes.length;i++){
@@ -353,31 +613,37 @@ button{font-family:'Nunito',inherit}
       if(a.x<0||a.x>W)a.vx*=-1;
       if(a.y<0||a.y>H)a.vy*=-1;
       for(let j=i+1;j<nodes.length;j++){
-        const b=nodes[j];
-        const dx=a.x-b.x,dy=a.y-b.y,d=Math.sqrt(dx*dx+dy*dy);
-        if(d<DIST){
-          const alpha=(1-d/DIST)*.5;
+        const b=nodes[j],dx=a.x-b.x,dy=a.y-b.y,d=Math.sqrt(dx*dx+dy*dy);
+        if(d<D){
           ctx.beginPath();
-          ctx.strokeStyle=`rgba(112,77,255,${alpha})`;
-          ctx.lineWidth=.8;
+          ctx.strokeStyle=`rgba(57,224,122,${(1-d/D)*.3})`;
+          ctx.lineWidth=.6;
           ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
         }
       }
-      ctx.beginPath();
-      ctx.arc(a.x,a.y,a.r,0,Math.PI*2);
-      ctx.fillStyle='rgba(160,120,255,.7)';
-      ctx.fill();
+      ctx.beginPath();ctx.arc(a.x,a.y,a.r,0,Math.PI*2);
+      ctx.fillStyle='rgba(57,224,122,.5)';ctx.fill();
     }
     requestAnimationFrame(draw);
   }
-  window.addEventListener('resize',()=>{resize()});
+  window.addEventListener('resize',resize);
   init();draw();
 })();
 
-const bar=document.getElementById('bar');window.addEventListener('scroll',()=>{const h=document.documentElement,max=h.scrollHeight-h.clientHeight;bar.style.width=max>0?((h.scrollTop/max)*100)+'%':'0%'},{passive:true});
-const toast=document.getElementById('toast');let timer;function msg(t){toast.textContent=t;toast.classList.add('show');clearTimeout(timer);timer=setTimeout(()=>toast.classList.remove('show'),1200)}
-document.querySelectorAll('[data-jump]').forEach(b=>b.addEventListener('click',()=>document.querySelector(b.dataset.jump)?.scrollIntoView({behavior:'smooth'})));
-document.querySelectorAll('.action').forEach(el=>el.addEventListener('click',()=>msg(el.dataset.label||'Interacción')));
+/* scroll progress */
+const bar=document.getElementById('bar');
+window.addEventListener('scroll',()=>{
+  const h=document.documentElement,max=h.scrollHeight-h.clientHeight;
+  bar.style.width=max>0?((h.scrollTop/max)*100)+'%':'0%';
+},{passive:true});
+
+/* mobile menu */
+function toggleMenu(){document.getElementById('mobileMenu').classList.toggle('open')}
+function closeMenu(){document.getElementById('mobileMenu').classList.remove('open')}
+document.addEventListener('click',function(e){
+  const m=document.getElementById('mobileMenu');
+  if(m.classList.contains('open')&&!m.contains(e.target)&&!e.target.closest('.hamburger'))m.classList.remove('open');
+});
 </script>
 </body>
 </html>

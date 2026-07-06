@@ -20,6 +20,8 @@
     { "src": "/check-in/(.*)", "dest": "/index.html" },
     { "src": "/docs/(.*)", "dest": "/index.html" },
     { "src": "/assets/(.*)", "dest": "/assets/$1" },
+    { "src": "/korai-logo.png", "dest": "/korai-logo.png" },
+    { "src": "/landing.html", "dest": "/landing.html" },
     { "src": "/", "dest": "/landing.html" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]

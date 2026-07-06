@@ -78,25 +78,32 @@ export default function SalaPage() {
   // Si viene con ?roomId=X desde el admin (click en tarjeta de sala), usarlo directamente
   const urlRoomId = parseInt(new URLSearchParams(window.location.search).get("roomId") ?? "") || null;
 
-  // Superadmin / admin: selector de centro y sala
-  const isCoord = role === "superadmin" || role === "admin";
-  const savedCenterId = isCoord ? parseInt(localStorage.getItem("superadmin_sala_centerId") ?? "0") || null : null;
-  const savedRoomId = isCoord ? parseInt(localStorage.getItem("superadmin_sala_roomId") ?? "0") || null : null;
+  const isSuperAdmin = role === "superadmin";
+  const isAdmin = role === "admin";
+  const isCoord = isSuperAdmin || isAdmin;
+
+  // Superadmin: selector libre de centro y sala
+  const savedCenterId = isSuperAdmin ? parseInt(localStorage.getItem("superadmin_sala_centerId") ?? "0") || null : null;
+  const savedRoomId = isSuperAdmin ? parseInt(localStorage.getItem("superadmin_sala_roomId") ?? "0") || null : null;
   const [superCenterId, setSuperCenterId] = useState<number | null>(savedCenterId);
   const [superRoomId, setSuperRoomId] = useState<number | null>(savedRoomId);
-  const centers = useListCenters({ query: { enabled: isCoord } });
+  const centers = useListCenters({ query: { enabled: isSuperAdmin } });
 
-  const rooms = useListRooms();
-  // Resolve actual DB roomId by matching ecoNumber — robust against re-seeds
-  const roomInfo = isCoord
+  // Admin: selector de sala dentro de su propio centro
+  const savedAdminRoomId = isAdmin ? parseInt(localStorage.getItem(`admin_sala_roomId_${authCenterId}`) ?? "0") || null : null;
+  const [adminRoomId, setAdminRoomId] = useState<number | null>(savedAdminRoomId);
+
+  const rooms = useListRooms(isAdmin ? { centerId: authCenterId ?? undefined } : {});
+  const roomInfo = isSuperAdmin
     ? rooms.data?.find((r: Room) => r.id === superRoomId) ?? null
-    : rooms.data?.find((r: Room) => r.ecoNumber === ecoNumber && r.centerId === authCenterId);
-  // urlRoomId tiene prioridad (viene del admin al hacer click en tarjeta de sala)
-  const roomId = urlRoomId ?? (isCoord ? superRoomId : (roomInfo?.id ?? null));
+    : isAdmin
+      ? rooms.data?.find((r: Room) => r.id === adminRoomId) ?? null
+      : rooms.data?.find((r: Room) => r.ecoNumber === ecoNumber && r.centerId === authCenterId);
+  const roomId = urlRoomId ?? (isSuperAdmin ? superRoomId : isAdmin ? adminRoomId : (roomInfo?.id ?? null));
 
   const centerRoomsForSuper = (rooms.data ?? []).filter((r: Room) => r.centerId === superCenterId);
 
-  const summary = useGetRoomsSummary();
+  const summary = useGetRoomsSummary(isAdmin ? { centerId: authCenterId ?? undefined } : {});
   const roomSummary: RoomSummary | undefined = summary.data?.find((s: RoomSummary) => s.id === roomId);
 
   const children = useListChildren(
@@ -124,7 +131,8 @@ export default function SalaPage() {
   const markAttendance = useMarkAttendance();
 
   // Alertas de esta sala (2+ ausencias consecutivas)
-  const allAlerts = useGetAlerts();
+  const alertsParam = isAdmin ? { centerId: authCenterId ?? undefined } : {};
+  const allAlerts = useGetAlerts(alertsParam);
   const salaAlerts = useMemo(
     () => isCoord
       ? (allAlerts.data ?? []).filter((a: Alert) => a.roomId === roomId)
@@ -316,7 +324,7 @@ export default function SalaPage() {
             </button>
           </div>
         </div>
-        {isCoord && (
+        {isSuperAdmin && (
           <div className="flex items-center gap-2 px-4 pb-3">
             <Select value={superCenterId ? String(superCenterId) : ""} onValueChange={(v) => { setSuperCenterId(Number(v)); setSuperRoomId(null); }}>
               <SelectTrigger className="h-8 text-sm flex-1 min-w-0">
@@ -334,6 +342,27 @@ export default function SalaPage() {
               </SelectTrigger>
               <SelectContent>
                 {centerRoomsForSuper.map((r: Room) => (
+                  <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        {isAdmin && (
+          <div className="flex items-center gap-2 px-4 pb-3">
+            <Select
+              value={adminRoomId ? String(adminRoomId) : ""}
+              onValueChange={(v) => {
+                const id = Number(v);
+                setAdminRoomId(id);
+                localStorage.setItem(`admin_sala_roomId_${authCenterId}`, String(id));
+              }}
+            >
+              <SelectTrigger className="h-8 text-sm w-full">
+                <SelectValue placeholder="Seleccionar sala" />
+              </SelectTrigger>
+              <SelectContent>
+                {(rooms.data ?? []).map((r: Room) => (
                   <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
                 ))}
               </SelectContent>

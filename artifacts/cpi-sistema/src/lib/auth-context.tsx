@@ -6,10 +6,11 @@ interface AuthContextType {
   role: Role;
   centerId: number | null;
   centerName: string | null;
+  token: string | null;
   setRole: (role: Role) => void;
   setCenterId: (id: number | null) => void;
   ecoNumber: number | null;
-  login: (centerId: number, role: Role, centerName?: string) => void;
+  login: (centerId: number, role: Role, centerName?: string, token?: string | null) => void;
   logout: () => void;
 }
 
@@ -30,6 +31,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return localStorage.getItem('cpi_center_name');
   });
 
+  const [token, setTokenState] = useState<string | null>(() => {
+    return localStorage.getItem('cpi_token');
+  });
+
   const setRole = (newRole: Role) => {
     setRoleState(newRole);
     if (newRole) localStorage.setItem('cpi_role', newRole);
@@ -48,16 +53,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     else localStorage.removeItem('cpi_center_name');
   };
 
-  const login = (cid: number, newRole: Role, name?: string) => {
+  const setToken = (t: string | null) => {
+    setTokenState(t);
+    if (t) localStorage.setItem('cpi_token', t);
+    else localStorage.removeItem('cpi_token');
+  };
+
+  const login = (cid: number, newRole: Role, name?: string, tok?: string | null) => {
     setCenterId(cid);
     setRole(newRole);
     if (name) setCenterName(name);
+    if (tok !== undefined) setToken(tok);
   };
 
   const logout = () => {
     setRole(null);
     setCenterId(null);
     setCenterName(null);
+    setToken(null);
   };
 
   const ecoNumber: number | null = role && role.startsWith('sala')
@@ -65,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     : null;
 
   return (
-    <AuthContext.Provider value={{ role, centerId, centerName, setRole, setCenterId, ecoNumber, login, logout }}>
+    <AuthContext.Provider value={{ role, centerId, centerName, token, setRole, setCenterId, ecoNumber, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { setAuthTokenGetter } from "@workspace/api-client-react";
 import Layout from "@/components/layout";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
@@ -126,10 +127,19 @@ function Router() {
   );
 }
 
+function TokenSync() {
+  const { token } = useAuth();
+  useEffect(() => {
+    setAuthTokenGetter(token ? () => token : null);
+  }, [token]);
+  return null;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <TokenSync />
         <TooltipProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <Router />

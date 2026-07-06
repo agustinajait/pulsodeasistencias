@@ -78,25 +78,32 @@ export default function SalaPage() {
   // Si viene con ?roomId=X desde el admin (click en tarjeta de sala), usarlo directamente
   const urlRoomId = parseInt(new URLSearchParams(window.location.search).get("roomId") ?? "") || null;
 
-  // Superadmin / admin: selector de centro y sala
-  const isCoord = role === "superadmin" || role === "admin";
-  const savedCenterId = isCoord ? parseInt(localStorage.getItem("superadmin_sala_centerId") ?? "0") || null : null;
-  const savedRoomId = isCoord ? parseInt(localStorage.getItem("superadmin_sala_roomId") ?? "0") || null : null;
+  const isSuperAdmin = role === "superadmin";
+  const isAdmin = role === "admin";
+  const isCoord = isSuperAdmin || isAdmin;
+
+  // Superadmin: selector libre de centro y sala
+  const savedCenterId = isSuperAdmin ? parseInt(localStorage.getItem("superadmin_sala_centerId") ?? "0") || null : null;
+  const savedRoomId = isSuperAdmin ? parseInt(localStorage.getItem("superadmin_sala_roomId") ?? "0") || null : null;
   const [superCenterId, setSuperCenterId] = useState<number | null>(savedCenterId);
   const [superRoomId, setSuperRoomId] = useState<number | null>(savedRoomId);
-  const centers = useListCenters({ query: { enabled: isCoord } });
+  const centers = useListCenters({ query: { enabled: isSuperAdmin } });
 
-  const rooms = useListRooms();
-  // Resolve actual DB roomId by matching ecoNumber — robust against re-seeds
-  const roomInfo = isCoord
+  // Admin: selector de sala dentro de su propio centro
+  const savedAdminRoomId = isAdmin ? parseInt(localStorage.getItem(`admin_sala_roomId_${authCenterId}`) ?? "0") || null : null;
+  const [adminRoomId, setAdminRoomId] = useState<number | null>(savedAdminRoomId);
+
+  const rooms = useListRooms(isAdmin ? { centerId: authCenterId ?? undefined } : {});
+  const roomInfo = isSuperAdmin
     ? rooms.data?.find((r: Room) => r.id === superRoomId) ?? null
-    : rooms.data?.find((r: Room) => r.ecoNumber === ecoNumber && r.centerId === authCenterId);
-  // urlRoomId tiene prioridad (viene del admin al hacer click en tarjeta de sala)
-  const roomId = urlRoomId ?? (isCoord ? superRoomId : (roomInfo?.id ?? null));
+    : isAdmin
+      ? rooms.data?.find((r: Room) => r.id === adminRoomId) ?? null
+      : rooms.data?.find((r: Room) => r.ecoNumber === ecoNumber && r.centerId === authCenterId);
+  const roomId = urlRoomId ?? (isSuperAdmin ? superRoomId : isAdmin ? adminRoomId : (roomInfo?.id ?? null));
 
   const centerRoomsForSuper = (rooms.data ?? []).filter((r: Room) => r.centerId === superCenterId);
 
-  const summary = useGetRoomsSummary();
+  const summary = useGetRoomsSummary(isAdmin ? { centerId: authCenterId ?? undefined } : {});
   const roomSummary: RoomSummary | undefined = summary.data?.find((s: RoomSummary) => s.id === roomId);
 
   const children = useListChildren(
@@ -124,7 +131,8 @@ export default function SalaPage() {
   const markAttendance = useMarkAttendance();
 
   // Alertas de esta sala (2+ ausencias consecutivas)
-  const allAlerts = useGetAlerts();
+  const alertsParam = isAdmin ? { centerId: authCenterId ?? undefined } : {};
+  const allAlerts = useGetAlerts(alertsParam);
   const salaAlerts = useMemo(
     () => isCoord
       ? (allAlerts.data ?? []).filter((a: Alert) => a.roomId === roomId)
@@ -187,18 +195,20 @@ export default function SalaPage() {
     );
   }, [children.data, search]);
 
+  const isPastDate = listaDate < TODAY;
+
   function handleToggle(childId: number, estado: "P" | "A") {
+    if (isPastDate) return;
     const curr = mergedAttMap[childId];
-    // Actualización optimista inmediata
     setOptimisticAtt((prev) => ({
       ...prev,
       [childId]: { ...curr, estado, motivo: estado === "P" ? undefined : curr?.motivo },
     }));
     markAttendance.mutate(
-      { data: { childId, fecha: TODAY, estado } },
+      { data: { childId, fecha: listaDate, estado } },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListAttendanceQueryKey({ roomId: roomId ?? undefined, date: TODAY }) });
+          queryClient.invalidateQueries({ queryKey: getListAttendanceQueryKey({ roomId: roomId ?? undefined, date: listaDate }) });
           queryClient.invalidateQueries({ queryKey: getGetRoomsSummaryQueryKey() });
           setOptimisticAtt((prev) => { const next = { ...prev }; delete next[childId]; return next; });
         },
@@ -210,13 +220,14 @@ export default function SalaPage() {
   }
 
   function handleMotivo(childId: number, motivo: string) {
+    if (isPastDate) return;
     const curr = mergedAttMap[childId];
     setOptimisticAtt((prev) => ({ ...prev, [childId]: { ...curr, estado: "A", motivo } }));
     markAttendance.mutate(
-      { data: { childId, fecha: TODAY, estado: "A", motivo, nota: curr?.nota ?? undefined, mercaderia: curr?.mercaderia ?? false } },
+      { data: { childId, fecha: listaDate, estado: "A", motivo, nota: curr?.nota ?? undefined, mercaderia: curr?.mercaderia ?? false } },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListAttendanceQueryKey({ roomId: roomId ?? undefined, date: TODAY }) });
+          queryClient.invalidateQueries({ queryKey: getListAttendanceQueryKey({ roomId: roomId ?? undefined, date: listaDate }) });
           setOptimisticAtt((prev) => { const next = { ...prev }; delete next[childId]; return next; });
         },
         onError: () => {
@@ -227,27 +238,29 @@ export default function SalaPage() {
   }
 
   function handleNota(childId: number) {
+    if (isPastDate) return;
     const curr = mergedAttMap[childId];
     const nota = notasDraft[childId] ?? curr?.nota ?? "";
     markAttendance.mutate(
-      { data: { childId, fecha: TODAY, estado: curr?.estado ?? "A", motivo: curr?.motivo ?? undefined, nota: nota || undefined, mercaderia: curr?.mercaderia ?? false } },
+      { data: { childId, fecha: listaDate, estado: curr?.estado ?? "A", motivo: curr?.motivo ?? undefined, nota: nota || undefined, mercaderia: curr?.mercaderia ?? false } },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListAttendanceQueryKey({ roomId: roomId ?? undefined, date: TODAY }) });
+          queryClient.invalidateQueries({ queryKey: getListAttendanceQueryKey({ roomId: roomId ?? undefined, date: listaDate }) });
         },
       }
     );
   }
 
   function handleMercaderia(childId: number) {
+    if (isPastDate) return;
     const curr = mergedAttMap[childId];
     const newMerc = !(curr?.mercaderia ?? false);
     setOptimisticAtt((prev) => ({ ...prev, [childId]: { ...curr, mercaderia: newMerc } }));
     markAttendance.mutate(
-      { data: { childId, fecha: TODAY, estado: curr?.estado ?? undefined, mercaderia: newMerc } },
+      { data: { childId, fecha: listaDate, estado: curr?.estado ?? undefined, mercaderia: newMerc } },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListAttendanceQueryKey({ roomId: roomId ?? undefined, date: TODAY }) });
+          queryClient.invalidateQueries({ queryKey: getListAttendanceQueryKey({ roomId: roomId ?? undefined, date: listaDate }) });
           setOptimisticAtt((prev) => { const next = { ...prev }; delete next[childId]; return next; });
         },
         onError: () => {
@@ -285,6 +298,12 @@ export default function SalaPage() {
   const roomLabel = roomInfo?.name ?? (ecoNumber != null ? `Sala ECO ${ecoNumber}` : "");
   const totalKids = children.data?.length ?? 0;
 
+  // Stats calculados desde los datos cargados (refleja la fecha seleccionada)
+  const statsPresent = filtered.filter((c: Child) => mergedAttMap[c.id]?.estado === "P").length;
+  const statsAbsent = filtered.filter((c: Child) => mergedAttMap[c.id]?.estado === "A").length;
+  const statsUnmarked = filtered.filter((c: Child) => !mergedAttMap[c.id]?.estado).length;
+  const statsPct = filtered.length > 0 ? Math.round((statsPresent / filtered.length) * 100) : 0;
+
   return (
     <div className="min-h-full bg-background flex flex-col">
       {/* Topbar */}
@@ -305,7 +324,7 @@ export default function SalaPage() {
             </button>
           </div>
         </div>
-        {isCoord && (
+        {isSuperAdmin && (
           <div className="flex items-center gap-2 px-4 pb-3">
             <Select value={superCenterId ? String(superCenterId) : ""} onValueChange={(v) => { setSuperCenterId(Number(v)); setSuperRoomId(null); }}>
               <SelectTrigger className="h-8 text-sm flex-1 min-w-0">
@@ -329,29 +348,50 @@ export default function SalaPage() {
             </Select>
           </div>
         )}
+        {isAdmin && (
+          <div className="flex items-center gap-2 px-4 pb-3">
+            <Select
+              value={adminRoomId ? String(adminRoomId) : ""}
+              onValueChange={(v) => {
+                const id = Number(v);
+                setAdminRoomId(id);
+                localStorage.setItem(`admin_sala_roomId_${authCenterId}`, String(id));
+              }}
+            >
+              <SelectTrigger className="h-8 text-sm w-full">
+                <SelectValue placeholder="Seleccionar sala" />
+              </SelectTrigger>
+              <SelectContent>
+                {(rooms.data ?? []).map((r: Room) => (
+                  <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </header>
 
       {/* Stats bar */}
-      {roomSummary && (
+      {(roomSummary || children.data) && (
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 px-4 py-3 bg-card border-b border-border" data-testid="stats-bar">
           <div className="text-center">
-            <div className="text-xl font-bold text-foreground">{roomSummary.total}</div>
+            <div className="text-xl font-bold text-foreground">{filtered.length}</div>
             <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Total</div>
           </div>
           <div className="text-center">
-            <div className="text-xl font-bold text-green-600">{roomSummary.present}</div>
+            <div className="text-xl font-bold text-green-600">{statsPresent}</div>
             <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Presentes</div>
           </div>
           <div className="text-center">
-            <div className="text-xl font-bold text-red-600">{roomSummary.absent}</div>
+            <div className="text-xl font-bold text-red-600">{statsAbsent}</div>
             <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Ausentes</div>
           </div>
           <div className="text-center">
-            <div className="text-xl font-bold text-amber-600">{roomSummary.unmarked}</div>
+            <div className="text-xl font-bold text-amber-600">{statsUnmarked}</div>
             <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Sin marcar</div>
           </div>
           <div className="text-center">
-            <div className="text-xl font-bold text-primary">{roomSummary.pct}%</div>
+            <div className="text-xl font-bold text-primary">{statsPct}%</div>
             <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Asistencia</div>
           </div>
         </div>
@@ -494,17 +534,19 @@ export default function SalaPage() {
                           )}
                         </div>
                         {/* P/A toggle */}
-                        <div className="flex border border-gray-400 rounded-lg overflow-hidden shrink-0">
+                        <div className={`flex border rounded-lg overflow-hidden shrink-0 ${isPastDate ? "border-border opacity-60" : "border-border"}`}>
                           <button
                             onClick={() => handleToggle(child.id, "P")}
-                            className={`px-3 py-2 sm:py-1.5 text-sm font-bold transition-colors ${estado === "P" ? "bg-green-600 text-white" : "bg-background text-muted-foreground hover:bg-muted"}`}
+                            disabled={isPastDate}
+                            className={`px-3 py-2 sm:py-1.5 text-sm font-bold transition-colors ${estado === "P" ? "bg-green-600 text-white" : "bg-background text-muted-foreground hover:bg-muted"} disabled:cursor-default`}
                             data-testid={`btn-presente-${child.id}`}
                           >
                             P
                           </button>
                           <button
                             onClick={() => handleToggle(child.id, "A")}
-                            className={`px-3 py-2 sm:py-1.5 text-sm font-bold transition-colors border-l border-gray-400 ${estado === "A" ? "bg-red-600 text-white" : "bg-background text-muted-foreground hover:bg-muted"}`}
+                            disabled={isPastDate}
+                            className={`px-3 py-2 sm:py-1.5 text-sm font-bold transition-colors border-l border-border ${estado === "A" ? "bg-red-600 text-white" : "bg-background text-muted-foreground hover:bg-muted"} disabled:cursor-default`}
                             data-testid={`btn-ausente-${child.id}`}
                           >
                             A

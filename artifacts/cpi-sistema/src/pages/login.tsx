@@ -1,70 +1,110 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth, Role } from "@/lib/auth-context";
-import { useListCenters, useListRooms, getListRoomsQueryKey } from "@workspace/api-client-react";
-import type { Center, Room } from "@workspace/api-client-react";
+import { useListRooms, getListRoomsQueryKey } from "@workspace/api-client-react";
+import type { Room } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, Plus, Lock, ShieldCheck, ChevronRight, FolderOpen } from "lucide-react";
+import { ChevronLeft, ChevronRight, ShieldCheck, FolderOpen, Eye, EyeOff, Building2 } from "lucide-react";
+
+type Step =
+  | "main"          // email + contraseña
+  | "register"      // registrar nueva org
+  | "role"          // elegir rol dentro del centro
+  | "superadmin";   // acceso superadmin
 
 export default function Login() {
   const { login } = useAuth();
   const [, setLocation] = useLocation();
-  const [step, setStep] = useState<"center" | "passcode" | "role" | "superadmin">("center");
-  const [selectedCenter, setSelectedCenter] = useState<Center | null>(null);
-  const [newCenterName, setNewCenterName] = useState("");
-  const [creatingCenter, setCreatingCenter] = useState(false);
-  const [pendingToken, setPendingToken] = useState<string | null>(null);
-  const [passcode, setPasscode] = useState("");
-  const [passcodeError, setPasscodeError] = useState("");
-  const [verifyingPasscode, setVerifyingPasscode] = useState(false);
+
+  const [step, setStep] = useState<Step>("main");
+
+  // login form
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [loginError, setLoginError] = useState("");
+  const [loggingIn, setLoggingIn] = useState(false);
+
+  // register form
+  const [regOrgName, setRegOrgName] = useState("");
+  const [regEmail, setRegEmail] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [regShowPw, setRegShowPw] = useState(false);
+  const [regError, setRegError] = useState("");
+  const [registering, setRegistering] = useState(false);
+
+  // superadmin
   const [superPasscode, setSuperPasscode] = useState("");
-  const [superPasscodeError, setSuperPasscodeError] = useState("");
+  const [superError, setSuperError] = useState("");
   const [verifyingSuper, setVerifyingSuper] = useState(false);
 
-  const centers = useListCenters();
-  const roomsParams = selectedCenter ? { centerId: selectedCenter.id } : {};
+  // after login: center + token stored here before role selection
+  const [authedCenter, setAuthedCenter] = useState<{ id: number; name: string } | null>(null);
+  const [authedToken, setAuthedToken] = useState<string | null>(null);
+
+  const roomsParams = authedCenter ? { centerId: authedCenter.id } : {};
   const rooms = useListRooms(
     roomsParams,
-    { query: { enabled: !!selectedCenter && step === "role", queryKey: getListRoomsQueryKey(roomsParams) } }
+    { query: { enabled: !!authedCenter && step === "role", queryKey: getListRoomsQueryKey(roomsParams) } }
   );
 
-  const handleSelectCenter = (center: Center) => {
-    setSelectedCenter(center);
-    setPasscode("");
-    setPasscodeError("");
-    if (center.hasPasscode) {
-      setStep("passcode");
-    } else {
+  // ── Handlers ────────────────────────────────────────────────────────────────
+
+  const handleLogin = async () => {
+    if (!email.trim() || !password) return;
+    setLoggingIn(true);
+    setLoginError("");
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setLoginError(data.error ?? "Error al iniciar sesión");
+        return;
+      }
+      setAuthedCenter(data.center);
+      setAuthedToken(data.token ?? null);
       setStep("role");
+    } finally {
+      setLoggingIn(false);
     }
   };
 
-  const handleVerifyPasscode = async () => {
-    if (!selectedCenter || !passcode.trim()) return;
-    setVerifyingPasscode(true);
-    setPasscodeError("");
+  const handleRegister = async () => {
+    if (!regOrgName.trim() || !regEmail.trim() || !regPassword) return;
+    setRegistering(true);
+    setRegError("");
     try {
-      const res = await fetch(`/api/centers/${selectedCenter.id}/verify`, {
+      const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ passcode: passcode.trim() }),
+        body: JSON.stringify({
+          orgName: regOrgName.trim(),
+          email: regEmail.trim(),
+          password: regPassword,
+        }),
       });
-      if (!res.ok) throw new Error("invalid");
       const data = await res.json();
-      if (data.token) setPendingToken(data.token);
+      if (!res.ok) {
+        setRegError(data.error ?? "Error al registrar");
+        return;
+      }
+      setAuthedCenter(data.center);
+      setAuthedToken(data.token ?? null);
       setStep("role");
-    } catch {
-      setPasscodeError("Codigo incorrecto. Intenta de nuevo.");
     } finally {
-      setVerifyingPasscode(false);
+      setRegistering(false);
     }
   };
 
   const handleVerifySuperAdmin = async () => {
     if (!superPasscode.trim()) return;
     setVerifyingSuper(true);
-    setSuperPasscodeError("");
+    setSuperError("");
     try {
       const res = await fetch("/api/auth/super-admin/verify", {
         method: "POST",
@@ -76,44 +116,19 @@ export default function Login() {
         login(0, "superadmin" as Role, undefined, data.token ?? null);
         setLocation("/admin");
       } else {
-        setSuperPasscodeError("Codigo incorrecto. Intenta de nuevo.");
+        setSuperError("Código incorrecto. Intentá de nuevo.");
       }
     } finally {
       setVerifyingSuper(false);
     }
   };
 
-  const handleCreateCenter = async () => {
-    const name = newCenterName.trim();
-    if (!name) return;
-    setCreatingCenter(true);
-    try {
-      const res = await fetch("/api/centers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
-      if (res.ok) {
-        const created: Center = await res.json();
-        centers.refetch();
-        setNewCenterName("");
-        handleSelectCenter(created);
-      }
-    } finally {
-      setCreatingCenter(false);
-    }
-  };
-
-  const handleLogin = (role: Role) => {
-    if (!selectedCenter) return;
-    login(selectedCenter.id, role, selectedCenter.name, pendingToken);
-    if (role === "admin") {
-      setLocation("/reportes");
-    } else if (role === "equipotecnico") {
-      setLocation("/casos");
-    } else {
-      setLocation("/sala");
-    }
+  const handleSelectRole = (role: Role) => {
+    if (!authedCenter) return;
+    login(authedCenter.id, role, authedCenter.name, authedToken);
+    if (role === "admin") setLocation("/reportes");
+    else if (role === "equipotecnico") setLocation("/casos");
+    else setLocation("/sala");
   };
 
   const centerRooms: Room[] = rooms.data ?? [];
@@ -121,22 +136,20 @@ export default function Login() {
     .filter((r) => r.ecoNumber != null)
     .sort((a, b) => a.ecoNumber - b.ecoNumber);
 
+  // ── Render ──────────────────────────────────────────────────────────────────
+
   return (
     <div className="min-h-screen flex">
-      {/* ── Panel izquierdo — branding ── */}
+      {/* Panel izquierdo */}
       <div
         className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 relative overflow-hidden"
         style={{ background: "linear-gradient(135deg, #3b0764 0%, #6d28d9 50%, #7c3aed 100%)" }}
       >
-        {/* Decoración */}
         <div className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full opacity-[0.06]"
           style={{ background: "radial-gradient(circle, #a78bfa, transparent)" }} />
         <div className="absolute -bottom-40 -left-20 w-96 h-96 rounded-full opacity-[0.06]"
           style={{ background: "radial-gradient(circle, #818cf8, transparent)" }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-[0.03]"
-          style={{ background: "radial-gradient(circle, #c4b5fd, transparent)" }} />
 
-        {/* Logo */}
         <div className="flex items-center gap-3 relative z-10">
           <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -152,7 +165,6 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Tagline central */}
         <div className="relative z-10 space-y-8">
           <div>
             <p className="text-white/30 text-[10px] font-bold uppercase tracking-[0.3em] mb-3">
@@ -183,13 +195,12 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Footer */}
         <div className="text-white/20 text-[10px] relative z-10 font-medium uppercase tracking-widest">
           © 2026 Koratic · Infraestructura Digital para el Sector Social
         </div>
       </div>
 
-      {/* ── Panel derecho — formulario ── */}
+      {/* Panel derecho */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 bg-[#fafafa]">
         {/* Header mobile */}
         <div className="lg:hidden text-center mb-8">
@@ -209,64 +220,77 @@ export default function Login() {
 
         <div className="w-full max-w-sm space-y-6">
 
-          {/* STEP: seleccionar centro */}
-          {step === "center" && (
+          {/* ── MAIN: email + password ── */}
+          {step === "main" && (
             <div className="space-y-5">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">¿Cuál es tu centro?</h1>
-                <p className="text-gray-400 text-sm mt-1">Seleccioná el CPI al que pertenecés</p>
+                <h1 className="text-2xl font-bold text-gray-900">Bienvenido</h1>
+                <p className="text-gray-400 text-sm mt-1">Iniciá sesión con tu cuenta de organización</p>
               </div>
 
-              <div className="space-y-2">
-                {centers.isPending && (
-                  <div className="text-sm text-gray-400 text-center py-6">Cargando centros...</div>
-                )}
-                {(centers.data ?? []).map((center) => (
-                  <button
-                    key={center.id}
-                    className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border border-gray-200 bg-white hover:border-violet-400 hover:bg-violet-50/50 transition-all text-left group shadow-sm"
-                    onClick={() => handleSelectCenter(center)}
-                    data-testid={`btn-center-${center.id}`}
-                  >
-                    <div className="w-9 h-9 rounded-lg bg-[#1e1147]/8 flex items-center justify-center shrink-0 group-hover:bg-violet-100 transition-colors">
-                      <span className="text-[#1e1147] font-bold text-sm">{center.name.slice(0, 2).toUpperCase()}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-sm text-gray-900 truncate">{center.name}</div>
-                      <div className="text-xs text-gray-400">Ingresar al centro</div>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {center.hasPasscode && <Lock className="w-3.5 h-3.5 text-gray-300" />}
-                      <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-violet-500 transition-colors" />
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              {/* Nuevo centro */}
-              <div className="pt-1">
-                <p className="text-[10px] text-gray-400 mb-2 font-bold uppercase tracking-widest">Registrar nuevo centro</p>
-                <div className="flex gap-2">
+              <div className="space-y-3">
+                <Input
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); setLoginError(""); }}
+                  onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                  autoFocus
+                />
+                <div className="relative">
                   <Input
-                    placeholder="Nombre del CPI"
-                    value={newCenterName}
-                    onChange={(e) => setNewCenterName(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleCreateCenter()}
-                    className="text-sm"
-                    data-testid="input-new-center"
+                    type={showPw ? "text" : "password"}
+                    placeholder="Contraseña"
+                    value={password}
+                    onChange={(e) => { setPassword(e.target.value); setLoginError(""); }}
+                    onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                    className="pr-10"
                   />
-                  <Button onClick={handleCreateCenter} disabled={!newCenterName.trim() || creatingCenter} size="icon" data-testid="btn-create-center">
-                    <Plus className="w-4 h-4" />
-                  </Button>
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    onClick={() => setShowPw(!showPw)}
+                  >
+                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {loginError && <p className="text-sm text-red-500">{loginError}</p>}
+                <Button
+                  className="w-full bg-[#1e1147] hover:bg-[#2d1b6e]"
+                  onClick={handleLogin}
+                  disabled={!email.trim() || !password || loggingIn}
+                >
+                  {loggingIn ? "Ingresando..." : "Ingresar"}
+                </Button>
+              </div>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-100" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-[#fafafa] px-3 text-gray-400">¿No tenés cuenta?</span>
                 </div>
               </div>
 
-              {/* Super Admin */}
-              <div className="pt-1 border-t border-gray-100">
+              <button
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 border-dashed border-gray-200 bg-white hover:border-violet-400 hover:bg-violet-50/40 transition-all text-left group"
+                onClick={() => { setRegOrgName(""); setRegEmail(""); setRegPassword(""); setRegError(""); setStep("register"); }}
+              >
+                <div className="w-9 h-9 rounded-lg bg-violet-50 flex items-center justify-center shrink-0 group-hover:bg-violet-100 transition-colors">
+                  <Building2 className="w-4 h-4 text-violet-600" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-semibold text-sm text-gray-900">Registrar mi organización</div>
+                  <div className="text-[11px] text-gray-400">Creá tu cuenta gratuita</div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-violet-500 transition-colors" />
+              </button>
+
+              <div className="border-t border-gray-100 pt-2">
                 <button
                   className="w-full flex items-center justify-center gap-2 py-2.5 text-xs text-gray-300 hover:text-gray-500 transition-colors"
-                  onClick={() => { setSuperPasscode(""); setSuperPasscodeError(""); setStep("superadmin"); }}
-                  data-testid="btn-superadmin"
+                  onClick={() => { setSuperPasscode(""); setSuperError(""); setStep("superadmin"); }}
                 >
                   <ShieldCheck className="w-3.5 h-3.5" />
                   Acceso administrador general
@@ -275,86 +299,84 @@ export default function Login() {
             </div>
           )}
 
-          {/* STEP: super admin */}
-          {step === "superadmin" && (
+          {/* ── REGISTER ── */}
+          {step === "register" && (
             <div className="space-y-5">
               <div className="flex items-center gap-3">
-                <button onClick={() => setStep("center")} className="text-gray-400 hover:text-gray-700 transition-colors p-1">
+                <button onClick={() => setStep("main")} className="text-gray-400 hover:text-gray-700 p-1">
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">Administrador</h1>
-                  <p className="text-gray-400 text-sm">Acceso a todos los centros</p>
+                  <h1 className="text-2xl font-bold text-gray-900">Nueva organización</h1>
+                  <p className="text-gray-400 text-sm">Creá tu cuenta para comenzar</p>
                 </div>
               </div>
+
               <div className="space-y-3">
                 <Input
-                  type="password"
-                  placeholder="Código de acceso"
-                  value={superPasscode}
-                  onChange={(e) => { setSuperPasscode(e.target.value); setSuperPasscodeError(""); }}
-                  onKeyDown={(e) => e.key === "Enter" && handleVerifySuperAdmin()}
+                  placeholder="Nombre de la organización"
+                  value={regOrgName}
+                  onChange={(e) => { setRegOrgName(e.target.value); setRegError(""); }}
                   autoFocus
-                  data-testid="input-superadmin-passcode"
                 />
-                {superPasscodeError && <p className="text-sm text-red-500">{superPasscodeError}</p>}
-                <Button className="w-full bg-[#1e1147] hover:bg-[#2d1b6e]" onClick={handleVerifySuperAdmin} disabled={!superPasscode.trim() || verifyingSuper} data-testid="btn-verify-superadmin">
-                  {verifyingSuper ? "Verificando..." : "Ingresar"}
+                <Input
+                  type="email"
+                  placeholder="Email de contacto"
+                  value={regEmail}
+                  onChange={(e) => { setRegEmail(e.target.value); setRegError(""); }}
+                />
+                <div className="relative">
+                  <Input
+                    type={regShowPw ? "text" : "password"}
+                    placeholder="Contraseña (mín. 6 caracteres)"
+                    value={regPassword}
+                    onChange={(e) => { setRegPassword(e.target.value); setRegError(""); }}
+                    onKeyDown={(e) => e.key === "Enter" && handleRegister()}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    onClick={() => setRegShowPw(!regShowPw)}
+                  >
+                    {regShowPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {regError && <p className="text-sm text-red-500">{regError}</p>}
+                <Button
+                  className="w-full bg-[#1e1147] hover:bg-[#2d1b6e]"
+                  onClick={handleRegister}
+                  disabled={!regOrgName.trim() || !regEmail.trim() || !regPassword || registering}
+                >
+                  {registering ? "Creando cuenta..." : "Crear cuenta"}
                 </Button>
               </div>
-            </div>
-          )}
 
-          {/* STEP: passcode de centro */}
-          {step === "passcode" && selectedCenter && (
-            <div className="space-y-5">
-              <div className="flex items-center gap-3">
-                <button onClick={() => { setStep("center"); setSelectedCenter(null); setPasscode(""); setPasscodeError(""); }} className="text-gray-400 hover:text-gray-700 transition-colors p-1">
-                  <ChevronLeft className="w-5 h-5" />
+              <p className="text-center text-xs text-gray-400">
+                ¿Ya tenés cuenta?{" "}
+                <button className="text-violet-600 font-medium hover:underline" onClick={() => setStep("main")}>
+                  Iniciá sesión
                 </button>
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">{selectedCenter.name}</h1>
-                  <p className="text-gray-400 text-sm">Ingresá el código de acceso</p>
-                </div>
-              </div>
-              <div className="space-y-3">
-                <Input
-                  type="password"
-                  placeholder="Código de acceso"
-                  value={passcode}
-                  onChange={(e) => { setPasscode(e.target.value); setPasscodeError(""); }}
-                  onKeyDown={(e) => e.key === "Enter" && handleVerifyPasscode()}
-                  autoFocus
-                  data-testid="input-passcode"
-                />
-                {passcodeError && <p className="text-sm text-red-500">{passcodeError}</p>}
-                <Button className="w-full bg-[#1e1147] hover:bg-[#2d1b6e]" onClick={handleVerifyPasscode} disabled={!passcode.trim() || verifyingPasscode} data-testid="btn-verify-passcode">
-                  {verifyingPasscode ? "Verificando..." : "Continuar"}
-                </Button>
-              </div>
+              </p>
             </div>
           )}
 
-          {/* STEP: seleccionar rol */}
-          {step === "role" && selectedCenter && (
+          {/* ── ROLE SELECTION ── */}
+          {step === "role" && authedCenter && (
             <div className="space-y-5">
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => {
-                    if (selectedCenter.hasPasscode) { setStep("passcode"); } else { setStep("center"); setSelectedCenter(null); }
-                  }}
-                  className="text-gray-400 hover:text-gray-700 transition-colors p-1"
-                  data-testid="btn-back-center"
+                  onClick={() => { setStep("main"); setAuthedCenter(null); setAuthedToken(null); }}
+                  className="text-gray-400 hover:text-gray-700 p-1"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{selectedCenter.name}</p>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{authedCenter.name}</p>
                   <h1 className="text-2xl font-bold text-gray-900">¿Quién ingresa?</h1>
                 </div>
               </div>
 
-              {/* Salas — acción principal */}
               {rooms.isPending && (
                 <div className="text-sm text-gray-400 text-center py-6">Cargando salas...</div>
               )}
@@ -367,8 +389,7 @@ export default function Login() {
                       <button
                         key={room.id}
                         className="flex flex-col items-start px-4 py-4 rounded-xl border-2 border-gray-100 bg-white hover:border-violet-400 hover:bg-violet-50/40 transition-all text-left shadow-sm group"
-                        onClick={() => handleLogin(`sala${room.ecoNumber}` as Role)}
-                        data-testid={`btn-sala-${room.ecoNumber}`}
+                        onClick={() => handleSelectRole(`sala${room.ecoNumber}` as Role)}
                       >
                         <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center mb-2 group-hover:bg-violet-200 transition-colors">
                           <span className="text-violet-700 font-bold text-xs">{room.ecoNumber}</span>
@@ -387,13 +408,11 @@ export default function Login() {
                 </p>
               )}
 
-              {/* Coordinación y equipo técnico */}
               <div className="space-y-2">
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Coordinación</p>
                 <button
                   className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-[#1e1147] text-white hover:bg-[#2d1b6e] transition-colors text-left shadow-sm"
-                  onClick={() => handleLogin("admin")}
-                  data-testid="btn-admin"
+                  onClick={() => handleSelectRole("admin")}
                 >
                   <div className="w-9 h-9 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
                     <ShieldCheck className="w-4 h-4" />
@@ -406,8 +425,7 @@ export default function Login() {
                 </button>
                 <button
                   className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border border-gray-100 bg-white hover:border-teal-300 hover:bg-teal-50/40 transition-colors text-left shadow-sm"
-                  onClick={() => handleLogin("equipotecnico")}
-                  data-testid="btn-equipotecnico"
+                  onClick={() => handleSelectRole("equipotecnico")}
                 >
                   <div className="w-9 h-9 rounded-lg bg-teal-50 flex items-center justify-center shrink-0">
                     <FolderOpen className="w-4 h-4 text-teal-600" />
@@ -418,6 +436,39 @@ export default function Login() {
                   </div>
                   <ChevronRight className="w-4 h-4 text-gray-300" />
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── SUPERADMIN ── */}
+          {step === "superadmin" && (
+            <div className="space-y-5">
+              <div className="flex items-center gap-3">
+                <button onClick={() => setStep("main")} className="text-gray-400 hover:text-gray-700 p-1">
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Administrador</h1>
+                  <p className="text-gray-400 text-sm">Acceso a todos los centros</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <Input
+                  type="password"
+                  placeholder="Código de acceso"
+                  value={superPasscode}
+                  onChange={(e) => { setSuperPasscode(e.target.value); setSuperError(""); }}
+                  onKeyDown={(e) => e.key === "Enter" && handleVerifySuperAdmin()}
+                  autoFocus
+                />
+                {superError && <p className="text-sm text-red-500">{superError}</p>}
+                <Button
+                  className="w-full bg-[#1e1147] hover:bg-[#2d1b6e]"
+                  onClick={handleVerifySuperAdmin}
+                  disabled={!superPasscode.trim() || verifyingSuper}
+                >
+                  {verifyingSuper ? "Verificando..." : "Ingresar"}
+                </Button>
               </div>
             </div>
           )}

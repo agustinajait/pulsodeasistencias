@@ -290,6 +290,12 @@ export default function SalaPage() {
   const roomLabel = roomInfo?.name ?? (ecoNumber != null ? `Sala ECO ${ecoNumber}` : "");
   const totalKids = children.data?.length ?? 0;
 
+  // Stats calculados desde los datos cargados (refleja la fecha seleccionada)
+  const statsPresent = filtered.filter((c: Child) => mergedAttMap[c.id]?.estado === "P").length;
+  const statsAbsent = filtered.filter((c: Child) => mergedAttMap[c.id]?.estado === "A").length;
+  const statsUnmarked = filtered.filter((c: Child) => !mergedAttMap[c.id]?.estado).length;
+  const statsPct = filtered.length > 0 ? Math.round((statsPresent / filtered.length) * 100) : 0;
+
   return (
     <div className="min-h-full bg-background flex flex-col">
       {/* Topbar */}
@@ -337,26 +343,26 @@ export default function SalaPage() {
       </header>
 
       {/* Stats bar */}
-      {roomSummary && (
+      {(roomSummary || children.data) && (
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 px-4 py-3 bg-card border-b border-border" data-testid="stats-bar">
           <div className="text-center">
-            <div className="text-xl font-bold text-foreground">{roomSummary.total}</div>
+            <div className="text-xl font-bold text-foreground">{filtered.length}</div>
             <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Total</div>
           </div>
           <div className="text-center">
-            <div className="text-xl font-bold text-green-600">{roomSummary.present}</div>
+            <div className="text-xl font-bold text-green-600">{statsPresent}</div>
             <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Presentes</div>
           </div>
           <div className="text-center">
-            <div className="text-xl font-bold text-red-600">{roomSummary.absent}</div>
+            <div className="text-xl font-bold text-red-600">{statsAbsent}</div>
             <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Ausentes</div>
           </div>
           <div className="text-center">
-            <div className="text-xl font-bold text-amber-600">{roomSummary.unmarked}</div>
+            <div className="text-xl font-bold text-amber-600">{statsUnmarked}</div>
             <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Sin marcar</div>
           </div>
           <div className="text-center">
-            <div className="text-xl font-bold text-primary">{roomSummary.pct}%</div>
+            <div className="text-xl font-bold text-primary">{statsPct}%</div>
             <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Asistencia</div>
           </div>
         </div>

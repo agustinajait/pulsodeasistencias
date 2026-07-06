@@ -24,7 +24,7 @@ router.get("/attendance", async (req, res) => {
       const kids = await db
         .select({ id: childrenTable.id })
         .from(childrenTable)
-        .where(eq(childrenTable.roomId, parseInt(roomId)));
+        .where(and(eq(childrenTable.roomId, parseInt(roomId)), eq(childrenTable.activo, true)));
       childIds = kids.map((k) => k.id);
     }
 

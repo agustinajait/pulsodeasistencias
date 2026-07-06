@@ -64,10 +64,8 @@ button{font-family:'Nunito',inherit}
   text-align:center;
 }
 .logo{display:flex;align-items:center;gap:12px}
-.mark{width:46px;height:46px;position:relative;flex:0 0 auto}
-.mark i{position:absolute;width:21px;height:21px;border-radius:999px;left:12.5px;top:12.5px;transform-origin:10.5px 10.5px;background:linear-gradient(135deg,#7d62ff,#3b18b7);box-shadow:0 5px 14px rgba(84,39,217,.22)}
-.mark i:nth-child(1){transform:translateY(-15px)}.mark i:nth-child(2){transform:rotate(45deg) translateY(-15px)}.mark i:nth-child(3){transform:rotate(90deg) translateY(-15px)}.mark i:nth-child(4){transform:rotate(135deg) translateY(-15px)}.mark i:nth-child(5){transform:rotate(180deg) translateY(-15px)}.mark i:nth-child(6){transform:rotate(225deg) translateY(-15px)}.mark i:nth-child(7){transform:rotate(270deg) translateY(-15px)}.mark i:nth-child(8){transform:rotate(315deg) translateY(-15px)}
-.mark:after{content:"";position:absolute;width:21px;height:21px;border-radius:999px;left:12.5px;top:12.5px;background:#fff;box-shadow:0 5px 16px rgba(23,16,84,.16)}
+.mark-img{object-fit:contain;flex:0 0 auto;width:46px;height:46px}
+.brand .mark-img{width:42px;height:42px}
 .logo strong{font-size:36px;font-weight:900;letter-spacing:-.04em;color:var(--navy)}
 .loader{width:48px;height:48px;border-radius:50%;border:4px solid #e6ddff;border-top-color:var(--purple);animation:spin .85s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -89,7 +87,6 @@ button{font-family:'Nunito',inherit}
 .container{width:min(1180px,calc(100% - 56px));margin:0 auto}
 .header-row{display:flex;align-items:center;justify-content:space-between;gap:28px}
 .brand{display:flex;align-items:center;gap:16px;min-width:270px}
-.brand .mark{width:42px;height:42px}
 .brand .logo strong{font-size:30px}
 .divider{width:1px;height:42px;background:#dedbef}
 .claim{font-size:13px;line-height:1.25;color:#424964;font-weight:600}
@@ -213,7 +210,7 @@ button{font-family:'Nunito',inherit}
 <body>
 <div class="splash" id="splash">
   <div class="splash-card">
-    <div class="logo"><span class="mark"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><strong>KORATIC</strong></div>
+    <div class="logo"><img src="/korai-logo.png" class="mark-img" alt="Korai"><strong>KORATIC</strong></div>
     <div class="loader"></div>
     <div><h1>Cargando experiencia<br>landing home KORATIC...</h1><p>Preparando versión web interactiva.</p></div>
   </div>
@@ -223,7 +220,7 @@ button{font-family:'Nunito',inherit}
 <header class="header">
   <div class="container header-row">
     <div class="brand">
-      <div class="logo"><span class="mark"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><strong>KORATIC</strong></div>
+      <div class="logo"><img src="/korai-logo.png" class="mark-img" alt="Korai"><strong>KORATIC</strong></div>
       <span class="divider"></span>
       <span class="claim">Infraestructura<br>Integral de Gestión</span>
     </div>
@@ -256,7 +253,7 @@ button{font-family:'Nunito',inherit}
       <div class="preview">
         <div class="side"><span>⌂</span><span>⌘</span><span>☷</span><span>☑</span><span>▥</span><span>⚙</span></div>
         <div class="float f1">👥</div><div class="float f2">💼</div><div class="float f3">🛡</div><div class="float f4">∞</div>
-        <div class="main-card"><div><div class="logo"><span class="mark"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><strong>KORATIC</strong></div><small>Todo lo que tu centro necesita, en una sola plataforma.</small></div></div>
+        <div class="main-card"><div><div class="logo"><img src="/korai-logo.png" class="mark-img" alt="Korai"><strong>KORATIC</strong></div><small>Todo lo que tu centro necesita, en una sola plataforma.</small></div></div>
       </div>
     </div>
   </section>
@@ -313,7 +310,7 @@ button{font-family:'Nunito',inherit}
 <footer class="footer">
   <div class="container">
     <div class="footer-grid">
-      <div><div class="logo"><span class="mark"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><strong>KORATIC</strong></div><small>Infraestructura Integral de Gestión</small></div>
+      <div><div class="logo"><img src="/korai-logo.png" class="mark-img" alt="Korai"><strong>KORATIC</strong></div><small>Infraestructura Integral de Gestión</small></div>
       <div><h4>Soluciones</h4><button class="action" data-label="KORAI">KORAI</button><button class="action" data-label="Pulso">Pulso</button><button class="action" data-label="OportunAI">OportunAI</button></div>
       <div><h4>Recursos</h4><button class="action" data-label="Novedades">Novedades</button><button class="action" data-label="Casos de uso">Casos de uso</button><button class="action" data-label="Centro de ayuda">Centro de ayuda</button></div>
       <div><h4>Empresa</h4><button class="action" data-label="Nosotros">Nosotros</button><button class="action" data-label="Contacto">Contacto</button><button class="action" data-label="Trabajá con nosotros">Trabajá con nosotros</button></div>

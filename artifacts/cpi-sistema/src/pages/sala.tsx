@@ -66,6 +66,7 @@ export default function SalaPage() {
   const coordinadorNombre: string = profileQ.data?.coordinadorNombre ?? "";
 
   const [search, setSearch] = useState("");
+  const [listaDate, setListaDate] = useState(TODAY);
   const [calMonth, setCalMonth] = useState(MES_ACTUAL);
   const [selectedChild, setSelectedChild] = useState<number | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -111,8 +112,8 @@ export default function SalaPage() {
   );
 
   const attendance = useListAttendance(
-    { roomId: roomId ?? undefined, date: TODAY },
-    { query: { enabled: !!roomId, queryKey: getListAttendanceQueryKey({ roomId: roomId ?? undefined, date: TODAY }) } }
+    { roomId: roomId ?? undefined, date: listaDate },
+    { query: { enabled: !!roomId, queryKey: getListAttendanceQueryKey({ roomId: roomId ?? undefined, date: listaDate }) } }
   );
 
   const calAtt = useListAttendance(
@@ -186,18 +187,20 @@ export default function SalaPage() {
     );
   }, [children.data, search]);
 
+  const isPastDate = listaDate < TODAY;
+
   function handleToggle(childId: number, estado: "P" | "A") {
+    if (isPastDate) return;
     const curr = mergedAttMap[childId];
-    // Actualización optimista inmediata
     setOptimisticAtt((prev) => ({
       ...prev,
       [childId]: { ...curr, estado, motivo: estado === "P" ? undefined : curr?.motivo },
     }));
     markAttendance.mutate(
-      { data: { childId, fecha: TODAY, estado } },
+      { data: { childId, fecha: listaDate, estado } },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListAttendanceQueryKey({ roomId: roomId ?? undefined, date: TODAY }) });
+          queryClient.invalidateQueries({ queryKey: getListAttendanceQueryKey({ roomId: roomId ?? undefined, date: listaDate }) });
           queryClient.invalidateQueries({ queryKey: getGetRoomsSummaryQueryKey() });
           setOptimisticAtt((prev) => { const next = { ...prev }; delete next[childId]; return next; });
         },
@@ -209,13 +212,14 @@ export default function SalaPage() {
   }
 
   function handleMotivo(childId: number, motivo: string) {
+    if (isPastDate) return;
     const curr = mergedAttMap[childId];
     setOptimisticAtt((prev) => ({ ...prev, [childId]: { ...curr, estado: "A", motivo } }));
     markAttendance.mutate(
-      { data: { childId, fecha: TODAY, estado: "A", motivo, nota: curr?.nota ?? undefined, mercaderia: curr?.mercaderia ?? false } },
+      { data: { childId, fecha: listaDate, estado: "A", motivo, nota: curr?.nota ?? undefined, mercaderia: curr?.mercaderia ?? false } },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListAttendanceQueryKey({ roomId: roomId ?? undefined, date: TODAY }) });
+          queryClient.invalidateQueries({ queryKey: getListAttendanceQueryKey({ roomId: roomId ?? undefined, date: listaDate }) });
           setOptimisticAtt((prev) => { const next = { ...prev }; delete next[childId]; return next; });
         },
         onError: () => {
@@ -226,27 +230,29 @@ export default function SalaPage() {
   }
 
   function handleNota(childId: number) {
+    if (isPastDate) return;
     const curr = mergedAttMap[childId];
     const nota = notasDraft[childId] ?? curr?.nota ?? "";
     markAttendance.mutate(
-      { data: { childId, fecha: TODAY, estado: curr?.estado ?? "A", motivo: curr?.motivo ?? undefined, nota: nota || undefined, mercaderia: curr?.mercaderia ?? false } },
+      { data: { childId, fecha: listaDate, estado: curr?.estado ?? "A", motivo: curr?.motivo ?? undefined, nota: nota || undefined, mercaderia: curr?.mercaderia ?? false } },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListAttendanceQueryKey({ roomId: roomId ?? undefined, date: TODAY }) });
+          queryClient.invalidateQueries({ queryKey: getListAttendanceQueryKey({ roomId: roomId ?? undefined, date: listaDate }) });
         },
       }
     );
   }
 
   function handleMercaderia(childId: number) {
+    if (isPastDate) return;
     const curr = mergedAttMap[childId];
     const newMerc = !(curr?.mercaderia ?? false);
     setOptimisticAtt((prev) => ({ ...prev, [childId]: { ...curr, mercaderia: newMerc } }));
     markAttendance.mutate(
-      { data: { childId, fecha: TODAY, estado: curr?.estado ?? undefined, mercaderia: newMerc } },
+      { data: { childId, fecha: listaDate, estado: curr?.estado ?? undefined, mercaderia: newMerc } },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListAttendanceQueryKey({ roomId: roomId ?? undefined, date: TODAY }) });
+          queryClient.invalidateQueries({ queryKey: getListAttendanceQueryKey({ roomId: roomId ?? undefined, date: listaDate }) });
           setOptimisticAtt((prev) => { const next = { ...prev }; delete next[childId]; return next; });
         },
         onError: () => {
@@ -407,6 +413,50 @@ export default function SalaPage() {
               </div>
             )}
 
+            {/* Selector de fecha */}
+            <div className="flex items-center gap-2 mb-3 bg-card border border-border rounded-xl px-3 py-2">
+              <button
+                onClick={() => {
+                  const d = new Date(listaDate + "T12:00:00");
+                  d.setDate(d.getDate() - 1);
+                  if (d.getDay() === 0) d.setDate(d.getDate() - 1);
+                  if (d.getDay() === 6) d.setDate(d.getDate() - 1);
+                  setListaDate(d.toISOString().slice(0, 10));
+                  setOptimisticAtt({});
+                }}
+                className="p-1 rounded hover:bg-muted transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+              </button>
+              <div className="flex-1 text-center">
+                <span className="text-sm font-semibold capitalize">
+                  {listaDate === TODAY ? "Hoy — " : ""}{formatDateLabel(listaDate)}
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  const d = new Date(listaDate + "T12:00:00");
+                  d.setDate(d.getDate() + 1);
+                  if (d.getDay() === 0) d.setDate(d.getDate() + 1);
+                  if (d.getDay() === 6) d.setDate(d.getDate() + 1);
+                  const next = d.toISOString().slice(0, 10);
+                  if (next <= TODAY) { setListaDate(next); setOptimisticAtt({}); }
+                }}
+                disabled={listaDate >= TODAY}
+                className="p-1 rounded hover:bg-muted transition-colors disabled:opacity-30 disabled:pointer-events-none"
+              >
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
+              {listaDate !== TODAY && (
+                <button
+                  onClick={() => { setListaDate(TODAY); setOptimisticAtt({}); }}
+                  className="ml-1 text-xs font-semibold text-primary hover:underline"
+                >
+                  Hoy
+                </button>
+              )}
+            </div>
+
             <div className="relative mb-3">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
@@ -449,17 +499,19 @@ export default function SalaPage() {
                           )}
                         </div>
                         {/* P/A toggle */}
-                        <div className="flex border border-gray-400 rounded-lg overflow-hidden shrink-0">
+                        <div className={`flex border rounded-lg overflow-hidden shrink-0 ${isPastDate ? "border-border opacity-60" : "border-border"}`}>
                           <button
                             onClick={() => handleToggle(child.id, "P")}
-                            className={`px-3 py-2 sm:py-1.5 text-sm font-bold transition-colors ${estado === "P" ? "bg-green-600 text-white" : "bg-background text-muted-foreground hover:bg-muted"}`}
+                            disabled={isPastDate}
+                            className={`px-3 py-2 sm:py-1.5 text-sm font-bold transition-colors ${estado === "P" ? "bg-green-600 text-white" : "bg-background text-muted-foreground hover:bg-muted"} disabled:cursor-default`}
                             data-testid={`btn-presente-${child.id}`}
                           >
                             P
                           </button>
                           <button
                             onClick={() => handleToggle(child.id, "A")}
-                            className={`px-3 py-2 sm:py-1.5 text-sm font-bold transition-colors border-l border-gray-400 ${estado === "A" ? "bg-red-600 text-white" : "bg-background text-muted-foreground hover:bg-muted"}`}
+                            disabled={isPastDate}
+                            className={`px-3 py-2 sm:py-1.5 text-sm font-bold transition-colors border-l border-border ${estado === "A" ? "bg-red-600 text-white" : "bg-background text-muted-foreground hover:bg-muted"} disabled:cursor-default`}
                             data-testid={`btn-ausente-${child.id}`}
                           >
                             A

@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { optionalAuth } from "../middleware/auth.js";
 import healthRouter from "./health";
 import authRouter from "./auth";
 import centersRouter from "./centers";
@@ -23,6 +24,7 @@ import aiRouter from "./ai";
 
 const router: IRouter = Router();
 
+router.use(optionalAuth);
 router.use(healthRouter);
 router.use(authRouter);
 router.use(centersRouter);

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth, Role } from "@/lib/auth-context";
-import { useListCenters, useListRooms, getListRoomsQueryKey, verifyCenterPasscode } from "@workspace/api-client-react";
+import { useListCenters, useListRooms, getListRoomsQueryKey } from "@workspace/api-client-react";
 import type { Center, Room } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ export default function Login() {
   const [selectedCenter, setSelectedCenter] = useState<Center | null>(null);
   const [newCenterName, setNewCenterName] = useState("");
   const [creatingCenter, setCreatingCenter] = useState(false);
+  const [pendingToken, setPendingToken] = useState<string | null>(null);
   const [passcode, setPasscode] = useState("");
   const [passcodeError, setPasscodeError] = useState("");
   const [verifyingPasscode, setVerifyingPasscode] = useState(false);
@@ -44,7 +45,14 @@ export default function Login() {
     setVerifyingPasscode(true);
     setPasscodeError("");
     try {
-      await verifyCenterPasscode(selectedCenter.id, { passcode: passcode.trim() });
+      const res = await fetch(`/api/centers/${selectedCenter.id}/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ passcode: passcode.trim() }),
+      });
+      if (!res.ok) throw new Error("invalid");
+      const data = await res.json();
+      if (data.token) setPendingToken(data.token);
       setStep("role");
     } catch {
       setPasscodeError("Codigo incorrecto. Intenta de nuevo.");
@@ -64,7 +72,8 @@ export default function Login() {
         body: JSON.stringify({ passcode: superPasscode.trim() }),
       });
       if (res.ok) {
-        login(0, "superadmin" as Role);
+        const data = await res.json();
+        login(0, "superadmin" as Role, undefined, data.token ?? null);
         setLocation("/admin");
       } else {
         setSuperPasscodeError("Codigo incorrecto. Intenta de nuevo.");
@@ -97,7 +106,7 @@ export default function Login() {
 
   const handleLogin = (role: Role) => {
     if (!selectedCenter) return;
-    login(selectedCenter.id, role, selectedCenter.name);
+    login(selectedCenter.id, role, selectedCenter.name, pendingToken);
     if (role === "admin") {
       setLocation("/reportes");
     } else if (role === "equipotecnico") {

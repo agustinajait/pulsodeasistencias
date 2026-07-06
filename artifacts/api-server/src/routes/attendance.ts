@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, attendanceTable, childrenTable } from "@workspace/db";
+import { db, attendanceTable, childrenTable, roomsTable } from "@workspace/db";
 import { eq, and, sql, gte, lte } from "drizzle-orm";
 import { MarkAttendanceBody } from "@workspace/api-zod";
 
@@ -15,6 +15,18 @@ router.get("/attendance", async (req, res) => {
       month?: string;
       year?: string;
     };
+
+    // Enforce center isolation when a token is present
+    if (req.auth && req.auth.role !== "superadmin" && req.auth.centerId != null && roomId) {
+      const [room] = await db
+        .select({ centerId: roomsTable.centerId })
+        .from(roomsTable)
+        .where(eq(roomsTable.id, parseInt(roomId)));
+      if (!room || room.centerId !== req.auth.centerId) {
+        res.status(403).json({ error: "Forbidden" });
+        return;
+      }
+    }
 
     let childIds: number[] = [];
 
@@ -88,6 +100,24 @@ router.post("/attendance", async (req, res) => {
     }
 
     const { childId, fecha, estado, nota, motivo, mercaderia } = parsed.data;
+
+    // Enforce center isolation
+    if (req.auth && req.auth.role !== "superadmin" && req.auth.centerId != null) {
+      const [child] = await db
+        .select({ roomId: childrenTable.roomId })
+        .from(childrenTable)
+        .where(eq(childrenTable.id, childId));
+      if (child) {
+        const [room] = await db
+          .select({ centerId: roomsTable.centerId })
+          .from(roomsTable)
+          .where(eq(roomsTable.id, child.roomId));
+        if (!room || room.centerId !== req.auth.centerId) {
+          res.status(403).json({ error: "Forbidden" });
+          return;
+        }
+      }
+    }
 
     // Upsert: insert or update
     const existing = await db

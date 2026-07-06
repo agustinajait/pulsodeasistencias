@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db, centersTable, roomsTable } from "@workspace/db";
 import { eq, count } from "drizzle-orm";
+import { signToken } from "../lib/jwt.js";
 
 const router = Router();
 
@@ -59,7 +60,8 @@ router.post("/centers/:centerId/verify", async (req, res) => {
     const [center] = await db.select().from(centersTable).where(eq(centersTable.id, centerId));
     if (!center) { res.status(404).json({ error: "Center not found" }); return; }
     if (!center.passcode || center.passcode === passcode.trim()) {
-      res.json({ status: "ok" });
+      const token = process.env.JWT_SECRET ? signToken({ centerId, role: "center" }) : null;
+      res.json({ status: "ok", token });
     } else {
       res.status(401).json({ status: "invalid" });
     }

@@ -36,33 +36,6 @@ body{
   -webkit-font-smoothing:antialiased;
 }
 button{font-family:'Nunito',inherit}
-.splash{
-  position:fixed;
-  inset:0;
-  z-index:999;
-  display:grid;
-  place-items:center;
-  background:
-    radial-gradient(circle at 50% 30%,rgba(112,77,255,.16),transparent 34%),
-    linear-gradient(180deg,#fff,#f7f4ff);
-  transition:opacity .42s ease,visibility .42s ease;
-}
-.splash.hide{opacity:0;visibility:hidden}
-.splash-card{
-  width:min(520px,88vw);
-  min-height:360px;
-  border-radius:38px;
-  background:rgba(255,255,255,.78);
-  border:1px solid rgba(84,39,217,.12);
-  box-shadow:0 32px 90px rgba(33,22,105,.16);
-  backdrop-filter:blur(18px);
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  gap:24px;
-  text-align:center;
-}
 .logo{display:flex;align-items:center;gap:12px}
 .mark-img{object-fit:contain;flex:0 0 auto;width:46px;height:46px}
 .brand .mark-img{width:42px;height:42px}
@@ -208,13 +181,6 @@ button{font-family:'Nunito',inherit}
 </style>
 </head>
 <body>
-<div class="splash" id="splash">
-  <div class="splash-card">
-    <div class="logo"><img src="/korai-logo.png" class="mark-img" alt="Korai"><strong>KORATIC</strong></div>
-    <div class="loader"></div>
-    <div><h1>Cargando experiencia<br>landing home KORATIC...</h1><p>Preparando versión web interactiva.</p></div>
-  </div>
-</div>
 <div class="progress"><span id="bar"></span></div>
 
 <header class="header">
@@ -322,7 +288,6 @@ button{font-family:'Nunito',inherit}
 
 <div class="toast" id="toast">Interacción</div>
 <script>
-const splash=document.getElementById('splash');window.addEventListener('load',()=>setTimeout(()=>splash.classList.add('hide'),2200));
 const bar=document.getElementById('bar');window.addEventListener('scroll',()=>{const h=document.documentElement,max=h.scrollHeight-h.clientHeight;bar.style.width=max>0?((h.scrollTop/max)*100)+'%':'0%'},{passive:true});
 const toast=document.getElementById('toast');let timer;function msg(t){toast.textContent=t;toast.classList.add('show');clearTimeout(timer);timer=setTimeout(()=>toast.classList.remove('show'),1200)}
 document.querySelectorAll('[data-jump]').forEach(b=>b.addEventListener('click',()=>document.querySelector(b.dataset.jump)?.scrollIntoView({behavior:'smooth'})));

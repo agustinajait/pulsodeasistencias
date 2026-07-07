@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ChevronLeft, ChevronRight, Plus, X, Trash2, Save, Users, CalendarDays, Download,
 } from "lucide-react";
@@ -11,7 +11,7 @@ import { useListCenters } from "@workspace/api-client-react";
 const BASE = import.meta.env.VITE_API_URL ?? "/api";
 
 // ── Types ──────────────────────────────────────────────────────────────────
-type EventTipo = "FERIADO" | "VACACIONES" | "SUPERVISION" | "CAPACITACION" | "SUSPENSION";
+type EventTipo = "FERIADO" | "VACACIONES" | "SUPERVISION" | "CAPACITACION" | "SUSPENSION" | "EVENTO";
 
 type CalEvent = {
   id: number;
@@ -40,30 +40,29 @@ type WorkingDays = {
 };
 
 // ── Config ─────────────────────────────────────────────────────────────────
-const TIPOS: Record<EventTipo, { label: string; color: string; bg: string; dot: string }> = {
-  FERIADO:     { label: "Feriado",      color: "text-red-700",    bg: "bg-red-100",    dot: "bg-red-500" },
-  VACACIONES:  { label: "Vacaciones",   color: "text-amber-700",  bg: "bg-amber-100",  dot: "bg-amber-500" },
-  SUPERVISION: { label: "Supervisión",  color: "text-blue-700",   bg: "bg-blue-100",   dot: "bg-blue-500" },
-  CAPACITACION:{ label: "Capacitación", color: "text-teal-700",   bg: "bg-teal-100",   dot: "bg-teal-500" },
-  SUSPENSION:  { label: "Suspensión",   color: "text-orange-700", bg: "bg-orange-100", dot: "bg-orange-500" },
+const TIPOS: Record<EventTipo, { label: string; color: string; bg: string; dot: string; chip: string; solid: string }> = {
+  FERIADO:     { label: "Feriado",      color: "text-red-700",    bg: "bg-red-50",    dot: "bg-red-500",    chip: "bg-red-500 text-white",        solid: "bg-red-500" },
+  VACACIONES:  { label: "Vacaciones",   color: "text-amber-700",  bg: "bg-amber-50",  dot: "bg-amber-500",  chip: "bg-amber-400 text-white",      solid: "bg-amber-400" },
+  SUPERVISION: { label: "Supervisión",  color: "text-blue-700",   bg: "bg-blue-50",   dot: "bg-blue-500",   chip: "bg-blue-500 text-white",       solid: "bg-blue-500" },
+  CAPACITACION:{ label: "Capacitación", color: "text-teal-700",   bg: "bg-teal-50",   dot: "bg-teal-500",   chip: "bg-teal-500 text-white",       solid: "bg-teal-500" },
+  SUSPENSION:  { label: "Suspensión",   color: "text-orange-700", bg: "bg-orange-50", dot: "bg-orange-500", chip: "bg-orange-500 text-white",     solid: "bg-orange-500" },
+  EVENTO:      { label: "Evento",       color: "text-violet-700", bg: "bg-violet-50", dot: "bg-violet-500", chip: "bg-violet-500 text-white",     solid: "bg-violet-500" },
 };
 
 const NON_WORKING: EventTipo[] = ["FERIADO", "VACACIONES", "SUSPENSION"];
 
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const DOW_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-function currentMonth() {
-  return new Date().toISOString().slice(0, 7);
-}
+function currentMonth() { return new Date().toISOString().slice(0, 7); }
+function todayStr() { return new Date().toISOString().slice(0, 10); }
 
 function getDays(month: string) {
   const [y, m] = month.split("-").map(Number);
   const days: string[] = [];
   const total = new Date(y, m, 0).getDate();
-  for (let d = 1; d <= total; d++) {
-    days.push(`${month}-${String(d).padStart(2, "0")}`);
-  }
+  for (let d = 1; d <= total; d++) days.push(`${month}-${String(d).padStart(2, "0")}`);
   return days;
 }
 
@@ -72,9 +71,7 @@ function isWeekend(dateStr: string) {
   return d.getDay() === 0 || d.getDay() === 6;
 }
 
-function dow(dateStr: string) {
-  return new Date(dateStr + "T12:00:00").getDay(); // 0=sun
-}
+function dow(dateStr: string) { return new Date(dateStr + "T12:00:00").getDay(); }
 
 function fmt(pesos: number) {
   return pesos.toLocaleString("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0 });
@@ -99,63 +96,57 @@ async function fetchStaff(centerId: number | null): Promise<Staff[]> {
   return r.ok ? r.json() : [];
 }
 
-// ── EventDot ───────────────────────────────────────────────────────────────
-function EventDot({ tipo }: { tipo: EventTipo }) {
-  return <span className={`inline-block w-1.5 h-1.5 rounded-full ${TIPOS[tipo].dot}`} />;
-}
-
-// ── DayCell ────────────────────────────────────────────────────────────────
-function DayCell({
-  date,
-  events,
-  onClick,
-}: {
-  date: string;
-  events: CalEvent[];
-  onClick: () => void;
-}) {
+// ── DayCell — Google Calendar style ───────────────────────────────────────
+function DayCell({ date, events, onClick }: { date: string; events: CalEvent[]; onClick: () => void }) {
   const day = parseInt(date.slice(-2));
   const weekend = isWeekend(date);
-  const nonWorking = events.some((e) => NON_WORKING.includes(e.tipo));
+  const isToday = date === todayStr();
+  const maxVisible = 3;
+  const visible = events.slice(0, maxVisible);
+  const overflow = events.length - maxVisible;
 
   return (
     <button
       onClick={onClick}
-      className={`min-h-[52px] p-1.5 rounded-lg text-left transition-colors border ${
-        weekend
-          ? "bg-gray-50 border-gray-100 text-gray-300"
-          : nonWorking
-          ? "bg-red-50 border-red-100"
-          : "bg-white border-gray-100 hover:border-violet-200 hover:bg-violet-50/30"
+      className={`min-h-[90px] p-1.5 text-left transition-colors rounded-lg group ${
+        weekend ? "bg-gray-50/80" : "bg-white hover:bg-gray-50"
       }`}
     >
-      <span className={`text-xs font-bold block mb-1 ${weekend ? "text-gray-300" : nonWorking ? "text-red-400" : "text-gray-700"}`}>
+      {/* Day number */}
+      <span className={`inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded-full mb-1 ${
+        isToday
+          ? "bg-violet-600 text-white"
+          : weekend
+          ? "text-gray-300"
+          : "text-gray-700 group-hover:bg-gray-100"
+      }`}>
         {day}
       </span>
-      <div className="flex flex-wrap gap-0.5">
-        {events.map((e) => (
-          <EventDot key={e.id} tipo={e.tipo} />
+
+      {/* Event chips */}
+      <div className="space-y-0.5">
+        {visible.map((e) => (
+          <div
+            key={e.id}
+            className={`text-[9px] font-semibold px-1.5 py-0.5 rounded truncate leading-tight ${TIPOS[e.tipo]?.chip ?? "bg-gray-400 text-white"}`}
+            title={e.titulo || TIPOS[e.tipo]?.label}
+          >
+            {e.titulo ? e.titulo : TIPOS[e.tipo]?.label}
+          </div>
         ))}
+        {overflow > 0 && (
+          <div className="text-[9px] text-gray-400 font-semibold px-1">+{overflow} más</div>
+        )}
       </div>
     </button>
   );
 }
 
 // ── DayModal ───────────────────────────────────────────────────────────────
-function DayModal({
-  date,
-  centerId,
-  events,
-  onClose,
-  onRefresh,
-}: {
-  date: string;
-  centerId: number;
-  events: CalEvent[];
-  onClose: () => void;
-  onRefresh: () => void;
+function DayModal({ date, centerId, events, onClose, onRefresh }: {
+  date: string; centerId: number; events: CalEvent[]; onClose: () => void; onRefresh: () => void;
 }) {
-  const [tipo, setTipo] = useState<EventTipo>("FERIADO");
+  const [tipo, setTipo] = useState<EventTipo>("EVENTO");
   const [titulo, setTitulo] = useState("");
   const [hora, setHora] = useState("");
   const [saving, setSaving] = useState(false);
@@ -192,18 +183,19 @@ function DayModal({
           <button onClick={onClose} className="text-gray-400 hover:text-gray-700"><X className="w-5 h-5" /></button>
         </div>
 
-        <div className="px-5 py-4 space-y-3">
+        <div className="px-5 py-4 space-y-4 max-h-[70vh] overflow-y-auto">
           {/* existing events */}
           {events.length > 0 && (
             <div className="space-y-2">
               {events.map((e) => (
-                <div key={e.id} className={`flex items-center justify-between px-3 py-2 rounded-lg ${TIPOS[e.tipo].bg}`}>
-                  <div>
-                    <span className={`text-xs font-bold ${TIPOS[e.tipo].color}`}>{TIPOS[e.tipo].label}</span>
-                    {e.hora && <span className="text-xs text-gray-500 ml-2">{e.hora}</span>}
-                    {e.titulo && <span className="text-xs text-gray-600 ml-2">{e.titulo}</span>}
+                <div key={e.id} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl ${TIPOS[e.tipo]?.bg ?? "bg-gray-50"}`}>
+                  <div className={`w-2 h-full min-h-[20px] rounded-full ${TIPOS[e.tipo]?.solid ?? "bg-gray-400"} shrink-0`} />
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-xs font-bold ${TIPOS[e.tipo]?.color ?? "text-gray-700"}`}>{TIPOS[e.tipo]?.label}</p>
+                    {e.titulo && <p className="text-xs text-gray-700 truncate">{e.titulo}</p>}
+                    {e.hora && <p className="text-xs text-gray-400">{e.hora}</p>}
                   </div>
-                  <button onClick={() => handleDelete(e.id)} className="text-gray-300 hover:text-red-500 ml-2">
+                  <button onClick={() => handleDelete(e.id)} className="text-gray-300 hover:text-red-500 shrink-0">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -212,36 +204,37 @@ function DayModal({
           )}
 
           {/* add new */}
-          <div className="space-y-2 pt-1">
+          <div className="space-y-3">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Agregar evento</p>
             <div className="grid grid-cols-2 gap-1.5">
               {(Object.keys(TIPOS) as EventTipo[]).map((t) => (
                 <button
                   key={t}
                   onClick={() => setTipo(t)}
-                  className={`text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-colors ${
-                    tipo === t ? `${TIPOS[t].bg} ${TIPOS[t].color} border-transparent` : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
+                  className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border transition-all ${
+                    tipo === t
+                      ? `${TIPOS[t].bg} ${TIPOS[t].color} border-transparent ring-2 ring-offset-1 ring-current/30`
+                      : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
                   }`}
                 >
+                  <span className={`w-2 h-2 rounded-full ${TIPOS[t].dot} shrink-0`} />
                   {TIPOS[t].label}
                 </button>
               ))}
             </div>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Descripción (opcional)"
-                value={titulo}
-                onChange={(e) => setTitulo(e.target.value)}
-                className="text-sm flex-1"
-              />
-              <Input
-                type="time"
-                value={hora}
-                onChange={(e) => setHora(e.target.value)}
-                className="text-sm w-28"
-                title="Hora (opcional)"
-              />
-            </div>
+            <Input
+              placeholder="Descripción (opcional)"
+              value={titulo}
+              onChange={(e) => setTitulo(e.target.value)}
+              className="text-sm"
+            />
+            <Input
+              type="time"
+              value={hora}
+              onChange={(e) => setHora(e.target.value)}
+              className="text-sm"
+              title="Hora (opcional)"
+            />
             <Button onClick={handleAdd} disabled={saving} className="w-full" size="sm">
               {saving ? "Guardando..." : "Agregar"}
             </Button>
@@ -296,12 +289,11 @@ function StaffPanel({ centerId, workingDays }: { centerId: number; workingDays: 
 
   return (
     <div className="space-y-4">
-      {/* resumen días */}
       <div className="grid grid-cols-3 gap-2">
         {[
           { v: workingDays.totalWeekdays, l: "Días hábiles" },
-          { v: workingDays.nonWorkingDays, l: "Días no laborables", color: "text-red-600" },
-          { v: workingDays.workingDays, l: "Días a liquidar", color: "text-green-600" },
+          { v: workingDays.nonWorkingDays, l: "No laborables", color: "text-red-600" },
+          { v: workingDays.workingDays, l: "A liquidar", color: "text-green-600" },
         ].map(({ v, l, color }) => (
           <div key={l} className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
             <div className={`text-2xl font-bold ${color ?? "text-gray-900"}`}>{v}</div>
@@ -310,7 +302,6 @@ function StaffPanel({ centerId, workingDays }: { centerId: number; workingDays: 
         ))}
       </div>
 
-      {/* staff list */}
       <div className="space-y-2">
         {staff.map((s) => (
           <div key={s.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
@@ -357,7 +348,6 @@ function StaffPanel({ centerId, workingDays }: { centerId: number; workingDays: 
         ))}
       </div>
 
-      {/* add staff form */}
       <div className="bg-gray-50 rounded-xl p-4 space-y-2">
         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Agregar personal</p>
         <div className="grid grid-cols-2 gap-2">
@@ -396,15 +386,12 @@ function SuperCenterPicker({ value, onChange }: { value: number | null; onChange
 }
 
 // ── Main page ──────────────────────────────────────────────────────────────
-const DOW_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-
 export default function Calendario() {
   const { centerId, role } = useAuth();
   const qc = useQueryClient();
   const [month, setMonth] = useState(currentMonth);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [tab, setTab] = useState<"calendario" | "personal">("calendario");
-  // For superadmin (centerId=0), use a local centerId picker
   const [superCenterId, setSuperCenterId] = useState<number | null>(null);
   const isSuperAdmin = role === "superadmin";
   const effectiveCenterId = isSuperAdmin ? superCenterId : centerId;
@@ -446,8 +433,7 @@ export default function Calendario() {
   });
 
   const days = getDays(month);
-  // padding to start on Monday
-  const firstDow = dow(days[0]); // 0=sun
+  const firstDow = dow(days[0]);
   const padding = firstDow === 0 ? 6 : firstDow - 1;
 
   const eventsByDate: Record<string, CalEvent[]> = {};
@@ -456,15 +442,8 @@ export default function Calendario() {
     eventsByDate[e.fecha].push(e);
   });
 
-  function prevMonth() {
-    const d = new Date(y, m - 2, 1);
-    setMonth(d.toISOString().slice(0, 7));
-  }
-
-  function nextMonth() {
-    const d = new Date(y, m, 1);
-    setMonth(d.toISOString().slice(0, 7));
-  }
+  function prevMonth() { const d = new Date(y, m - 2, 1); setMonth(d.toISOString().slice(0, 7)); }
+  function nextMonth() { const d = new Date(y, m, 1); setMonth(d.toISOString().slice(0, 7)); }
 
   function refresh() {
     qc.invalidateQueries({ queryKey: ["cal-events", effectiveCenterId, month] });
@@ -501,7 +480,6 @@ export default function Calendario() {
       </div>
 
       <div className="px-4 py-5 max-w-2xl mx-auto">
-        {/* superadmin center picker */}
         {isSuperAdmin && <SuperCenterPicker value={superCenterId} onChange={setSuperCenterId} />}
 
         {tab === "calendario" && (
@@ -509,7 +487,7 @@ export default function Calendario() {
             {/* month nav */}
             <div className="flex items-center justify-between">
               <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"><ChevronLeft className="w-5 h-5" /></button>
-              <h2 className="font-bold text-gray-900">{MESES[m - 1]} {y}</h2>
+              <h2 className="font-bold text-gray-900 text-lg">{MESES[m - 1]} {y}</h2>
               <button onClick={nextMonth} className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"><ChevronRight className="w-5 h-5" /></button>
             </div>
 
@@ -529,41 +507,40 @@ export default function Calendario() {
               </button>
             )}
 
-            {/* add event CTA */}
+            {/* add event */}
             {canEdit ? (
               <button
-                onClick={() => setSelectedDate(new Date().toISOString().slice(0, 10))}
+                onClick={() => setSelectedDate(todayStr())}
                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-violet-200 text-violet-500 hover:border-violet-400 hover:bg-violet-50 transition-colors text-sm font-semibold"
               >
                 <Plus className="w-4 h-4" />
-                Agregar evento (feriado, supervisión, capacitación...)
+                Agregar evento
               </button>
-            ) : (
-              <p className="text-center text-sm text-gray-400 py-2">
-                {isSuperAdmin ? "Seleccioná un centro para agregar eventos" : ""}
-              </p>
-            )}
+            ) : isSuperAdmin ? (
+              <p className="text-center text-sm text-gray-400 py-2">Seleccioná un centro para agregar eventos</p>
+            ) : null}
 
             {/* legend */}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {(Object.keys(TIPOS) as EventTipo[]).map((t) => (
-                <span key={t} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${TIPOS[t].bg} ${TIPOS[t].color}`}>
+                <span key={t} className={`flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full ${TIPOS[t].bg} ${TIPOS[t].color}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${TIPOS[t].dot}`} />
                   {TIPOS[t].label}
                 </span>
               ))}
             </div>
 
             {/* calendar grid */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
               {/* day headers */}
-              <div className="grid grid-cols-7 mb-1">
-                {DOW_LABELS.map((d) => (
-                  <div key={d} className="text-center text-[10px] font-bold text-gray-400 py-1">{d}</div>
+              <div className="grid grid-cols-7 border-b border-gray-100">
+                {DOW_LABELS.map((d, i) => (
+                  <div key={d} className={`text-center text-[10px] font-bold py-2 ${i >= 5 ? "text-gray-300" : "text-gray-400"}`}>{d}</div>
                 ))}
               </div>
               {/* cells */}
-              <div className="grid grid-cols-7 gap-1">
-                {Array.from({ length: padding }).map((_, i) => <div key={`pad-${i}`} />)}
+              <div className="grid grid-cols-7 divide-x divide-y divide-gray-100">
+                {Array.from({ length: padding }).map((_, i) => <div key={`pad-${i}`} className="min-h-[90px] bg-gray-50/50" />)}
                 {days.map((date) => (
                   <DayCell
                     key={date}
@@ -598,19 +575,21 @@ export default function Calendario() {
 
             {/* events list */}
             {(eventsQ.data ?? []).length > 0 && (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Eventos del mes</p>
                 {(eventsQ.data ?? []).map((e) => {
                   const d = new Date(e.fecha + "T12:00:00");
+                  const tipo = TIPOS[e.tipo] ?? TIPOS.EVENTO;
                   return (
-                    <div key={e.id} className={`flex items-center gap-3 px-4 py-2.5 rounded-xl ${TIPOS[e.tipo].bg}`}>
-                      <div className="flex-1">
-                        <span className={`text-xs font-bold ${TIPOS[e.tipo].color}`}>{TIPOS[e.tipo].label}</span>
+                    <div key={e.id} className={`flex items-center gap-3 px-4 py-2.5 rounded-xl ${tipo.bg}`}>
+                      <div className={`w-1 self-stretch rounded-full ${tipo.solid}`} />
+                      <div className="flex-1 min-w-0">
+                        <span className={`text-xs font-bold ${tipo.color}`}>{tipo.label}</span>
                         <span className="text-xs text-gray-500 ml-2 capitalize">
                           {d.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}
                         </span>
                         {e.hora && <span className="text-xs text-gray-500 ml-2">· {e.hora}</span>}
-                        {e.titulo && <span className="text-xs text-gray-600 ml-1">· {e.titulo}</span>}
+                        {e.titulo && <p className="text-xs text-gray-700 truncate">{e.titulo}</p>}
                       </div>
                     </div>
                   );
@@ -637,7 +616,7 @@ export default function Calendario() {
           centerId={effectiveCenterId!}
           events={selectedEvents}
           onClose={() => setSelectedDate(null)}
-          onRefresh={() => { refresh(); }}
+          onRefresh={() => { refresh(); setSelectedDate(null); }}
         />
       )}
     </div>

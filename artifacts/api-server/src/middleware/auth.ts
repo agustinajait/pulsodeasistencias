@@ -48,3 +48,24 @@ export function requireCenterAccess(centerId: number) {
     }
   };
 }
+
+/**
+ * Resolves the effective centerId for a request:
+ * - superadmin: uses the client-supplied value (query or body)
+ * - center user with token: always uses the token's centerId, ignores client param
+ * - no token: uses the client-supplied value (backwards compat)
+ *
+ * Returns null if no centerId can be determined.
+ */
+export function resolveCenter(req: Request, paramValue?: string | number | null): number | null {
+  if (req.auth?.role === "superadmin") {
+    // superadmin can query any center
+    return paramValue != null ? Number(paramValue) : null;
+  }
+  if (req.auth?.centerId != null) {
+    // center token always wins — ignore whatever the client sent
+    return req.auth.centerId;
+  }
+  // no token: fall back to client param (legacy / backwards compat)
+  return paramValue != null ? Number(paramValue) : null;
+}

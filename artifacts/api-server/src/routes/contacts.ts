@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { db, contactsTable, childrenTable, roomsTable } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { CreateContactBody } from "@workspace/api-zod";
+import { resolveCenter } from "../middleware/auth.js";
 
 const router = Router();
 
@@ -12,9 +13,14 @@ router.get("/contacts", async (req, res) => {
       childId?: string;
       roomId?: string;
     };
+    const effectiveCenterId = resolveCenter(req, null);
 
+    const rooms = await db.select().from(roomsTable);
+    const roomMap: Record<number, number> = {};
+    rooms.forEach((r) => (roomMap[r.id] = r.ecoNumber));
+
+    // Determine which childIds to fetch, always scoped to the effective center
     let childIds: number[] = [];
-
     if (childId) {
       childIds = [parseInt(childId)];
     } else if (roomId) {
@@ -23,11 +29,14 @@ router.get("/contacts", async (req, res) => {
         .from(childrenTable)
         .where(eq(childrenTable.roomId, parseInt(roomId)));
       childIds = kids.map((k) => k.id);
+    } else if (effectiveCenterId) {
+      // scope to this center's rooms
+      const centerRoomIds = rooms.filter((r) => r.centerId === effectiveCenterId).map((r) => r.id);
+      if (centerRoomIds.length > 0) {
+        const kids = await db.select({ id: childrenTable.id }).from(childrenTable).where(inArray(childrenTable.roomId, centerRoomIds));
+        childIds = kids.map((k) => k.id);
+      }
     }
-
-    const rooms = await db.select().from(roomsTable);
-    const roomMap: Record<number, number> = {};
-    rooms.forEach((r) => (roomMap[r.id] = r.ecoNumber));
 
     const children = await db
       .select({ id: childrenTable.id, apellido: childrenTable.apellido, nombre: childrenTable.nombre, roomId: childrenTable.roomId })
@@ -42,21 +51,16 @@ router.get("/contacts", async (req, res) => {
 
     let contacts;
     if (childIds.length > 0) {
-      if (childIds.length === 1) {
-        contacts = await db
-          .select()
-          .from(contactsTable)
-          .where(eq(contactsTable.childId, childIds[0]))
-          .orderBy(desc(contactsTable.fecha));
-      } else {
-        contacts = await db
-          .select()
-          .from(contactsTable)
-          .where(and(...childIds.map((id) => eq(contactsTable.childId, id))))
-          .orderBy(desc(contactsTable.fecha));
-      }
-    } else {
+      contacts = await db
+        .select()
+        .from(contactsTable)
+        .where(childIds.length === 1 ? eq(contactsTable.childId, childIds[0]) : inArray(contactsTable.childId, childIds))
+        .orderBy(desc(contactsTable.fecha));
+    } else if (!effectiveCenterId) {
+      // only superadmin with no centerId filter gets everything
       contacts = await db.select().from(contactsTable).orderBy(desc(contactsTable.fecha));
+    } else {
+      contacts = [];
     }
 
     res.json(

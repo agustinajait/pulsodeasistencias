@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, roomsTable, childrenTable, attendanceTable, centersTable, pool } from "@workspace/db";
 import { eq, and, gte, inArray, count, isNull } from "drizzle-orm";
 import { randomBytes } from "crypto";
+import { resolveCenter } from "../middleware/auth.js";
 
 const router = Router();
 
@@ -23,22 +24,21 @@ function getWorkdaysBefore(dateStr: string, n: number): string[] {
 // GET /rooms
 router.get("/rooms", async (req, res) => {
   try {
-    const { centerId } = req.query as { centerId?: string };
+    const effectiveCenterId = resolveCenter(req, (req.query as any).centerId);
     // Use raw SQL to avoid failure if check_in_token column doesn't exist yet
     let rooms: any[];
     try {
-      if (centerId) {
-        const cid = parseInt(centerId);
-        rooms = await db.select().from(roomsTable).where(eq(roomsTable.centerId, cid)).orderBy(roomsTable.ecoNumber);
+      if (effectiveCenterId) {
+        rooms = await db.select().from(roomsTable).where(eq(roomsTable.centerId, effectiveCenterId)).orderBy(roomsTable.ecoNumber);
       } else {
         rooms = await db.select().from(roomsTable).orderBy(roomsTable.ecoNumber);
       }
     } catch {
       // Fallback: select without check_in_token column (not yet migrated)
-      const sql = centerId
+      const sql = effectiveCenterId
         ? `SELECT id, center_id AS "centerId", eco_number AS "ecoNumber", name, capacity FROM rooms WHERE center_id = $1 ORDER BY eco_number`
         : `SELECT id, center_id AS "centerId", eco_number AS "ecoNumber", name, capacity FROM rooms ORDER BY eco_number`;
-      const result = centerId ? await pool.query(sql, [parseInt(centerId)]) : await pool.query(sql);
+      const result = effectiveCenterId ? await pool.query(sql, [effectiveCenterId]) : await pool.query(sql);
       rooms = result.rows;
       return res.json(rooms);
     }
@@ -125,9 +125,9 @@ router.patch("/rooms/:roomId", async (req, res) => {
 router.get("/rooms/summary", async (req, res) => {
   try {
     const today = TODAY();
-    const { centerId } = req.query as { centerId?: string };
-    const rooms = centerId
-      ? await db.select().from(roomsTable).where(eq(roomsTable.centerId, parseInt(centerId))).orderBy(roomsTable.ecoNumber)
+    const effectiveCenterId = resolveCenter(req, (req.query as any).centerId);
+    const rooms = effectiveCenterId
+      ? await db.select().from(roomsTable).where(eq(roomsTable.centerId, effectiveCenterId)).orderBy(roomsTable.ecoNumber)
       : await db.select().from(roomsTable).orderBy(roomsTable.ecoNumber);
     const roomIds = rooms.map((r) => r.id);
     const allChildren = roomIds.length > 0

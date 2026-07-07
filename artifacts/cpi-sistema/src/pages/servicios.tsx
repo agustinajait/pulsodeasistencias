@@ -49,6 +49,9 @@ const SERVICE_TYPES: { value: ServiceType; label: string; emoji: string }[] = [
   { value: "SUPERVISION", label: "Supervisión", emoji: "🔍" },
   { value: "PANIALERA", label: "Pañalera", emoji: "🛒" },
   { value: "LIBRERIA", label: "Librería", emoji: "✏️" },
+  { value: "DESRATIZACION", label: "Desratización", emoji: "🐀" },
+  { value: "MANTENIMIENTO_DISPENSER", label: "Mantenimiento del dispenser", emoji: "🚰" },
+  { value: "MANTENIMIENTO_IMPRESORA", label: "Mantenimiento de impresora", emoji: "🖨️" },
 ];
 
 function typeInfo(type: string) {

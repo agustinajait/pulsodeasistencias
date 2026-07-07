@@ -1503,6 +1503,257 @@ function FollowupReportModal({
 }
 
 // ── Main ───────────────────────────────────────────────────────────────────
+// ── AttendanceReportModal ─────────────────────────────────────────────────
+function AttendanceReportModal({ centerId, centerName, logoBase64, onClose }: {
+  centerId: number;
+  centerName: string;
+  logoBase64?: string;
+  onClose: () => void;
+}) {
+  const [childSearch, setChildSearch] = useState("");
+  const [selectedChild, setSelectedChild] = useState<Child | null>(null);
+  const [lider, setLider] = useState("");
+  const [dirigidoA, setDirigidoA] = useState("");
+  const [month, setMonth] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
+
+  const childrenQ = useQuery<Child[]>({
+    queryKey: ["children-att-report", centerId],
+    queryFn: () => fetch(`${BASE}/children?centerId=${centerId}`).then(r => r.json()).then(d =>
+      (d.children ?? d ?? []).map((c: any) => ({
+        id: c.id, nombre: c.nombre, apellido: c.apellido,
+        ecoNumber: c.eco_number ?? c.ecoNumber,
+        dni: c.dni, fnac: c.fnac,
+      }))
+    ),
+    enabled: !!centerId,
+  });
+  const allChildren = childrenQ.data ?? [];
+  const filteredChildren = childSearch.trim()
+    ? allChildren.filter(c => `${c.nombre} ${c.apellido}`.toLowerCase().includes(childSearch.toLowerCase()))
+    : allChildren;
+
+  const attQ = useQuery({
+    queryKey: ["att-report-data", selectedChild?.id, month],
+    queryFn: async () => {
+      if (!selectedChild) return [];
+      const r = await fetch(`${BASE}/attendance?childId=${selectedChild.id}&month=${month}`);
+      return r.ok ? r.json() : [];
+    },
+    enabled: !!selectedChild,
+  });
+  const attRecords: any[] = attQ.data ?? [];
+
+  const [y, m] = month.split("-").map(Number);
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const workdays = Array.from({ length: daysInMonth }, (_, i) => {
+    const d = new Date(y, m - 1, i + 1);
+    return d.getDay() !== 0 && d.getDay() !== 6 ? i + 1 : null;
+  }).filter(Boolean) as number[];
+
+  const attMap: Record<string, string> = {};
+  attRecords.forEach((r: any) => {
+    const day = parseInt(r.fecha.split("-")[2]);
+    attMap[day] = r.estado;
+  });
+
+  const presente = workdays.filter(d => attMap[d] === "P").length;
+  const ausente = workdays.filter(d => attMap[d] === "A").length;
+  const sinMarcar = workdays.filter(d => !attMap[d]).length;
+  const pct = workdays.length > 0 ? Math.round((presente / workdays.length) * 100) : 0;
+
+  const monthLabel = new Date(y, m - 1, 1).toLocaleDateString("es-AR", { month: "long", year: "numeric" });
+
+  function printReport() {
+    if (!selectedChild) return;
+    const logoHtml = logoBase64 ? `<img src="${logoBase64}" style="height:52px;object-fit:contain" />` : `<div style="font-size:20px;font-weight:800;color:#1e1147">${centerName}</div>`;
+    const childName = `${selectedChild.apellido}, ${selectedChild.nombre}`;
+    const w = window.open("", "_blank")!;
+    w.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"/>
+    <title>Informe de Asistencia — ${childName}</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:Arial,sans-serif;color:#111;padding:32px 40px;font-size:13px}
+      .header{display:flex;align-items:center;gap:20px;border-bottom:2px solid #1e1147;padding-bottom:16px;margin-bottom:20px}
+      .header-text h1{font-size:18px;font-weight:800;color:#1e1147}
+      .header-text p{font-size:12px;color:#6b7280;margin-top:2px}
+      .meta{background:#f3f4f6;border-radius:8px;padding:14px 18px;margin-bottom:20px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+      .meta-item label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;display:block}
+      .meta-item span{font-size:13px;font-weight:600;color:#1e1147}
+      .resumen{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+      .stat{border:1px solid #e5e7eb;border-radius:8px;padding:12px;text-align:center}
+      .stat .num{font-size:28px;font-weight:800;color:#1e1147}
+      .stat .label{font-size:10px;color:#6b7280;margin-top:2px;font-weight:600;text-transform:uppercase}
+      .stat.green .num{color:#16a34a}
+      .stat.red .num{color:#dc2626}
+      .stat.pct .num{color:#7c3aed}
+      table{width:100%;border-collapse:collapse;margin-bottom:24px}
+      th{background:#1e1147;color:#fff;padding:8px 10px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase}
+      td{padding:7px 10px;border-bottom:1px solid #f3f4f6;font-size:12px}
+      tr:nth-child(even) td{background:#f9fafb}
+      .p{color:#16a34a;font-weight:700} .a{color:#dc2626;font-weight:700} .s{color:#9ca3af}
+      .firma-section{display:flex;gap:60px;margin-top:48px;padding-top:16px;border-top:1px solid #e5e7eb}
+      .firma{flex:1;text-align:center}
+      .firma-linea{border-top:1px solid #374151;margin-bottom:6px;margin-top:32px}
+      .firma-nombre{font-size:12px;font-weight:700;color:#1e1147}
+      .firma-rol{font-size:10px;color:#6b7280;margin-top:2px}
+      @media print{body{padding:20px 24px}@page{margin:12mm}}
+    </style></head><body>
+    <div class="header">
+      ${logoHtml}
+      <div class="header-text">
+        <h1>Informe de Asistencia Regular</h1>
+        <p>Período: ${monthLabel} &nbsp;·&nbsp; ${centerName}</p>
+      </div>
+    </div>
+    ${dirigidoA ? `<p style="margin-bottom:16px;font-size:13px"><strong>A quien corresponda:</strong> ${dirigidoA}</p>` : ""}
+    <div class="meta">
+      <div class="meta-item"><label>Niño/a</label><span>${childName}</span></div>
+      <div class="meta-item"><label>Sala ECO</label><span>${selectedChild.ecoNumber != null ? `ECO ${selectedChild.ecoNumber}` : "—"}</span></div>
+      <div class="meta-item"><label>Líder</label><span>${lider || "—"}</span></div>
+      <div class="meta-item"><label>Período</label><span>${monthLabel}</span></div>
+    </div>
+    <div class="resumen">
+      <div class="stat green"><div class="num">${presente}</div><div class="label">Presentes</div></div>
+      <div class="stat red"><div class="num">${ausente}</div><div class="label">Ausentes</div></div>
+      <div class="stat"><div class="num">${workdays.length}</div><div class="label">Días hábiles</div></div>
+      <div class="stat pct"><div class="num">${pct}%</div><div class="label">Asistencia</div></div>
+    </div>
+    <table>
+      <thead><tr><th>Día</th><th>Fecha</th><th>Estado</th></tr></thead>
+      <tbody>
+        ${workdays.map(d => {
+          const fecha = new Date(y, m - 1, d).toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
+          const est = attMap[d];
+          const label = est === "P" ? '<span class="p">Presente</span>' : est === "A" ? '<span class="a">Ausente</span>' : '<span class="s">Sin registrar</span>';
+          return `<tr><td>${d}</td><td style="text-transform:capitalize">${fecha}</td><td>${label}</td></tr>`;
+        }).join("")}
+      </tbody>
+    </table>
+    <div class="firma-section">
+      <div class="firma"><div class="firma-linea"></div><div class="firma-nombre">${lider || "Líder de sala"}</div><div class="firma-rol">Líder de sala</div></div>
+      <div class="firma"><div class="firma-linea"></div><div class="firma-nombre">Coordinación</div><div class="firma-rol">Coordinación del centro</div></div>
+    </div>
+    </body></html>`);
+    w.document.close();
+    setTimeout(() => w.print(), 500);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-white flex flex-col" style={{ height: "100dvh" }}>
+      {/* header */}
+      <div className="bg-[#1e1147] text-white px-5 pt-5 pb-4 shrink-0">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-white/50 text-[11px] font-semibold uppercase tracking-widest">Informes</div>
+            <h2 className="text-xl font-bold mt-0.5">Informe de Asistencia Regular</h2>
+          </div>
+          <button onClick={onClose} className="text-white/60 hover:text-white p-1"><X className="w-5 h-5" /></button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 py-5 max-w-lg mx-auto w-full space-y-5">
+
+        {/* Buscar niño */}
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Niño / Niña</label>
+          {selectedChild ? (
+            <div className="flex items-center gap-3 bg-violet-50 border border-violet-200 rounded-xl px-4 py-3">
+              <div className="flex-1">
+                <div className="font-bold text-sm text-[#1e1147]">{selectedChild.apellido}, {selectedChild.nombre}</div>
+                {selectedChild.ecoNumber != null && <div className="text-xs text-gray-400">ECO {selectedChild.ecoNumber}</div>}
+              </div>
+              <button onClick={() => { setSelectedChild(null); setChildSearch(""); }} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Input placeholder="Buscar por nombre o apellido..." value={childSearch} onChange={e => setChildSearch(e.target.value)} autoFocus />
+              {childSearch.trim() && (
+                <div className="border border-gray-200 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+                  {filteredChildren.slice(0, 20).map(c => (
+                    <button key={c.id} onClick={() => { setSelectedChild(c); setChildSearch(""); }}
+                      className="w-full text-left px-4 py-2.5 hover:bg-violet-50 border-b border-gray-100 last:border-0 text-sm">
+                      <span className="font-semibold">{c.apellido}, {c.nombre}</span>
+                      {c.ecoNumber != null && <span className="text-gray-400 ml-2 text-xs">ECO {c.ecoNumber}</span>}
+                    </button>
+                  ))}
+                  {filteredChildren.length === 0 && <div className="px-4 py-3 text-sm text-gray-400">Sin resultados</div>}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Período */}
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Período</label>
+          <input type="month" value={month} onChange={e => setMonth(e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+        </div>
+
+        {/* Líder */}
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Líder de sala</label>
+          <Input placeholder="Nombre de la líder..." value={lider} onChange={e => setLider(e.target.value)} />
+        </div>
+
+        {/* Dirigido a */}
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Dirigido a</label>
+          <Input placeholder="Ej: Dirección del centro, familia..." value={dirigidoA} onChange={e => setDirigidoA(e.target.value)} />
+        </div>
+
+        {/* Preview resumen */}
+        {selectedChild && (
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+            <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">Resumen del período</div>
+            {attQ.isPending ? (
+              <div className="text-sm text-gray-400">Cargando datos...</div>
+            ) : (
+              <>
+                <div className="grid grid-cols-4 gap-2 text-center">
+                  <div className="bg-white rounded-lg p-3 border border-gray-100">
+                    <div className="text-2xl font-bold text-green-600">{presente}</div>
+                    <div className="text-[10px] text-gray-400 font-semibold uppercase mt-0.5">Presentes</div>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 border border-gray-100">
+                    <div className="text-2xl font-bold text-red-500">{ausente}</div>
+                    <div className="text-[10px] text-gray-400 font-semibold uppercase mt-0.5">Ausentes</div>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 border border-gray-100">
+                    <div className="text-2xl font-bold text-gray-600">{workdays.length}</div>
+                    <div className="text-[10px] text-gray-400 font-semibold uppercase mt-0.5">Días hábiles</div>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 border border-gray-100">
+                    <div className="text-2xl font-bold text-violet-600">{pct}%</div>
+                    <div className="text-[10px] text-gray-400 font-semibold uppercase mt-0.5">Asistencia</div>
+                  </div>
+                </div>
+                <div className="text-xs text-gray-400">{monthLabel} · {selectedChild.apellido}, {selectedChild.nombre}</div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* footer */}
+      <div className="border-t border-gray-100 px-5 py-4 shrink-0 flex gap-3">
+        <Button variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
+        <Button
+          className="flex-1 bg-[#1e1147] hover:bg-[#2d1b6e] gap-2"
+          onClick={printReport}
+          disabled={!selectedChild || !lider.trim()}
+        >
+          <Printer className="w-4 h-4" />
+          Generar PDF
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function Informes() {
   const { centerId, role, centerName } = useAuth();
   const qc = useQueryClient();
@@ -1514,7 +1765,8 @@ export default function Informes() {
   const periods = (profileQ.data?.reportPeriods?.length ? profileQ.data.reportPeriods : null) ?? PERIODS;
 
   const urlParams = new URLSearchParams(window.location.search);
-  const [tab, setTab] = useState<"desarrollo" | "seguimiento">(urlParams.get("tab") === "seguimiento" ? "seguimiento" : "desarrollo");
+  const [tab, setTab] = useState<"desarrollo" | "seguimiento" | "asistencia">(urlParams.get("tab") === "seguimiento" ? "seguimiento" : "desarrollo");
+  const [showAsistencia, setShowAsistencia] = useState(false);
   const urlChildId = urlParams.get("childId") ? Number(urlParams.get("childId")) : null;
   const [search, setSearch] = useState("");
   const [filterEco, setFilterEco] = useState<string>(ecoNumber != null ? String(ecoNumber) : "");
@@ -1595,9 +1847,9 @@ export default function Informes() {
       <div className="bg-[#1e1147] text-white px-5 pt-6 pb-4 lg:pt-8">
         <div className="text-white/50 text-[11px] font-semibold uppercase tracking-widest">Informes</div>
         <div className="flex items-end justify-between mt-1 mb-4">
-          <h1 className="text-2xl font-bold">{tab === "desarrollo" ? "Desarrollo" : "Seguimiento"}</h1>
+          <h1 className="text-2xl font-bold">{tab === "desarrollo" ? "Desarrollo" : tab === "seguimiento" ? "Seguimiento" : "Asistencia"}</h1>
           <button
-            onClick={() => tab === "desarrollo" ? setShowNew(true) : setShowNewFollowup(true)}
+            onClick={() => tab === "desarrollo" ? setShowNew(true) : tab === "seguimiento" ? setShowNewFollowup(true) : setShowAsistencia(true)}
             className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 text-white text-sm font-semibold px-3 py-1.5 rounded-xl transition-colors"
           >
             <Plus className="w-4 h-4" />Nuevo
@@ -1616,6 +1868,12 @@ export default function Informes() {
             className={`flex-1 text-sm font-semibold py-1.5 rounded-lg transition-colors ${tab === "seguimiento" ? "bg-white text-[#1e1147]" : "text-white/70 hover:text-white"}`}
           >
             Seguimiento
+          </button>
+          <button
+            onClick={() => setTab("asistencia")}
+            className={`flex-1 text-sm font-semibold py-1.5 rounded-lg transition-colors ${tab === "asistencia" ? "bg-white text-[#1e1147]" : "text-white/70 hover:text-white"}`}
+          >
+            Asistencia
           </button>
         </div>
       </div>
@@ -1762,6 +2020,21 @@ export default function Informes() {
         </>)}
 
         {/* ── SEGUIMIENTO TAB ── */}
+        {tab === "asistencia" && (
+          <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-violet-100 flex items-center justify-center">
+              <FileText className="w-8 h-8 text-violet-600" />
+            </div>
+            <div>
+              <div className="font-bold text-gray-900 text-lg">Informe de Asistencia Regular</div>
+              <div className="text-sm text-gray-400 mt-1 max-w-xs">Elegí un niño, el período y la líder para generar el informe con la plantilla prearmada.</div>
+            </div>
+            <Button className="bg-[#1e1147] hover:bg-[#2d1b6e] gap-2" onClick={() => setShowAsistencia(true)}>
+              <Plus className="w-4 h-4" />Generar informe
+            </Button>
+          </div>
+        )}
+
         {tab === "seguimiento" && (
           <>
             <div className="relative">
@@ -1815,6 +2088,14 @@ export default function Informes() {
           onClose={() => setShowNew(false)}
           onSaved={() => qc.invalidateQueries({ queryKey: ["all-reports"] })}
           logoBase64={logoBase64}
+        />
+      )}
+      {showAsistencia && centerId && (
+        <AttendanceReportModal
+          centerId={centerId}
+          centerName={centerName ?? ""}
+          logoBase64={logoBase64}
+          onClose={() => setShowAsistencia(false)}
         />
       )}
       {(showNewFollowup || selectedFollowup) && centerId && (

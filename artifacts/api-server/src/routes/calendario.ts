@@ -35,10 +35,9 @@ async function ensureTables() {
 
 type SeedEvent = { fecha: string; tipo: string; titulo: string };
 
-// Feriados nacionales 2026 Argentina + CAIPLI institutional events
+// Calendario académico CAIPLI 2026
 const SEED_EVENTS_2026: SeedEvent[] = [
   // ── Feriados nacionales ──────────────────────────────────────────────────
-  { fecha: "2026-01-01", tipo: "FERIADO", titulo: "Año Nuevo" },
   { fecha: "2026-02-16", tipo: "FERIADO", titulo: "Carnaval" },
   { fecha: "2026-02-17", tipo: "FERIADO", titulo: "Carnaval" },
   { fecha: "2026-03-24", tipo: "FERIADO", titulo: "Día de la Memoria" },
@@ -50,38 +49,75 @@ const SEED_EVENTS_2026: SeedEvent[] = [
   { fecha: "2026-06-20", tipo: "FERIADO", titulo: "Día de la Bandera" },
   { fecha: "2026-07-09", tipo: "FERIADO", titulo: "Día de la Independencia" },
   { fecha: "2026-08-17", tipo: "FERIADO", titulo: "Paso a la Inmortalidad del Gral. San Martín" },
+  { fecha: "2026-09-11", tipo: "FERIADO", titulo: "Día del Maestro" },
   { fecha: "2026-10-12", tipo: "FERIADO", titulo: "Día del Respeto a la Diversidad Cultural" },
   { fecha: "2026-11-20", tipo: "FERIADO", titulo: "Día de la Soberanía Nacional" },
   { fecha: "2026-12-08", tipo: "FERIADO", titulo: "Inmaculada Concepción de María" },
   { fecha: "2026-12-25", tipo: "FERIADO", titulo: "Navidad" },
-  // ── Período de adaptación ────────────────────────────────────────────────
-  { fecha: "2026-02-09", tipo: "CAPACITACION", titulo: "Reunión informativa con familias" },
-  { fecha: "2026-02-10", tipo: "CAPACITACION", titulo: "Reunión informativa con familias" },
-  { fecha: "2026-02-19", tipo: "CAPACITACION", titulo: "Reunión informativa con familias (Grupo 1)" },
-  { fecha: "2026-02-20", tipo: "CAPACITACION", titulo: "Reunión informativa con familias (Grupo 2)" },
-  { fecha: "2026-02-23", tipo: "CAPACITACION", titulo: "Período de adaptación" },
-  { fecha: "2026-02-24", tipo: "CAPACITACION", titulo: "Período de adaptación" },
-  { fecha: "2026-02-25", tipo: "CAPACITACION", titulo: "Período de adaptación" },
-  { fecha: "2026-02-26", tipo: "CAPACITACION", titulo: "Período de adaptación" },
-  { fecha: "2026-02-27", tipo: "CAPACITACION", titulo: "Período de adaptación" },
-  // ── Diagnósticos ─────────────────────────────────────────────────────────
-  { fecha: "2026-03-02", tipo: "CAPACITACION", titulo: "Diagnóstico Social, Pedagógico y Nutricional" },
-  { fecha: "2026-03-03", tipo: "CAPACITACION", titulo: "Diagnóstico Social, Pedagógico y Nutricional" },
-  { fecha: "2026-03-04", tipo: "CAPACITACION", titulo: "Diagnóstico Social, Pedagógico y Nutricional" },
-  { fecha: "2026-03-05", tipo: "CAPACITACION", titulo: "Diagnóstico Social, Pedagógico y Nutricional" },
-  { fecha: "2026-03-06", tipo: "CAPACITACION", titulo: "Diagnóstico Social, Pedagógico y Nutricional" },
-  // ── Rabbit Week ──────────────────────────────────────────────────────────
-  { fecha: "2026-03-30", tipo: "SUPERVISION", titulo: "Rabbit Week" },
-  { fecha: "2026-03-31", tipo: "SUPERVISION", titulo: "Rabbit Week" },
-  // ── Día de los jardines ──────────────────────────────────────────────────
+
+  // ── ENERO: Convocatoria y certificación ──────────────────────────────────
+  { fecha: "2026-01-12", tipo: "CAPACITACION", titulo: "Convocatoria Concurso Emprendedor" },
+  { fecha: "2026-01-13", tipo: "CAPACITACION", titulo: "Convocatoria Concurso Emprendedor" },
+  { fecha: "2026-01-14", tipo: "CAPACITACION", titulo: "Convocatoria Concurso Emprendedor" },
+  { fecha: "2026-01-15", tipo: "CAPACITACION", titulo: "Convocatoria Concurso Emprendedor" },
+  { fecha: "2026-01-16", tipo: "CAPACITACION", titulo: "Convocatoria Concurso Emprendedor" },
+  { fecha: "2026-01-26", tipo: "SUPERVISION", titulo: "Certificación de Vacantes" },
+  { fecha: "2026-01-27", tipo: "SUPERVISION", titulo: "Certificación de Vacantes" },
+  { fecha: "2026-01-28", tipo: "SUPERVISION", titulo: "Certificación de Vacantes" },
+  { fecha: "2026-01-29", tipo: "SUPERVISION", titulo: "Certificación de Vacantes" },
+  { fecha: "2026-01-30", tipo: "SUPERVISION", titulo: "Certificación de Vacantes" },
+
+  // ── FEBRERO: Capacitación, adaptación, receso, diagnóstico social ────────
+  { fecha: "2026-02-02", tipo: "CAPACITACION", titulo: "Capacitación Concurso Emprendedor" },
+  { fecha: "2026-02-03", tipo: "CAPACITACION", titulo: "Capacitación Concurso Emprendedor" },
+  { fecha: "2026-02-04", tipo: "CAPACITACION", titulo: "Capacitación Concurso Emprendedor" },
+  { fecha: "2026-02-05", tipo: "CAPACITACION", titulo: "Capacitación Concurso Emprendedor" },
+  { fecha: "2026-02-06", tipo: "CAPACITACION", titulo: "Capacitación Concurso Emprendedor" },
+  { fecha: "2026-02-09", tipo: "CAPACITACION", titulo: "Período de adaptación" },
+  { fecha: "2026-02-10", tipo: "CAPACITACION", titulo: "Período de adaptación" },
+  { fecha: "2026-02-11", tipo: "CAPACITACION", titulo: "Período de adaptación" },
+  { fecha: "2026-02-12", tipo: "CAPACITACION", titulo: "Período de adaptación" },
+  { fecha: "2026-02-13", tipo: "CAPACITACION", titulo: "Período de adaptación" },
+  // Feb 16-17 = Carnaval (feriados)
+  { fecha: "2026-02-18", tipo: "VACACIONES", titulo: "Período de receso" },
+  { fecha: "2026-02-19", tipo: "SUPERVISION", titulo: "Reunión informativa con familias — Presentación formato CAIPLI" },
+  { fecha: "2026-02-20", tipo: "SUPERVISION", titulo: "Reunión informativa con familias — Presentación formato CAIPLI" },
+  { fecha: "2026-02-23", tipo: "CAPACITACION", titulo: "Diagnóstico Social" },
+  { fecha: "2026-02-24", tipo: "CAPACITACION", titulo: "Diagnóstico Social" },
+  { fecha: "2026-02-25", tipo: "CAPACITACION", titulo: "Diagnóstico Social" },
+  { fecha: "2026-02-26", tipo: "CAPACITACION", titulo: "Diagnóstico Social" },
+  { fecha: "2026-02-27", tipo: "CAPACITACION", titulo: "Diagnóstico Social" },
+
+  // ── MARZO: Diagnósticos y Rabbit Week ───────────────────────────────────
+  // Mar 24 = Día de la Memoria (feriado)
+  { fecha: "2026-03-02", tipo: "CAPACITACION", titulo: "Diagnóstico Pedagógico" },
+  { fecha: "2026-03-03", tipo: "CAPACITACION", titulo: "Diagnóstico Pedagógico" },
+  { fecha: "2026-03-04", tipo: "CAPACITACION", titulo: "Diagnóstico Pedagógico" },
+  { fecha: "2026-03-05", tipo: "CAPACITACION", titulo: "Diagnóstico Pedagógico" },
+  { fecha: "2026-03-06", tipo: "CAPACITACION", titulo: "Diagnóstico Pedagógico" },
+  { fecha: "2026-03-09", tipo: "CAPACITACION", titulo: "Diagnóstico Nutricional" },
+  { fecha: "2026-03-10", tipo: "CAPACITACION", titulo: "Diagnóstico Nutricional" },
+  { fecha: "2026-03-11", tipo: "CAPACITACION", titulo: "Diagnóstico Nutricional" },
+  { fecha: "2026-03-12", tipo: "CAPACITACION", titulo: "Diagnóstico Nutricional" },
+  { fecha: "2026-03-13", tipo: "CAPACITACION", titulo: "Diagnóstico Nutricional" },
+  { fecha: "2026-03-23", tipo: "SUPERVISION", titulo: "Rabbit Week" },
+  // Mar 24 = feriado, se saltea
+  { fecha: "2026-03-25", tipo: "SUPERVISION", titulo: "Rabbit Week" },
+  { fecha: "2026-03-26", tipo: "SUPERVISION", titulo: "Rabbit Week" },
+  { fecha: "2026-03-27", tipo: "SUPERVISION", titulo: "Rabbit Week" },
+
+  // ── MAYO: Día de los jardines ────────────────────────────────────────────
+  // May 1 y 25 = feriados
   { fecha: "2026-05-28", tipo: "SUPERVISION", titulo: "Día de los Jardines de Infantes" },
   { fecha: "2026-05-29", tipo: "SUPERVISION", titulo: "Festejo Día de los Jardines (media jornada)" },
-  // ── Receso invernal / CAIPLI TOUR ────────────────────────────────────────
+
+  // ── JULIO: CAIPLI TOUR y receso invernal ─────────────────────────────────
+  // Jul 9 = feriado
   { fecha: "2026-07-13", tipo: "SUPERVISION", titulo: "CAIPLI TOUR" },
   { fecha: "2026-07-14", tipo: "SUPERVISION", titulo: "CAIPLI TOUR" },
   { fecha: "2026-07-15", tipo: "SUPERVISION", titulo: "CAIPLI TOUR" },
   { fecha: "2026-07-16", tipo: "SUPERVISION", titulo: "CAIPLI TOUR" },
-  { fecha: "2026-07-17", tipo: "SUPERVISION", titulo: "Reunión entrega de informes / CAIPLI TOUR" },
+  { fecha: "2026-07-17", tipo: "SUPERVISION", titulo: "CAIPLI TOUR — Reunión entrega de informes" },
   { fecha: "2026-07-20", tipo: "VACACIONES", titulo: "Receso invernal" },
   { fecha: "2026-07-21", tipo: "VACACIONES", titulo: "Receso invernal" },
   { fecha: "2026-07-22", tipo: "VACACIONES", titulo: "Receso invernal" },
@@ -92,38 +128,46 @@ const SEED_EVENTS_2026: SeedEvent[] = [
   { fecha: "2026-07-29", tipo: "VACACIONES", titulo: "Receso invernal" },
   { fecha: "2026-07-30", tipo: "VACACIONES", titulo: "Receso invernal" },
   { fecha: "2026-07-31", tipo: "VACACIONES", titulo: "Receso invernal" },
-  // ── Semana de la niñez ───────────────────────────────────────────────────
+
+  // ── AGOSTO: Semana de la niñez ───────────────────────────────────────────
+  // Aug 17 = feriado
   { fecha: "2026-08-10", tipo: "SUPERVISION", titulo: "Semana de la Niñez" },
   { fecha: "2026-08-11", tipo: "SUPERVISION", titulo: "Semana de la Niñez" },
   { fecha: "2026-08-12", tipo: "SUPERVISION", titulo: "Semana de la Niñez" },
   { fecha: "2026-08-13", tipo: "SUPERVISION", titulo: "Semana de la Niñez" },
   { fecha: "2026-08-14", tipo: "SUPERVISION", titulo: "Semana de la Niñez" },
-  // ── Día del maestro ──────────────────────────────────────────────────────
-  { fecha: "2026-09-11", tipo: "FERIADO", titulo: "Día del Maestro" },
-  // ── Sport Week ───────────────────────────────────────────────────────────
+
+  // ── SEPTIEMBRE: Sport Week ───────────────────────────────────────────────
+  // Sep 11 = Día del Maestro (feriado)
   { fecha: "2026-09-07", tipo: "SUPERVISION", titulo: "Sport Week" },
   { fecha: "2026-09-08", tipo: "SUPERVISION", titulo: "Sport Week" },
   { fecha: "2026-09-09", tipo: "SUPERVISION", titulo: "Sport Week" },
   { fecha: "2026-09-10", tipo: "SUPERVISION", titulo: "Sport Week" },
-  // ── Semana de lectura ────────────────────────────────────────────────────
+
+  // ── OCTUBRE: Semana de Lectura ───────────────────────────────────────────
+  // Oct 12 = feriado
   { fecha: "2026-10-19", tipo: "SUPERVISION", titulo: "Semana de Lectura" },
   { fecha: "2026-10-20", tipo: "SUPERVISION", titulo: "Semana de Lectura" },
   { fecha: "2026-10-21", tipo: "SUPERVISION", titulo: "Semana de Lectura" },
   { fecha: "2026-10-22", tipo: "SUPERVISION", titulo: "Semana de Lectura" },
   { fecha: "2026-10-23", tipo: "SUPERVISION", titulo: "Semana de Lectura" },
-  // ── Reuniones entrega informes (noviembre) ───────────────────────────────
+
+  // ── NOVIEMBRE: Reuniones con familias / entrega de informes ──────────────
+  // Nov 20 = feriado
   { fecha: "2026-11-23", tipo: "SUPERVISION", titulo: "Reunión con familias — Entrega de informes" },
   { fecha: "2026-11-24", tipo: "SUPERVISION", titulo: "Reunión con familias — Entrega de informes" },
   { fecha: "2026-11-25", tipo: "SUPERVISION", titulo: "Reunión con familias — Entrega de informes" },
   { fecha: "2026-11-26", tipo: "SUPERVISION", titulo: "Reunión con familias — Entrega de informes" },
   { fecha: "2026-11-27", tipo: "SUPERVISION", titulo: "Reunión con familias — Entrega de informes" },
-  // ── Egresos y CAIPLIADAS ─────────────────────────────────────────────────
+
+  // ── DICIEMBRE: Egresos y CAIPLIADAS ─────────────────────────────────────
+  // Dec 8 = feriado, Dec 25 = Navidad
   { fecha: "2026-12-01", tipo: "SUPERVISION", titulo: "EGRESOS" },
   { fecha: "2026-12-02", tipo: "SUPERVISION", titulo: "EGRESOS" },
   { fecha: "2026-12-03", tipo: "SUPERVISION", titulo: "EGRESOS" },
   { fecha: "2026-12-04", tipo: "SUPERVISION", titulo: "EGRESOS" },
   { fecha: "2026-12-07", tipo: "SUPERVISION", titulo: "CAIPLIADAS" },
-  { fecha: "2026-12-08", tipo: "SUPERVISION", titulo: "CAIPLIADAS" },
+  // Dec 8 = feriado (Inmaculada), se saltea
   { fecha: "2026-12-09", tipo: "SUPERVISION", titulo: "CAIPLIADAS" },
   { fecha: "2026-12-10", tipo: "SUPERVISION", titulo: "CAIPLIADAS" },
   { fecha: "2026-12-11", tipo: "SUPERVISION", titulo: "CAIPLIADAS" },

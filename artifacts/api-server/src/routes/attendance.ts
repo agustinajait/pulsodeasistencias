@@ -17,14 +17,32 @@ router.get("/attendance", async (req, res) => {
     };
 
     // Enforce center isolation when a token is present
-    if (req.auth && req.auth.role !== "superadmin" && req.auth.centerId != null && roomId) {
-      const [room] = await db
-        .select({ centerId: roomsTable.centerId })
-        .from(roomsTable)
-        .where(eq(roomsTable.id, parseInt(roomId)));
-      if (!room || room.centerId !== req.auth.centerId) {
-        res.status(403).json({ error: "Forbidden" });
-        return;
+    // Enforce center isolation
+    if (req.auth && req.auth.role !== "superadmin" && req.auth.centerId != null) {
+      if (roomId) {
+        const [room] = await db
+          .select({ centerId: roomsTable.centerId })
+          .from(roomsTable)
+          .where(eq(roomsTable.id, parseInt(roomId)));
+        if (!room || room.centerId !== req.auth.centerId) {
+          res.status(403).json({ error: "Forbidden" });
+          return;
+        }
+      } else if (childId) {
+        const [child] = await db
+          .select({ roomId: childrenTable.roomId })
+          .from(childrenTable)
+          .where(eq(childrenTable.id, parseInt(childId)));
+        if (child) {
+          const [room] = await db
+            .select({ centerId: roomsTable.centerId })
+            .from(roomsTable)
+            .where(eq(roomsTable.id, child.roomId));
+          if (!room || room.centerId !== req.auth.centerId) {
+            res.status(403).json({ error: "Forbidden" });
+            return;
+          }
+        }
       }
     }
 

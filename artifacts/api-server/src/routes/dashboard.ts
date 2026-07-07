@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db, childrenTable, attendanceTable, contactsTable, roomsTable } from "@workspace/db";
 import { eq, desc, gte, and, inArray, ne } from "drizzle-orm";
+import { resolveCenter } from "../middleware/auth.js";
 
 const router = Router();
 
@@ -24,10 +25,10 @@ router.get("/dashboard/summary", async (req, res) => {
   try {
     const today = TODAY();
     const currentMonth = today.slice(0, 7); // YYYY-MM
-    const { centerId } = req.query as { centerId?: string };
+    const effectiveCenterId = resolveCenter(req, (req.query as any).centerId);
 
     const allRooms = await db.select().from(roomsTable);
-    const rooms = centerId ? allRooms.filter((r) => r.centerId === parseInt(centerId)) : allRooms;
+    const rooms = effectiveCenterId ? allRooms.filter((r) => r.centerId === effectiveCenterId) : allRooms;
     const roomIds = rooms.map((r) => r.id);
     const totalCapacity = rooms.reduce((s, r) => s + r.capacity, 0);
 
@@ -164,13 +165,13 @@ router.get("/dashboard/summary-by-center", async (req, res) => {
 router.get("/dashboard/alerts", async (req, res) => {
   try {
     const today = TODAY();
-    const { centerId } = req.query as { centerId?: string };
+    const effectiveCenterId = resolveCenter(req, (req.query as any).centerId);
     const past14 = getWorkdaysBefore(today, 14);
     const cutoff = past14[past14.length - 1];
     const allDays = [today, ...past14];
 
     const allRooms = await db.select().from(roomsTable);
-    const rooms = centerId ? allRooms.filter((r) => r.centerId === parseInt(centerId)) : allRooms;
+    const rooms = effectiveCenterId ? allRooms.filter((r) => r.centerId === effectiveCenterId) : allRooms;
     const roomIds = rooms.map((r) => r.id);
 
     const active = roomIds.length > 0
@@ -235,9 +236,9 @@ router.get("/dashboard/alerts", async (req, res) => {
 // GET /dashboard/monthly-trend — last 6 months avg attendance %
 router.get("/dashboard/monthly-trend", async (req, res) => {
   try {
-    const { centerId } = req.query as { centerId?: string };
+    const effectiveCenterId = resolveCenter(req, (req.query as any).centerId);
     const allRooms = await db.select().from(roomsTable);
-    const rooms = centerId ? allRooms.filter((r) => r.centerId === parseInt(centerId)) : allRooms;
+    const rooms = effectiveCenterId ? allRooms.filter((r) => r.centerId === effectiveCenterId) : allRooms;
     const roomIds = rooms.map((r) => r.id);
 
     // build last 6 months YYYY-MM

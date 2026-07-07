@@ -3,6 +3,7 @@ import { db, pool, childrenTable, roomsTable, attendanceTable, contactsTable, ch
 import { randomBytes } from "crypto";
 import { eq, and, ilike, or, sql, desc, inArray, ne } from "drizzle-orm";
 import { CreateChildBody, UpdateChildBody, DischargeChildBody } from "@workspace/api-zod";
+import { resolveCenter } from "../middleware/auth.js";
 
 const router = Router();
 
@@ -48,12 +49,12 @@ function calcConsecAbsences(
 // GET /children/birthdays-today?centerId=X
 router.get("/children/birthdays-today", async (req, res) => {
   try {
-    const { centerId } = req.query as { centerId?: string };
+    const effectiveCenterId = resolveCenter(req, (req.query as any).centerId);
     const today = TODAY(); // YYYY-MM-DD
     const mmdd = today.slice(5); // MM-DD
     let roomIds: number[] = [];
-    if (centerId && !isNaN(parseInt(centerId))) {
-      const rooms = await db.select().from(roomsTable).where(eq(roomsTable.centerId, parseInt(centerId)));
+    if (effectiveCenterId) {
+      const rooms = await db.select().from(roomsTable).where(eq(roomsTable.centerId, effectiveCenterId));
       roomIds = rooms.map((r) => r.id);
     }
     if (roomIds.length === 0) { res.json([]); return; }
@@ -130,13 +131,13 @@ router.get("/children/duplicates", async (req, res) => {
 // GET /children
 router.get("/children", async (req, res) => {
   try {
-    const { roomId, centerId, active, search, includeSpecial } = req.query as {
+    const { roomId, active, search, includeSpecial } = req.query as {
       roomId?: string;
-      centerId?: string;
       active?: string;
       search?: string;
       includeSpecial?: string;
     };
+    const effectiveCenterId = resolveCenter(req, (req.query as any).centerId);
 
     const rooms = await db.select().from(roomsTable);
     const roomMap: Record<number, number> = {};
@@ -146,9 +147,17 @@ router.get("/children", async (req, res) => {
     const conditions = [];
 
     if (roomId) {
+      // If token present, verify the room belongs to their center
+      if (req.auth?.role !== "superadmin" && req.auth?.centerId != null) {
+        const room = rooms.find((r) => r.id === parseInt(roomId));
+        if (!room || room.centerId !== req.auth!.centerId) {
+          res.status(403).json({ error: "Forbidden" });
+          return;
+        }
+      }
       conditions.push(eq(childrenTable.roomId, parseInt(roomId)));
-    } else if (centerId) {
-      const centerRoomIds = rooms.filter((r) => r.centerId === parseInt(centerId)).map((r) => r.id);
+    } else if (effectiveCenterId) {
+      const centerRoomIds = rooms.filter((r) => r.centerId === effectiveCenterId).map((r) => r.id);
       if (centerRoomIds.length > 0) {
           conditions.push(inArray(childrenTable.roomId, centerRoomIds));
       } else {

@@ -113,11 +113,11 @@ const SEED_EVENTS_2026: SeedEvent[] = [
 
   // ── JULIO: CAIPLI TOUR y receso invernal ─────────────────────────────────
   // Jul 9 = feriado
-  { fecha: "2026-07-13", tipo: "SUPERVISION", titulo: "CAIPLI TOUR" },
-  { fecha: "2026-07-14", tipo: "SUPERVISION", titulo: "CAIPLI TOUR" },
-  { fecha: "2026-07-15", tipo: "SUPERVISION", titulo: "CAIPLI TOUR" },
-  { fecha: "2026-07-16", tipo: "SUPERVISION", titulo: "CAIPLI TOUR" },
-  { fecha: "2026-07-17", tipo: "SUPERVISION", titulo: "CAIPLI TOUR — Reunión entrega de informes" },
+  { fecha: "2026-07-13", tipo: "EVENTO", titulo: "CAIPLI TOUR" },
+  { fecha: "2026-07-14", tipo: "EVENTO", titulo: "CAIPLI TOUR" },
+  { fecha: "2026-07-15", tipo: "EVENTO", titulo: "CAIPLI TOUR" },
+  { fecha: "2026-07-16", tipo: "EVENTO", titulo: "CAIPLI TOUR" },
+  { fecha: "2026-07-17", tipo: "EVENTO", titulo: "CAIPLI TOUR — Reunión entrega de informes" },
   { fecha: "2026-07-20", tipo: "VACACIONES", titulo: "Receso invernal" },
   { fecha: "2026-07-21", tipo: "VACACIONES", titulo: "Receso invernal" },
   { fecha: "2026-07-22", tipo: "VACACIONES", titulo: "Receso invernal" },

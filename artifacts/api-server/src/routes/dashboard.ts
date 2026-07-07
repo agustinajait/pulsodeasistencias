@@ -39,10 +39,14 @@ router.get("/dashboard/summary", async (req, res) => {
     const active = allChildren.filter((c) => c.activo && c.estado !== "EN REVISION");
     const discharged = allChildren.filter((c) => !c.activo);
 
-    const todayAtt = await db
-      .select()
-      .from(attendanceTable)
-      .where(eq(attendanceTable.fecha, today));
+    const activeIds = active.map((c) => c.id);
+
+    const todayAtt = activeIds.length > 0
+      ? await db
+          .select()
+          .from(attendanceTable)
+          .where(and(eq(attendanceTable.fecha, today), inArray(attendanceTable.childId, activeIds)))
+      : [];
 
     const present = todayAtt.filter((a) => a.estado === "P").length;
     const absent = todayAtt.filter((a) => a.estado === "A").length;
@@ -54,8 +58,7 @@ router.get("/dashboard/summary", async (req, res) => {
     const allDays = [today, ...past14];
 
     let recentAtt: Array<{ childId: number; fecha: string; estado: string | null; mercaderia: boolean | null }> = [];
-    if (active.length > 0) {
-      const activeIds = active.map((k) => k.id);
+    if (activeIds.length > 0) {
       recentAtt = await db
         .select({ childId: attendanceTable.childId, fecha: attendanceTable.fecha, estado: attendanceTable.estado, mercaderia: attendanceTable.mercaderia })
         .from(attendanceTable)
@@ -81,7 +84,6 @@ router.get("/dashboard/summary", async (req, res) => {
     });
 
     // Mercadería retirada en el mes actual
-    const activeIds = active.map((k) => k.id);
     const monthMerch = activeIds.length > 0
       ? await db
           .select({ childId: attendanceTable.childId })

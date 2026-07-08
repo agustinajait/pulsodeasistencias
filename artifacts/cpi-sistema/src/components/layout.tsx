@@ -13,6 +13,7 @@ import {
   BarChart3,
   Settings,
   Stethoscope,
+  BookImage,
 } from "lucide-react";
 
 type NavItem = {
@@ -76,6 +77,12 @@ const NAV_ITEMS: NavItem[] = [
     path: "/oportunai",
     icon: <Sparkles className="w-5 h-5" />,
     roles: ["admin", "superadmin"],
+  },
+  {
+    label: "Portfolios",
+    path: "/portfolios",
+    icon: <BookImage className="w-5 h-5" />,
+    roles: ["admin", "superadmin", "sala"],
   },
   {
     label: "Coordinación",

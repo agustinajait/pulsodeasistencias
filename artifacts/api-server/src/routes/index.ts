@@ -21,6 +21,7 @@ import planificacionesRouter from "./planificaciones";
 import adminSyncRouter from "./admin-sync";
 import followupReportsRouter from "./followup-reports";
 import aiRouter from "./ai";
+import portfoliosRouter from "./portfolios";
 
 const router: IRouter = Router();
 
@@ -46,5 +47,6 @@ router.use(planificacionesRouter);
 router.use("/admin-sync", adminSyncRouter);
 router.use(followupReportsRouter);
 router.use(aiRouter);
+router.use(portfoliosRouter);
 
 export default router;

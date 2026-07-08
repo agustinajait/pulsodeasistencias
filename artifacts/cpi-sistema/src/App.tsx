@@ -21,6 +21,7 @@ import Calendario from "@/pages/calendario";
 import Planificaciones from "@/pages/planificaciones";
 import Diagnostico from "@/pages/diagnostico";
 import Portfolios from "@/pages/portfolios";
+import FirmaMercaderia from "@/pages/firma-mercaderia";
 
 import CheckIn from "@/pages/check-in";
 import ChildDocs from "@/pages/child-docs";
@@ -73,6 +74,7 @@ function Router() {
       {/* Public routes — no layout */}
       <Route path="/check-in/:token" component={CheckIn} />
       <Route path="/docs/:token" component={ChildDocs} />
+      <Route path="/firma-mercaderia/:token" component={FirmaMercaderia} />
       <Route path="/login" component={Login} />
 
       {/* Protected routes — wrapped in Layout */}

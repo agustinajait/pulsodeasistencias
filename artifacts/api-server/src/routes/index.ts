@@ -22,6 +22,7 @@ import adminSyncRouter from "./admin-sync";
 import followupReportsRouter from "./followup-reports";
 import aiRouter from "./ai";
 import portfoliosRouter from "./portfolios";
+import mercaderiaFirmaRouter from "./mercaderia-firma";
 
 const router: IRouter = Router();
 
@@ -48,5 +49,6 @@ router.use("/admin-sync", adminSyncRouter);
 router.use(followupReportsRouter);
 router.use(aiRouter);
 router.use(portfoliosRouter);
+router.use(mercaderiaFirmaRouter);
 
 export default router;

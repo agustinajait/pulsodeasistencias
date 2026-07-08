@@ -14,6 +14,7 @@ import {
   Settings,
   Stethoscope,
   BookImage,
+  UtensilsCrossed,
 } from "lucide-react";
 
 type NavItem = {
@@ -83,6 +84,12 @@ const NAV_ITEMS: NavItem[] = [
     path: "/portfolios",
     icon: <BookImage className="w-5 h-5" />,
     roles: ["admin", "superadmin", "sala"],
+  },
+  {
+    label: "Convivir",
+    path: "/convivir",
+    icon: <UtensilsCrossed className="w-5 h-5" />,
+    roles: ["admin", "superadmin"],
   },
   {
     label: "Coordinación",

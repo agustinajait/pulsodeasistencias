@@ -20,6 +20,7 @@ import Talentos from "@/pages/talentos";
 import Calendario from "@/pages/calendario";
 import Planificaciones from "@/pages/planificaciones";
 import Diagnostico from "@/pages/diagnostico";
+import Portfolios from "@/pages/portfolios";
 
 import CheckIn from "@/pages/check-in";
 import ChildDocs from "@/pages/child-docs";
@@ -110,6 +111,9 @@ function Router() {
       </Route>
       <Route path="/diagnostico">
         {() => <ProtectedRoute component={Diagnostico} allowedRoles={["admin", "superadmin"]} />}
+      </Route>
+      <Route path="/portfolios">
+        {() => <ProtectedRoute component={Portfolios} allowedRoles={["admin", "superadmin", "sala"]} />}
       </Route>
 
       {/* Root redirect */}

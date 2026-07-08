@@ -23,6 +23,7 @@ import followupReportsRouter from "./followup-reports";
 import aiRouter from "./ai";
 import portfoliosRouter from "./portfolios";
 import mercaderiaFirmaRouter from "./mercaderia-firma";
+import convivirRouter from "./convivir";
 
 const router: IRouter = Router();
 
@@ -50,5 +51,6 @@ router.use(followupReportsRouter);
 router.use(aiRouter);
 router.use(portfoliosRouter);
 router.use(mercaderiaFirmaRouter);
+router.use(convivirRouter);
 
 export default router;

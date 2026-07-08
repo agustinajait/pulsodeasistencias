@@ -22,6 +22,7 @@ import Planificaciones from "@/pages/planificaciones";
 import Diagnostico from "@/pages/diagnostico";
 import Portfolios from "@/pages/portfolios";
 import FirmaMercaderia from "@/pages/firma-mercaderia";
+import Convivir from "@/pages/convivir";
 
 import CheckIn from "@/pages/check-in";
 import ChildDocs from "@/pages/child-docs";
@@ -116,6 +117,9 @@ function Router() {
       </Route>
       <Route path="/portfolios">
         {() => <ProtectedRoute component={Portfolios} allowedRoles={["admin", "superadmin", "sala"]} />}
+      </Route>
+      <Route path="/convivir">
+        {() => <ProtectedRoute component={Convivir} allowedRoles={["admin", "superadmin"]} />}
       </Route>
 
       {/* Root redirect */}

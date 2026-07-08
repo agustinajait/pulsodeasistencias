@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useListChildren, useListAttendance, useMarkAttendance, getListChildrenQueryKey, getListAttendanceQueryKey, useGetRoomsSummary, getGetRoomsSummaryQueryKey, useListRooms, useGetAlerts, useListCenters } from "@workspace/api-client-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, ChevronLeft, ChevronRight, AlertTriangle, MessageCircle, X } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, AlertTriangle, MessageCircle, X, PenLine, CheckCircle2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import type { Child, AttendanceRecord, Room, RoomSummary, Alert } from "@workspace/api-client-react";
@@ -47,6 +47,95 @@ function dayColor(att: AttendanceRecord[], total: number) {
   if (pres === att.length) return "bg-green-100 text-green-700 border-green-200";
   if (aus === att.length) return "bg-red-100 text-red-700 border-red-200";
   return "bg-amber-100 text-amber-700 border-amber-200";
+}
+
+const BASE = import.meta.env.VITE_API_URL ?? "/api";
+
+// ── MercaderiaRow ──────────────────────────────────────────────────────────
+function MercaderiaRow({ child, mercaderia, fecha, onToggle, onClickChild }: {
+  child: Child;
+  mercaderia: boolean;
+  fecha: string;
+  onToggle: () => void;
+  onClickChild: () => void;
+}) {
+  const [estado, setEstado] = useState<{ firmado: boolean; firmanteNombre?: string; hasToken: boolean } | null>(null);
+  const [sending, setSending] = useState(false);
+
+  // Load firma status when mercaderia is marked
+  useEffect(() => {
+    if (!mercaderia) { setEstado(null); return; }
+    fetch(`${BASE}/mercaderia/estado/${child.id}/${fecha}`)
+      .then((r) => r.json())
+      .then(setEstado)
+      .catch(() => {});
+  }, [mercaderia, child.id, fecha]);
+
+  async function handleSolicitarFirma() {
+    setSending(true);
+    try {
+      const r = await fetch(`${BASE}/mercaderia/solicitar-firma`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ childId: child.id, fecha }),
+      });
+      const d = await r.json();
+      if (d.waUrl) {
+        window.open(d.waUrl, "_blank");
+      } else if (d.firmaUrl) {
+        window.open(d.firmaUrl, "_blank");
+      }
+      // Refresh status
+      const s = await fetch(`${BASE}/mercaderia/estado/${child.id}/${fecha}`).then((r) => r.json());
+      setEstado(s);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="border-b border-border last:border-0">
+      <div className="flex items-center gap-3 px-4 py-2.5">
+        <div
+          className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 cursor-pointer"
+          style={{ background: child.genero === "FEMENINO" ? "var(--color-primary)/10" : "hsl(215 60% 92%)", color: child.genero === "FEMENINO" ? "var(--color-primary)" : "hsl(215 60% 35%)" }}
+          onClick={onClickChild}
+        >
+          {child.apellido.slice(0, 1)}{child.nombre.slice(0, 1)}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold truncate">{child.apellido} {child.nombre}</div>
+          {estado?.firmado && (
+            <div className="flex items-center gap-1 text-[10px] text-green-600 font-semibold">
+              <CheckCircle2 className="w-3 h-3" />
+              Firmado por {estado.firmanteNombre}
+            </div>
+          )}
+          {mercaderia && !estado?.firmado && estado?.hasToken && (
+            <div className="text-[10px] text-amber-600 font-semibold">Firma pendiente</div>
+          )}
+        </div>
+        {mercaderia && !estado?.firmado && (
+          <button
+            onClick={handleSolicitarFirma}
+            disabled={sending}
+            title="Solicitar firma por WhatsApp"
+            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-green-50 border border-green-200 text-green-700 text-[10px] font-semibold hover:bg-green-100 transition-colors shrink-0 disabled:opacity-50"
+          >
+            <PenLine className="w-3 h-3" />
+            Firmar
+          </button>
+        )}
+        <button
+          onClick={onToggle}
+          className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold border transition-colors shrink-0 ${mercaderia ? "bg-yellow-300 text-yellow-800 border-yellow-400 shadow-[0_0_6px_2px_rgba(250,204,21,0.6)]" : "bg-muted text-muted-foreground border-border"}`}
+          data-testid={`btn-mercaderia-${child.id}`}
+        >
+          M
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function SalaPage() {
@@ -604,25 +693,14 @@ export default function SalaPage() {
                 const att = mergedAttMap[child.id];
                 const mercaderia = att?.mercaderia ?? false;
                 return (
-                  <div key={child.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-0">
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 cursor-pointer"
-                      style={{ background: child.genero === "FEMENINO" ? "var(--color-primary)/10" : "hsl(215 60% 92%)", color: child.genero === "FEMENINO" ? "var(--color-primary)" : "hsl(215 60% 35%)" }}
-                      onClick={() => setSelectedChild(child.id)}
-                    >
-                      {child.apellido.slice(0, 1)}{child.nombre.slice(0, 1)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold truncate">{child.apellido} {child.nombre}</div>
-                    </div>
-                    <button
-                      onClick={() => handleMercaderia(child.id)}
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold border transition-colors shrink-0 ${mercaderia ? "bg-yellow-300 text-yellow-800 border-yellow-400 shadow-[0_0_6px_2px_rgba(250,204,21,0.6)]" : "bg-muted text-muted-foreground border-border"}`}
-                      data-testid={`btn-mercaderia-${child.id}`}
-                    >
-                      M
-                    </button>
-                  </div>
+                  <MercaderiaRow
+                    key={child.id}
+                    child={child}
+                    mercaderia={mercaderia}
+                    fecha={listaDate}
+                    onToggle={() => handleMercaderia(child.id)}
+                    onClickChild={() => setSelectedChild(child.id)}
+                  />
                 );
               })}
             </div>

@@ -821,8 +821,7 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
     const totalHitos = nLogrados + nProceso + nTrabajar;
     const pctLogrado = totalHitos > 0 ? Math.round((nLogrados / totalHitos) * 100) : 0;
 
-    // ── secciones por eje con chips (mismos datos, nuevo diseño) ─────────
-    const EMOJI: Record<string,string> = {"Motricidad Gruesa":"🏃","Motricidad Fina":"✏️","Cognitivo":"🧠","Social":"👥"};
+    // ── secciones por eje con chips — texto narrativo unificado al final ─
     const seccionesHtml = template.map(({ eje, hitos: hitoList }) => {
       const filled = hitoList.filter(h => hitos[h] != null);
       if (!filled.length) return "";
@@ -835,16 +834,17 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
                  :               "background:#fee2e2;color:#991b1b;border:1px solid #fecaca";
         return `<span style="font-size:10px;padding:3px 9px;border-radius:99px;display:inline-flex;align-items:center;gap:4px;font-weight:600;${st}">${icon} ${h}</span>`;
       }).join("");
-      const texto = textos[eje] ? `<div style="font-size:11px;color:#374151;line-height:1.75;background:#f9f5ff;border-left:3px solid #7c3aed;padding:8px 12px;border-radius:0 5px 5px 0;font-style:italic;margin-top:8px">${textos[eje].trim()}</div>` : "";
       return `<div style="margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid #f3f4f6">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <span style="font-size:11px;font-weight:800;color:#1e1147;text-transform:uppercase;letter-spacing:.06em">${EMOJI[eje] ?? "•"} ${eje}</span>
+          <span style="font-size:11px;font-weight:800;color:#1e1147;text-transform:uppercase;letter-spacing:.06em">${eje}</span>
           <span style="font-size:10px;color:#6b7280;font-weight:600">${logrados} / ${filled.length}</span>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:5px">${chips}</div>
-        ${texto}
       </div>`;
     }).join("");
+    // texto narrativo: un único párrafo de síntesis al final (todos los ejes juntos)
+    const textoSintesis = template.filter(({ eje }) => textos[eje]?.trim()).map(({ eje }) => textos[eje].trim()).join(" ");
+    const sintesisHtml = textoSintesis ? `<div style="margin-bottom:18px;padding:12px 16px;background:#f9f5ff;border-left:3px solid #7c3aed;border-radius:0 6px 6px 0"><div style="font-size:10px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Síntesis de desarrollo</div><div style="font-size:11.5px;color:#374151;line-height:1.8;font-style:italic">${textoSintesis}</div></div>` : "";
 
     w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Informe — ${childName}</title>
     <style>
@@ -906,6 +906,7 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
       <div class="pct-lbl" style="margin-top:4px"><strong style="color:#7c3aed">${pctLogrado}%</strong> de hitos logrados en el período</div>
     </div>
     ${seccionesHtml}
+    ${sintesisHtml}
     ${observaciones ? `<div class="obs"><div class="obs-title">Observaciones generales</div><div class="obs-text">${observaciones}</div></div>` : ""}
     ${firmas}
     <div class="footer"><span>CAIPLI</span><span>Generado el ${new Date().toLocaleDateString("es-AR",{day:"numeric",month:"long",year:"numeric"})}</span></div>

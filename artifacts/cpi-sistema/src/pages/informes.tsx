@@ -908,7 +908,7 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
     ${seccionesHtml}
     ${observaciones ? `<div class="obs"><div class="obs-title">Observaciones generales</div><div class="obs-text">${observaciones}</div></div>` : ""}
     ${firmas}
-    <div class="footer"><span>CAIPLI · Sistema de gestión Koratic</span><span>Generado el ${new Date().toLocaleDateString("es-AR",{day:"numeric",month:"long",year:"numeric"})}</span></div>
+    <div class="footer"><span>CAIPLI</span><span>Generado el ${new Date().toLocaleDateString("es-AR",{day:"numeric",month:"long",year:"numeric"})}</span></div>
     </body></html>`);
     w.document.close();
     setTimeout(() => w.print(), 600);

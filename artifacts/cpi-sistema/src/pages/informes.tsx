@@ -364,7 +364,7 @@ function ReportPreview({
     </div>
   );
 }
-const PERIODS = ["1er trimestre","2do trimestre","3er trimestre","1er cuatrimestre","2do cuatrimestre","Anual"];
+const PERIODS = ["Marzo a Julio 2026","1er trimestre","2do trimestre","3er trimestre","1er cuatrimestre","2do cuatrimestre","Anual"];
 
 // ── Fetch ──────────────────────────────────────────────────────────────────
 async function fetchReports(centerId: number | null, ecoNumber?: number | null, period?: string): Promise<Report[]> {

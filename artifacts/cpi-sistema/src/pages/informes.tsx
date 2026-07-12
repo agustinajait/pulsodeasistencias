@@ -364,7 +364,7 @@ function ReportPreview({
     </div>
   );
 }
-const PERIODS = ["1er trimestre","2do trimestre","3er trimestre","1er cuatrimestre","2do cuatrimestre","Anual"];
+const PERIODS = ["Marzo a Julio 2026","1er trimestre","2do trimestre","3er trimestre","1er cuatrimestre","2do cuatrimestre","Anual"];
 
 // ── Fetch ──────────────────────────────────────────────────────────────────
 async function fetchReports(centerId: number | null, ecoNumber?: number | null, period?: string): Promise<Report[]> {
@@ -802,71 +802,113 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
   function handlePrint() {
     const w = window.open("", "_blank");
     if (!w) return;
-    const hitoRows = template.flatMap(({ eje, hitos: hitoList }) =>
-      hitoList.filter((h) => hitos[h] != null).map((h) => {
-        const val = hitos[h]!;
-        const color = val === "L" ? "#dcfce7;color:#166534" : val === "P" ? "#fef9c3;color:#92400e" : "#fee2e2;color:#991b1b";
-        const label = val === "L" ? "✓ Logrado" : val === "P" ? "En proceso" : "No logrado";
-        return `<tr><td class="td-area">${eje}</td><td class="td-hito">${h}</td><td class="td-estado" style="background:${color}">${label}</td></tr>`;
-      })
-    ).join("");
-    const textoSections = template.filter(({ eje }) => textos[eje]).map(({ eje }) => textos[eje].trim()).join(" ");
+
+    // ── datos de firmas (sin cambios) ──────────────────────────────────────
     const firmaLiderImg = firmaLiderData && firmaLiderData !== "CONFIRMADO" ? `<img src="${firmaLiderData}" style="height:40px;object-fit:contain;display:block;margin:0 auto"/>` : "";
     const firmaFacilitadoraImg = firmaFacilitadoraData && firmaFacilitadoraData !== "CONFIRMADO" ? `<img src="${firmaFacilitadoraData}" style="height:40px;object-fit:contain;display:block;margin:0 auto"/>` : "";
     const firmaLider = lider ? `<div class="firma">${firmaLiderImg}<div class="firma-linea"></div><div class="firma-nombre">${lider}</div><div class="firma-rol">Líder pedagógica${firmaLiderAt ? ` · Firmado ${fmtFirmaFecha(firmaLiderAt)}` : ""}</div></div>` : "";
     const firmaFacilitadora = facilitadora ? `<div class="firma">${firmaFacilitadoraImg}<div class="firma-linea"></div><div class="firma-nombre">${facilitadora}</div><div class="firma-rol">Facilitadora${firmaFacilitadoraAt ? ` · Firmado ${fmtFirmaFecha(firmaFacilitadoraAt)}` : ""}</div></div>` : "";
     const firmas = (firmaLider || firmaFacilitadora) ? `<div class="firmas">${firmaLider}${firmaFacilitadora}</div>` : "";
     const logoHtml = logoBase64
-      ? `<img id="logo" src="${logoBase64}" style="height:64px;object-fit:contain;display:block" alt="Logo"/>`
+      ? `<img src="${logoBase64}" style="height:52px;object-fit:contain;display:block" alt="Logo"/>`
       : `<div style="font-size:20px;font-weight:900;color:#1e1147;letter-spacing:-1px">Koratic</div>`;
+
+    // ── stats (solo presentación, datos sin cambios) ──────────────────────
+    const allVals = Object.values(hitos);
+    const nLogrados = allVals.filter(v => v === "L").length;
+    const nProceso  = allVals.filter(v => v === "P").length;
+    const nTrabajar = allVals.filter(v => v === "N").length;
+    const totalHitos = nLogrados + nProceso + nTrabajar;
+    const pctLogrado = totalHitos > 0 ? Math.round((nLogrados / totalHitos) * 100) : 0;
+
+    // ── secciones por eje con chips (mismos datos, nuevo diseño) ─────────
+    const EMOJI: Record<string,string> = {"Motricidad Gruesa":"🏃","Motricidad Fina":"✏️","Cognitivo":"🧠","Social":"👥"};
+    const seccionesHtml = template.map(({ eje, hitos: hitoList }) => {
+      const filled = hitoList.filter(h => hitos[h] != null);
+      if (!filled.length) return "";
+      const logrados = filled.filter(h => hitos[h] === "L").length;
+      const chips = filled.map(h => {
+        const val = hitos[h]!;
+        const icon = val === "L" ? "✓" : val === "P" ? "◑" : "○";
+        const st = val === "L" ? "background:#dcfce7;color:#166534;border:1px solid #bbf7d0"
+                 : val === "P" ? "background:#fef9c3;color:#92400e;border:1px solid #fde68a"
+                 :               "background:#fee2e2;color:#991b1b;border:1px solid #fecaca";
+        return `<span style="font-size:10px;padding:3px 9px;border-radius:99px;display:inline-flex;align-items:center;gap:4px;font-weight:600;${st}">${icon} ${h}</span>`;
+      }).join("");
+      const texto = textos[eje] ? `<div style="font-size:11px;color:#374151;line-height:1.75;background:#f9f5ff;border-left:3px solid #7c3aed;padding:8px 12px;border-radius:0 5px 5px 0;font-style:italic;margin-top:8px">${textos[eje].trim()}</div>` : "";
+      return `<div style="margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid #f3f4f6">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:11px;font-weight:800;color:#1e1147;text-transform:uppercase;letter-spacing:.06em">${EMOJI[eje] ?? "•"} ${eje}</span>
+          <span style="font-size:10px;color:#6b7280;font-weight:600">${logrados} / ${filled.length}</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px">${chips}</div>
+        ${texto}
+      </div>`;
+    }).join("");
 
     w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Informe — ${childName}</title>
     <style>
       *{box-sizing:border-box;margin:0;padding:0}
-      body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:#1a1a2e;padding:32px 36px;max-width:800px;margin:0 auto}
-      .header{display:flex;align-items:center;gap:20px;padding-bottom:16px;border-bottom:3px solid #1e1147;margin-bottom:20px}
-      .header-text h1{font-size:20px;font-weight:800;color:#1e1147;margin-bottom:2px}
+      body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:#1a1a2e;padding:32px 36px;max-width:760px;margin:0 auto}
+      .header{display:flex;align-items:center;gap:18px;padding-bottom:14px;border-bottom:3px solid #1e1147;margin-bottom:18px}
+      .header-text{flex:1}
+      .header-text h1{font-size:19px;font-weight:800;color:#1e1147;margin-bottom:2px}
       .header-text p{font-size:11px;color:#6b7280}
-      .meta{margin-bottom:16px;padding:12px 16px;background:#f5f4fb;border-radius:8px;border-left:4px solid #7c3aed}
-      .meta-nombre{font-size:15px;font-weight:800;color:#1e1147}
-      .meta-sub{font-size:11px;color:#6b7280;margin-top:3px}
-      table{width:100%;border-collapse:collapse;margin-bottom:20px;font-size:11px}
-      th{background:#1e1147;color:white;padding:7px 10px;text-align:left;font-weight:700}
-      .td-area{padding:5px 10px;border:1px solid #e5e7eb;color:#6b7280;font-size:10px;white-space:nowrap;width:130px}
-      .td-hito{padding:5px 10px;border:1px solid #e5e7eb;color:#374151}
-      .td-estado{padding:5px 10px;border:1px solid #e5e7eb;text-align:center;font-size:10px;font-weight:700;white-space:nowrap;width:90px;border-radius:4px}
-      tr:nth-child(even) .td-area, tr:nth-child(even) .td-hito{background:#fafafa}
-      .sintesis{margin-bottom:20px}
-      .sintesis h2{font-size:13px;font-weight:800;color:#1e1147;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #e5e7eb}
-      .sintesis p{line-height:1.8;color:#374151;font-size:12px}
-      .obs{background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:12px;margin-bottom:24px}
-      .obs strong{display:block;margin-bottom:4px;color:#1e1147}
-      .firmas{display:flex;gap:48px;margin-top:48px;padding-top:16px;border-top:1px solid #e5e7eb}
+      .header-badge{font-size:11px;font-weight:700;color:#7c3aed;background:#f3f0ff;border:1px solid #ddd6fe;border-radius:99px;padding:4px 12px;white-space:nowrap}
+      .perfil{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #f3f4f6}
+      .perfil-nombre{font-size:15px;font-weight:800;color:#111827}
+      .perfil-sub{font-size:11px;color:#6b7280;margin-top:3px}
+      .perfil-periodo{text-align:right;font-size:11px}
+      .perfil-periodo .lbl{font-size:9px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.07em}
+      .stats{display:flex;gap:0;margin-bottom:6px;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden}
+      .stat{flex:1;padding:10px 12px;text-align:center;border-right:1px solid #e5e7eb}
+      .stat:last-child{border-right:none}
+      .stat .num{font-size:22px;font-weight:800;line-height:1}
+      .stat .lbl{font-size:10px;color:#6b7280;margin-top:3px}
+      .stat.l .num{color:#16a34a}.stat.p .num{color:#d97706}.stat.n .num{color:#dc2626}
+      .pct-bar{margin-bottom:18px}
+      .pct-track{height:5px;background:#e5e7eb;border-radius:99px;overflow:hidden;margin-top:5px}
+      .pct-fill{height:100%;background:linear-gradient(90deg,#7c3aed,#4f46e5);border-radius:99px}
+      .pct-lbl{font-size:10px;color:#6b7280}
+      .obs{background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:12px;margin-bottom:20px}
+      .obs-title{font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}
+      .obs-text{font-size:11px;color:#374151;line-height:1.7}
+      .firmas{display:flex;gap:48px;margin-top:40px;padding-top:14px;border-top:1px solid #e5e7eb}
       .firma{flex:1;text-align:center}
       .firma-linea{border-top:1px solid #374151;margin-bottom:6px}
       .firma-nombre{font-size:12px;font-weight:700;color:#1e1147}
       .firma-rol{font-size:10px;color:#6b7280;margin-top:2px}
-      @media print{body{padding:20px 24px}@page{margin:12mm}}
+      .footer{margin-top:24px;padding-top:10px;border-top:1px solid #f3f4f6;display:flex;justify-content:space-between;font-size:10px;color:#9ca3af}
+      @media print{body{padding:20px 28px}@page{margin:12mm}}
     </style>
     </head><body>
     <div class="header">
       ${logoHtml}
       <div class="header-text">
         <h1>Informe de Desarrollo</h1>
-        <p>Período: ${report.period} &nbsp;·&nbsp; Sala ECO ${report.ecoNumber ?? 0}</p>
+        <p>Sala ECO ${report.ecoNumber ?? 0} &nbsp;·&nbsp; CPI Norte</p>
+      </div>
+      <span class="header-badge">${report.period}</span>
+    </div>
+    <div class="perfil">
+      <div>
+        <div class="perfil-nombre">${childName}</div>
+        <div class="perfil-sub">${[lider ? `Líder: ${lider}` : "", facilitadora ? `Facilitadora: ${facilitadora}` : ""].filter(Boolean).join(" &nbsp;·&nbsp; ")}</div>
       </div>
     </div>
-    <div class="meta">
-      <div class="meta-nombre">${childName}</div>
-      <div class="meta-sub">${[lider ? `Líder: ${lider}` : "", facilitadora ? `Facilitadora: ${facilitadora}` : ""].filter(Boolean).join(" &nbsp;·&nbsp; ")}</div>
+    <div class="stats">
+      <div class="stat l"><div class="num">${nLogrados}</div><div class="lbl">Logrados</div></div>
+      <div class="stat p"><div class="num">${nProceso}</div><div class="lbl">En proceso</div></div>
+      <div class="stat n"><div class="num">${nTrabajar}</div><div class="lbl">A trabajar</div></div>
     </div>
-    <table>
-      <thead><tr><th>Área</th><th>Hito</th><th style="width:90px;text-align:center">Estado</th></tr></thead>
-      <tbody>${hitoRows}</tbody>
-    </table>
-    ${textoSections ? `<div class="sintesis"><h2>Síntesis de desarrollo</h2><p>${textoSections}</p></div>` : ""}
-    ${observaciones ? `<div class="obs"><strong>Observaciones generales:</strong>${observaciones}</div>` : ""}
+    <div class="pct-bar">
+      <div class="pct-track"><div class="pct-fill" style="width:${pctLogrado}%"></div></div>
+      <div class="pct-lbl" style="margin-top:4px"><strong style="color:#7c3aed">${pctLogrado}%</strong> de hitos logrados en el período</div>
+    </div>
+    ${seccionesHtml}
+    ${observaciones ? `<div class="obs"><div class="obs-title">Observaciones generales</div><div class="obs-text">${observaciones}</div></div>` : ""}
     ${firmas}
+    <div class="footer"><span>CAIPLI</span><span>Generado el ${new Date().toLocaleDateString("es-AR",{day:"numeric",month:"long",year:"numeric"})}</span></div>
     </body></html>`);
     w.document.close();
     setTimeout(() => w.print(), 600);

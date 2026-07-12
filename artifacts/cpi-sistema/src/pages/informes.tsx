@@ -805,10 +805,8 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
 
     // ── datos de firmas (sin cambios) ──────────────────────────────────────
     const firmaLiderImg = firmaLiderData && firmaLiderData !== "CONFIRMADO" ? `<img src="${firmaLiderData}" style="height:40px;object-fit:contain;display:block;margin:0 auto"/>` : "";
-    const firmaFacilitadoraImg = firmaFacilitadoraData && firmaFacilitadoraData !== "CONFIRMADO" ? `<img src="${firmaFacilitadoraData}" style="height:40px;object-fit:contain;display:block;margin:0 auto"/>` : "";
     const firmaLider = lider ? `<div class="firma">${firmaLiderImg}<div class="firma-linea"></div><div class="firma-nombre">${lider}</div><div class="firma-rol">Líder pedagógica${firmaLiderAt ? ` · Firmado ${fmtFirmaFecha(firmaLiderAt)}` : ""}</div></div>` : "";
-    const firmaFacilitadora = facilitadora ? `<div class="firma">${firmaFacilitadoraImg}<div class="firma-linea"></div><div class="firma-nombre">${facilitadora}</div><div class="firma-rol">Facilitadora${firmaFacilitadoraAt ? ` · Firmado ${fmtFirmaFecha(firmaFacilitadoraAt)}` : ""}</div></div>` : "";
-    const firmas = (firmaLider || firmaFacilitadora) ? `<div class="firmas">${firmaLider}${firmaFacilitadora}</div>` : "";
+    const firmas = firmaLider ? `<div class="firmas">${firmaLider}</div>` : "";
     const logoHtml = logoBase64
       ? `<img src="${logoBase64}" style="height:52px;object-fit:contain;display:block" alt="Logo"/>`
       : `<div style="font-size:20px;font-weight:900;color:#1e1147;letter-spacing:-1px">Koratic</div>`;

@@ -42,6 +42,7 @@ async function ensureTable() {
   await pool.query(`ALTER TABLE child_followup_reports ADD COLUMN IF NOT EXISTS firma_firmante_data TEXT`);
   await pool.query(`ALTER TABLE child_followup_reports ADD COLUMN IF NOT EXISTS firma_firmante_at TIMESTAMPTZ`);
   await pool.query(`ALTER TABLE child_followup_reports ADD COLUMN IF NOT EXISTS report_type VARCHAR(50) DEFAULT 'seguimiento'`);
+  await pool.query(`UPDATE child_followup_reports SET report_type = 'seguimiento' WHERE report_type IS NULL`);
 }
 
 // GET /followup-reports?centerId=X&childId=Y
@@ -64,6 +65,7 @@ router.get("/followup-reports", async (req, res) => {
               f.firmante_matricula AS "firmanteMatricula",
               f.firma_lider_data AS "firmaLiderData", f.firma_lider_at AS "firmaLiderAt",
               f.firma_firmante_data AS "firmaFirmanteData", f.firma_firmante_at AS "firmaFirmanteAt",
+              COALESCE(f.report_type,'seguimiento') AS "reportType",
               f.created_at AS "createdAt", f.updated_at AS "updatedAt"
        FROM child_followup_reports f
        JOIN children ch ON ch.id = f.child_id

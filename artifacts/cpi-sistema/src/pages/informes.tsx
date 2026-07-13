@@ -1880,7 +1880,8 @@ export default function Informes() {
     queryFn: async () => {
       if (!centerId) return [];
       const r = await fetch(`${BASE}/followup-reports?centerId=${centerId}`);
-      return r.ok ? r.json() : [];
+      if (!r.ok) throw new Error(`HTTP ${r.status}: ${await r.text()}`);
+      return r.json();
     },
     enabled: !!centerId,
   });
@@ -2148,10 +2149,17 @@ export default function Informes() {
 
             {followupQ.isPending && <p className="text-center py-12 text-gray-400 text-sm">Cargando...</p>}
 
-            {!followupQ.isPending && filteredFollowups.length === 0 && (
+            {followupQ.isError && (
+              <div className="text-center py-8">
+                <p className="text-red-500 text-sm font-semibold">Error al cargar informes</p>
+                <p className="text-red-400 text-xs mt-1">{String((followupQ.error as any)?.message ?? followupQ.error)}</p>
+              </div>
+            )}
+
+            {!followupQ.isPending && !followupQ.isError && filteredFollowups.length === 0 && (
               <div className="text-center py-16">
                 <FileText className="w-10 h-10 text-gray-200 mx-auto mb-3" />
-                <p className="text-gray-400 text-sm">No hay informes de seguimiento</p>
+                <p className="text-gray-400 text-sm">No hay informes de seguimiento · total cargados: {allFollowupReports.length}</p>
                 <button onClick={() => setShowNewFollowup(true)} className="mt-4 text-violet-600 text-sm font-semibold hover:underline flex items-center gap-1 mx-auto">
                   <Plus className="w-4 h-4" />Crear el primer informe
                 </button>

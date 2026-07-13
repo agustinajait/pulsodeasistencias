@@ -301,8 +301,9 @@ export default function SalaPage() {
           queryClient.invalidateQueries({ queryKey: getGetRoomsSummaryQueryKey() });
           setOptimisticAtt((prev) => { const next = { ...prev }; delete next[childId]; return next; });
         },
-        onError: () => {
+        onError: (err: any) => {
           setOptimisticAtt((prev) => { const next = { ...prev }; delete next[childId]; return next; });
+          toast({ title: "Error al guardar asistencia", description: err?.message ?? "No se pudo guardar. Intentá de nuevo.", variant: "destructive" });
         },
       }
     );

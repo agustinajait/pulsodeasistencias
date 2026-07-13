@@ -16,7 +16,6 @@ router.get("/attendance", async (req, res) => {
       year?: string;
     };
 
-    // Enforce center isolation when a token is present
     // Enforce center isolation
     if (req.auth && req.auth.role !== "superadmin" && req.auth.centerId != null) {
       if (roomId) {
@@ -24,7 +23,7 @@ router.get("/attendance", async (req, res) => {
           .select({ centerId: roomsTable.centerId })
           .from(roomsTable)
           .where(eq(roomsTable.id, parseInt(roomId)));
-        if (!room || room.centerId !== req.auth.centerId) {
+        if (!room || Number(room.centerId) !== Number(req.auth.centerId)) {
           res.status(403).json({ error: "Forbidden" });
           return;
         }
@@ -38,7 +37,7 @@ router.get("/attendance", async (req, res) => {
             .select({ centerId: roomsTable.centerId })
             .from(roomsTable)
             .where(eq(roomsTable.id, child.roomId));
-          if (!room || room.centerId !== req.auth.centerId) {
+          if (!room || Number(room.centerId) !== Number(req.auth.centerId)) {
             res.status(403).json({ error: "Forbidden" });
             return;
           }
@@ -130,8 +129,9 @@ router.post("/attendance", async (req, res) => {
           .select({ centerId: roomsTable.centerId })
           .from(roomsTable)
           .where(eq(roomsTable.id, child.roomId));
-        if (!room || room.centerId !== req.auth.centerId) {
-          res.status(403).json({ error: "Forbidden" });
+        if (!room || Number(room.centerId) !== Number(req.auth.centerId)) {
+          req.log.warn({ roomCenterId: room?.centerId, tokenCenterId: req.auth.centerId, childId }, "Attendance POST blocked: centerId mismatch");
+          res.status(403).json({ error: "Forbidden: centerId mismatch" });
           return;
         }
       }

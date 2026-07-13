@@ -1879,23 +1879,15 @@ export default function Informes() {
     queryKey: ["followup-reports", centerId],
     queryFn: async () => {
       if (!centerId) return [];
-      const r = await fetch(`${BASE}/followup-reports?centerId=${centerId}&reportType=seguimiento`);
+      const r = await fetch(`${BASE}/followup-reports?centerId=${centerId}`);
       return r.ok ? r.json() : [];
     },
     enabled: !!centerId,
   });
-  const followupReports = followupQ.data ?? [];
-
-  const escolarQ = useQuery<FollowupReport[]>({
-    queryKey: ["escolar-reports", centerId],
-    queryFn: async () => {
-      if (!centerId) return [];
-      const r = await fetch(`${BASE}/followup-reports?centerId=${centerId}&reportType=escolar`);
-      return r.ok ? r.json() : [];
-    },
-    enabled: !!centerId,
-  });
-  const escolarReports = escolarQ.data ?? [];
+  const allFollowupReports = followupQ.data ?? [];
+  const followupReports = allFollowupReports.filter((r) => !r.reportType || r.reportType === "seguimiento");
+  const escolarQ = followupQ; // misma query, filtrado en cliente
+  const escolarReports = allFollowupReports.filter((r) => r.reportType === "escolar");
 
   const filteredFollowups = useMemo(() => {
     let list = urlChildId ? followupReports.filter((r) => r.childId === urlChildId) : followupReports;

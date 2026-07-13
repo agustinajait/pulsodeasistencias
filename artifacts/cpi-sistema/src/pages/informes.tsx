@@ -1147,6 +1147,7 @@ type FollowupReport = {
   firmaLiderAt?: string | null;
   firmaFirmanteData?: string | null;
   firmaFirmanteAt?: string | null;
+  reportType?: string;
   createdAt?: string;
 };
 
@@ -1170,8 +1171,21 @@ function fmtFechaLarga(iso: string): string {
 }
 
 // ── FollowupReportModal ────────────────────────────────────────────────────
+const ESCOLAR_TEMPLATE = (nombre: string, sala: string) =>
+  `Desde el Centro de Primera Infancia "${sala}", nos dirigimos a quien corresponda a fin de elevar el informe escolar realizado por quien suscribe para poner en su conocimiento la situación en que se encuentra actualmente ${nombre}, quien asiste desde comienzo del año 2026 al CPI.
+
+Participa activamente en las propuestas pedagógicas, poniendo en juego los saberes y las destrezas adquiridas, y demostrando una actitud favorable hacia el aprendizaje.
+
+En relación con el vínculo con sus docentes, logra expresar sus necesidades, intereses y emociones. Si bien su lenguaje oral aún se encuentra en pleno desarrollo, recurre a gestos y otras formas de comunicación para manifestar aquello que necesita.
+
+Respecto al vínculo con sus pares, participa de situaciones de juego compartido, expresando su disconformidad cuando es necesario y mostrando avances en la resolución de conflictos cotidianos.
+
+Logra realizar con facilidad las distintas rutinas del día, come sin dificultad y duerme la siesta.
+
+Poco a poco va adquiriendo mayor confianza para comunicarse y expresarse.`;
+
 function FollowupReportModal({
-  centerId, centerName, report, children: childList, logoBase64, email, onClose, onSaved,
+  centerId, centerName, report, children: childList, logoBase64, email, reportType, onClose, onSaved,
 }: {
   centerId: number;
   centerName?: string | null;
@@ -1179,9 +1193,12 @@ function FollowupReportModal({
   children: Child[];
   logoBase64?: string;
   email?: string;
+  reportType?: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const effectiveType = report?.reportType ?? reportType ?? "seguimiento";
+  const isEscolar = effectiveType === "escolar";
   const { toast } = useToast();
   const isEdit = !!report?.id;
 
@@ -1196,7 +1213,7 @@ function FollowupReportModal({
   const [fechaNacNino, setFechaNacNino] = useState(report?.fechaNacNino ?? "");
   const [adultNombre, setAdultNombre] = useState(report?.adultNombre ?? "");
   const [adultDni, setAdultDni] = useState(report?.adultDni ?? "");
-  const [bodyText, setBodyText] = useState(report?.bodyText ?? "");
+  const [bodyText, setBodyText] = useState(report?.bodyText ?? (isEscolar && !report?.id ? ESCOLAR_TEMPLATE("", centerName ?? "CAIPLI NORTE") : ""));
   const [aiLoading, setAiLoading] = useState(false);
   const [firmanteNombre, setFiremanteNombre] = useState(report?.firmanteNombre ?? "");
   const [firmanteTitulo, setFirmanteTitulo] = useState(report?.firmanteTitulo ?? "");
@@ -1258,6 +1275,7 @@ function FollowupReportModal({
         firmanteNombre: firmanteNombre || null,
         firmanteTitulo: firmanteTitulo || null,
         firmanteMatricula: firmanteMatricula || null,
+        reportType: effectiveType,
       };
       const url = isEdit ? `${BASE}/followup-reports/${report!.id}` : `${BASE}/followup-reports`;
       const res = await fetch(url, { method: isEdit ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -1300,37 +1318,57 @@ function FollowupReportModal({
     const firmaHtml = firmaBlocks.length
       ? `<div style="display:flex;gap:40px;margin-top:48px;justify-content:center">${firmaBlocks.join("")}</div>`
       : "";
-    w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Informe — ${childName}</title>
+    const tituloInforme = isEscolar ? "Informe Escolar" : "Informe de Seguimiento";
+    const bodyHtml = isEscolar
+      ? (bodyText ? `<div style="font-size:12pt;line-height:1.8;text-align:justify">${bodyText.replace(/\n\n/g,"</p><p style='margin-bottom:14px'>").replace(/\n/g,"<br/>")}</div>` : "")
+      : `
+        <p class="section-title">Datos de la niño/a:</p>
+        <div class="section-body">
+          <p>Nombre y apellido: ${childName}.</p>
+          ${fechaNacNino ? `<p>Fecha de nacimiento: ${fechaNacNino}.${edad}</p>` : ""}
+          ${dniNino ? `<p>DNI: ${dniNino}</p>` : ""}
+        </div>
+        ${adultNombre ? `<p class="section-title">Datos del adulto/a responsable:</p><div class="section-body"><p>Nombre y apellido: ${adultNombre}.</p>${adultDni ? `<p>DNI: ${adultDni}</p>` : ""}</div>` : ""}
+        <p>Desde el Centro de Primera Infancia "${centerName ?? "CAIPLI"}"${lider ? `, a cargo de ${lider}` : ""}${ecoNum ? `, sala ECO ${ecoNum}` : ""}, nos dirigimos a quien corresponda a fin de elevar el informe de seguimiento para poner en conocimiento la situación en que se encuentra actualmente el/la niño/a ${(selectedChild?.nombre ?? report?.nombre ?? "").split(" ")[0]}.</p>
+        ${bodyText ? `<p>${bodyText.replace(/\n/g, "</p><p>")}</p>` : ""}
+        <div class="cierre">
+          <p>Quedo a disposición para ampliar información o trabajar de manera conjunta.</p>
+          ${email ? `<p>Mail de contacto: ${email}</p>` : ""}
+          <p style="margin-top:16px">Saluda atentamente,</p>
+        </div>`;
+    const escolarDatosHtml = isEscolar ? `
+      <div style="margin-bottom:20px;padding:12px 16px;background:#f5f4fb;border-radius:8px;border-left:4px solid #7c3aed;font-size:12px">
+        <div style="font-weight:800;font-size:14px;color:#1e1147">${childName}</div>
+        <div style="color:#6b7280;margin-top:4px;font-size:11px">
+          ${fechaNacNino ? `Fecha de nac.: ${fechaNacNino}${edad ? ` &nbsp;·&nbsp; ${edad}` : ""}` : ""}
+          ${dniNino ? `${fechaNacNino ? " &nbsp;·&nbsp; " : ""}DNI: ${dniNino}` : ""}
+        </div>
+        ${adultNombre ? `<div style="color:#6b7280;font-size:11px;margin-top:2px">Adulto/a responsable: ${adultNombre}${adultDni ? ` · DNI: ${adultDni}` : ""}</div>` : ""}
+      </div>` : "";
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${tituloInforme} — ${childName}</title>
     <style>
       *{box-sizing:border-box;margin:0;padding:0}
-      body{font-family:'Times New Roman',Times,serif;font-size:12pt;color:#1a1a1a;padding:40px 56px;max-width:800px;margin:0 auto;line-height:1.6}
-      .header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:40px}
+      body{font-family:${isEscolar ? "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" : "'Times New Roman',Times,serif"};font-size:12pt;color:#1a1a1a;padding:${isEscolar ? "32px 36px" : "40px 56px"};max-width:800px;margin:0 auto;line-height:1.6}
+      .header{display:flex;align-items:${isEscolar ? "center" : "flex-start"};${isEscolar ? "gap:18px;padding-bottom:14px;border-bottom:3px solid #1e1147;" : "justify-content:space-between;"}margin-bottom:${isEscolar ? "20px" : "40px"}}
+      .header-text h1{font-size:${isEscolar ? "19px" : "12pt"};font-weight:800;color:#1e1147;margin-bottom:2px}
+      .header-text p{font-size:11px;color:#6b7280}
       .fecha{font-size:12pt;text-align:right}
       .section-title{text-decoration:underline;font-weight:bold;margin-bottom:6px;margin-top:20px;font-size:12pt}
       .section-body{margin-bottom:20px;font-size:12pt}
       p{margin-bottom:12px;text-align:justify}
       .cierre{margin-top:24px}
-      @media print{body{padding:20px 40px}@page{margin:15mm}}
+      @media print{body{padding:20px 36px}@page{margin:12mm}}
     </style>
     </head><body>
     <div class="header">
       ${logoHtml}
-      <div class="fecha">Bs. As. el ${fechaStr}</div>
+      ${isEscolar
+        ? `<div class="header-text"><h1>${tituloInforme}</h1><p>${centerName ?? "CAIPLI"}</p></div><div style="font-size:11px;font-weight:700;color:#7c3aed;background:#f3f0ff;border:1px solid #ddd6fe;border-radius:99px;padding:4px 12px;white-space:nowrap">Bs. As., ${fechaStr}</div>`
+        : `<div class="fecha">Bs. As. el ${fechaStr}</div>`
+      }
     </div>
-    <p class="section-title">Datos de la niño/a:</p>
-    <div class="section-body">
-      <p>Nombre y apellido: ${childName}.</p>
-      ${fechaNacNino ? `<p>Fecha de nacimiento: ${fechaNacNino}.${edad}</p>` : ""}
-      ${dniNino ? `<p>DNI: ${dniNino}</p>` : ""}
-    </div>
-    ${adultNombre ? `<p class="section-title">Datos del adulto/a responsable:</p><div class="section-body"><p>Nombre y apellido: ${adultNombre}.</p>${adultDni ? `<p>DNI: ${adultDni}</p>` : ""}</div>` : ""}
-    <p>Desde el Centro de Primera Infancia "${centerName ?? "CAIPLI"}"${lider ? `, a cargo de ${lider}` : ""}${ecoNum ? `, sala ECO ${ecoNum}` : ""}, nos dirigimos a quien corresponda a fin de elevar el informe de seguimiento para poner en conocimiento la situación en que se encuentra actualmente el/la niño/a ${(selectedChild?.nombre ?? report?.nombre ?? "").split(" ")[0]}.</p>
-    ${bodyText ? `<p>${bodyText.replace(/\n/g, "</p><p>")}</p>` : ""}
-    <div class="cierre">
-      <p>Quedo a disposición para ampliar información o trabajar de manera conjunta.</p>
-      ${email ? `<p>Mail de contacto: ${email}</p>` : ""}
-      <p style="margin-top:16px">Saluda atentamente,</p>
-    </div>
+    ${escolarDatosHtml}
+    ${bodyHtml}
     ${firmaHtml}
     </body></html>`);
     w.document.close();
@@ -1343,7 +1381,7 @@ function FollowupReportModal({
       <div className="bg-[#1e1147] text-white px-5 pt-5 pb-4 shrink-0">
         <div className="flex items-start justify-between max-w-7xl mx-auto">
           <div>
-            <div className="text-white/50 text-[11px] font-semibold uppercase tracking-widest">Informe de seguimiento</div>
+            <div className="text-white/50 text-[11px] font-semibold uppercase tracking-widest">{isEscolar ? "Informe Escolar" : "Informe de seguimiento"}</div>
             <h2 className="text-xl font-bold mt-0.5">{isEdit ? `${report!.apellido}, ${report!.nombre}` : "Nuevo informe"}</h2>
           </div>
           <button onClick={onClose} className="text-white/60 hover:text-white p-1 mt-1"><X className="w-5 h-5" /></button>
@@ -1372,6 +1410,7 @@ function FollowupReportModal({
                         if (c.fnac && !fechaNacNino) setFechaNacNino(c.fnac);
                         const adultName = [c.famApellido, c.famNombre].filter(Boolean).join(", ");
                         if (adultName && !adultNombre) setAdultNombre(adultName);
+                        if (isEscolar && !report?.id) setBodyText(ESCOLAR_TEMPLATE(`${c.nombre} ${c.apellido}`, centerName ?? "CAIPLI NORTE"));
                       }}
                       className="w-full text-left px-3 py-2 text-sm hover:bg-violet-50 transition-colors">
                       <span className="font-medium">{c.apellido}, {c.nombre}</span>
@@ -1813,7 +1852,7 @@ export default function Informes() {
   const periods = (profileQ.data?.reportPeriods?.length ? profileQ.data.reportPeriods : null) ?? PERIODS;
 
   const urlParams = new URLSearchParams(window.location.search);
-  const [tab, setTab] = useState<"desarrollo" | "seguimiento" | "asistencia">(urlParams.get("tab") === "seguimiento" ? "seguimiento" : "desarrollo");
+  const [tab, setTab] = useState<"desarrollo" | "seguimiento" | "escolar" | "asistencia">(urlParams.get("tab") === "seguimiento" ? "seguimiento" : urlParams.get("tab") === "escolar" ? "escolar" : "desarrollo");
   const [showAsistencia, setShowAsistencia] = useState(false);
   const urlChildId = urlParams.get("childId") ? Number(urlParams.get("childId")) : null;
   const [search, setSearch] = useState("");
@@ -1824,6 +1863,8 @@ export default function Informes() {
   const [showNew, setShowNew] = useState(false);
   const [selectedFollowup, setSelectedFollowup] = useState<FollowupReport | null>(null);
   const [showNewFollowup, setShowNewFollowup] = useState(() => urlParams.get("tab") === "seguimiento" && !!urlParams.get("childId"));
+  const [showNewEscolar, setShowNewEscolar] = useState(false);
+  const [selectedEscolar, setSelectedEscolar] = useState<FollowupReport | null>(null);
 
   const roomsQ = useListRooms();
   const rooms = (roomsQ.data ?? []).filter((r: any) => !centerId || r.centerId === centerId);
@@ -1838,12 +1879,23 @@ export default function Informes() {
     queryKey: ["followup-reports", centerId],
     queryFn: async () => {
       if (!centerId) return [];
-      const r = await fetch(`${BASE}/followup-reports?centerId=${centerId}`);
+      const r = await fetch(`${BASE}/followup-reports?centerId=${centerId}&reportType=seguimiento`);
       return r.ok ? r.json() : [];
     },
     enabled: !!centerId,
   });
   const followupReports = followupQ.data ?? [];
+
+  const escolarQ = useQuery<FollowupReport[]>({
+    queryKey: ["escolar-reports", centerId],
+    queryFn: async () => {
+      if (!centerId) return [];
+      const r = await fetch(`${BASE}/followup-reports?centerId=${centerId}&reportType=escolar`);
+      return r.ok ? r.json() : [];
+    },
+    enabled: !!centerId,
+  });
+  const escolarReports = escolarQ.data ?? [];
 
   const filteredFollowups = useMemo(() => {
     let list = urlChildId ? followupReports.filter((r) => r.childId === urlChildId) : followupReports;
@@ -1851,6 +1903,12 @@ export default function Informes() {
     const q = search.toLowerCase();
     return list.filter((r) => `${r.nombre} ${r.apellido}`.toLowerCase().includes(q));
   }, [followupReports, search, urlChildId]);
+
+  const filteredEscolares = useMemo(() => {
+    if (!search) return escolarReports;
+    const q = search.toLowerCase();
+    return escolarReports.filter((r) => `${r.nombre} ${r.apellido}`.toLowerCase().includes(q));
+  }, [escolarReports, search]);
 
   const childrenForFollowup = useQuery<Child[]>({
     queryKey: ["children-for-followup", centerId],
@@ -1895,9 +1953,9 @@ export default function Informes() {
       <div className="bg-[#1e1147] text-white px-5 pt-6 pb-4 lg:pt-8">
         <div className="text-white/50 text-[11px] font-semibold uppercase tracking-widest">Informes</div>
         <div className="flex items-end justify-between mt-1 mb-4">
-          <h1 className="text-2xl font-bold">{tab === "desarrollo" ? "Desarrollo" : tab === "seguimiento" ? "Seguimiento" : "Asistencia"}</h1>
+          <h1 className="text-2xl font-bold">{tab === "desarrollo" ? "Desarrollo" : tab === "seguimiento" ? "Seguimiento" : tab === "escolar" ? "Escolar" : "Asistencia"}</h1>
           <button
-            onClick={() => tab === "desarrollo" ? setShowNew(true) : tab === "seguimiento" ? setShowNewFollowup(true) : setShowAsistencia(true)}
+            onClick={() => tab === "desarrollo" ? setShowNew(true) : tab === "seguimiento" ? setShowNewFollowup(true) : tab === "escolar" ? setShowNewEscolar(true) : setShowAsistencia(true)}
             className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 text-white text-sm font-semibold px-3 py-1.5 rounded-xl transition-colors"
           >
             <Plus className="w-4 h-4" />Nuevo
@@ -1916,6 +1974,12 @@ export default function Informes() {
             className={`flex-1 text-sm font-semibold py-1.5 rounded-lg transition-colors ${tab === "seguimiento" ? "bg-white text-[#1e1147]" : "text-white/70 hover:text-white"}`}
           >
             Seguimiento
+          </button>
+          <button
+            onClick={() => setTab("escolar")}
+            className={`flex-1 text-sm font-semibold py-1.5 rounded-lg transition-colors ${tab === "escolar" ? "bg-white text-[#1e1147]" : "text-white/70 hover:text-white"}`}
+          >
+            Escolar
           </button>
           <button
             onClick={() => setTab("asistencia")}
@@ -2125,6 +2189,49 @@ export default function Informes() {
             </div>
           </>
         )}
+
+        {tab === "escolar" && (
+          <>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input placeholder="Buscar por apellido..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 text-sm" />
+            </div>
+
+            {escolarQ.isPending && <p className="text-center py-12 text-gray-400 text-sm">Cargando...</p>}
+
+            {!escolarQ.isPending && filteredEscolares.length === 0 && (
+              <div className="text-center py-16">
+                <FileText className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+                <p className="text-gray-400 text-sm">No hay informes escolares</p>
+                <button onClick={() => setShowNewEscolar(true)} className="mt-4 text-violet-600 text-sm font-semibold hover:underline flex items-center gap-1 mx-auto">
+                  <Plus className="w-4 h-4" />Crear el primer informe
+                </button>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {filteredEscolares.map((r) => (
+                <div key={r.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <button
+                    onClick={() => setSelectedEscolar(r)}
+                    className="w-full flex items-center gap-3 px-4 py-4 hover:bg-violet-50/50 transition-colors text-left"
+                  >
+                    <FileText className="w-4 h-4 text-violet-400 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-gray-900">{r.apellido}, {r.nombre}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {r.fecha ? fmtFechaLarga(r.fecha) : "—"}
+                        {r.ecoNumber ? ` · ECO ${r.ecoNumber}` : ""}
+                        {r.lider ? ` · ${r.lider}` : ""}
+                      </p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {selected && <ReportModal report={selected} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); qc.invalidateQueries({ queryKey: ["all-reports"] }); }} logoBase64={logoBase64} userRole={role} />}
@@ -2156,6 +2263,19 @@ export default function Informes() {
           email={profileQ.data?.email}
           onClose={() => { setShowNewFollowup(false); setSelectedFollowup(null); }}
           onSaved={() => { qc.invalidateQueries({ queryKey: ["followup-reports"] }); }}
+        />
+      )}
+      {(showNewEscolar || selectedEscolar) && centerId && (
+        <FollowupReportModal
+          centerId={centerId}
+          centerName={centerName}
+          report={selectedEscolar}
+          children={childrenForFollowup.data ?? []}
+          logoBase64={logoBase64}
+          email={profileQ.data?.email}
+          reportType="escolar"
+          onClose={() => { setShowNewEscolar(false); setSelectedEscolar(null); }}
+          onSaved={() => { qc.invalidateQueries({ queryKey: ["escolar-reports"] }); }}
         />
       )}
     </div>

@@ -49,7 +49,8 @@ router.get("/reports", async (req, res) => {
               r.eco_number AS "ecoNumber", r.lider, r.facilitadora, r.hitos, r.textos,
               r.observaciones, r.status, r.created_at AS "createdAt", r.updated_at AS "updatedAt",
               r.firma_lider_data AS "firmaLiderData", r.firma_lider_at AS "firmaLiderAt",
-              r.firma_facilitadora_data AS "firmaFacilitadoraData", r.firma_facilitadora_at AS "firmaFacilitadoraAt"
+              r.firma_facilitadora_data AS "firmaFacilitadoraData", r.firma_facilitadora_at AS "firmaFacilitadoraAt",
+              ch.fecha_nacimiento AS "fnac"
        FROM child_reports r
        JOIN children ch ON ch.id = r.child_id
        JOIN rooms ro ON ro.id = ch.room_id

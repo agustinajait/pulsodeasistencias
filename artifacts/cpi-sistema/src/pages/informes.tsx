@@ -32,6 +32,7 @@ type Report = {
   firmaLiderAt?: string | null;
   firmaFacilitadoraData?: string | null;
   firmaFacilitadoraAt?: string | null;
+  fnac?: string | null;
 };
 
 const STATUS_LABEL: Record<string, string> = { borrador: "Borrador", en_revision: "En revisión", aprobado: "Aprobado" };
@@ -803,6 +804,8 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
     const w = window.open("", "_blank");
     if (!w) return;
 
+    const edadHtml = report.fnac ? `<span style="font-size:11px;color:#6b7280;margin-left:8px">· ${calcEdad(report.fnac)}</span>` : "";
+
     // ── datos de firmas (sin cambios) ──────────────────────────────────────
     const firmaLiderImg = firmaLiderData && firmaLiderData !== "CONFIRMADO" ? `<img src="${firmaLiderData}" style="height:40px;object-fit:contain;display:block;margin:0 auto"/>` : "";
     const firmaLider = lider ? `<div class="firma">${firmaLiderImg}<div class="firma-linea"></div><div class="firma-nombre">${lider}</div><div class="firma-rol">Líder pedagógica${firmaLiderAt ? ` · Firmado ${fmtFirmaFecha(firmaLiderAt)}` : ""}</div></div>` : "";
@@ -894,7 +897,7 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
     </div>
     <div class="perfil">
       <div>
-        <div class="perfil-nombre">${childName}</div>
+        <div class="perfil-nombre">${childName}${edadHtml}</div>
         <div class="perfil-sub">${[lider ? `Líder: ${lider}` : "", facilitadora ? `Facilitadora: ${facilitadora}` : ""].filter(Boolean).join(" &nbsp;·&nbsp; ")}</div>
       </div>
     </div>

@@ -11,6 +11,7 @@ const RETURNING = `
   firmante_matricula AS "firmanteMatricula",
   firma_lider_data AS "firmaLiderData", firma_lider_at AS "firmaLiderAt",
   firma_firmante_data AS "firmaFirmanteData", firma_firmante_at AS "firmaFirmanteAt",
+  report_type AS "reportType",
   created_at AS "createdAt", updated_at AS "updatedAt"
 `;
 
@@ -40,6 +41,7 @@ async function ensureTable() {
   await pool.query(`ALTER TABLE child_followup_reports ADD COLUMN IF NOT EXISTS firma_lider_at TIMESTAMPTZ`);
   await pool.query(`ALTER TABLE child_followup_reports ADD COLUMN IF NOT EXISTS firma_firmante_data TEXT`);
   await pool.query(`ALTER TABLE child_followup_reports ADD COLUMN IF NOT EXISTS firma_firmante_at TIMESTAMPTZ`);
+  await pool.query(`ALTER TABLE child_followup_reports ADD COLUMN IF NOT EXISTS report_type VARCHAR(50) DEFAULT 'seguimiento'`);
 }
 
 // GET /followup-reports?centerId=X&childId=Y
@@ -50,6 +52,7 @@ router.get("/followup-reports", async (req, res) => {
     const params: any[] = [];
     if (req.query.centerId) { params.push(Number(req.query.centerId)); conditions.push(`f.center_id = $${params.length}`); }
     if (req.query.childId) { params.push(Number(req.query.childId)); conditions.push(`f.child_id = $${params.length}`); }
+    if (req.query.reportType) { params.push(req.query.reportType); conditions.push(`COALESCE(f.report_type,'seguimiento') = $${params.length}`); }
     const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
     const { rows } = await pool.query(
       `SELECT f.id, f.child_id AS "childId", f.center_id AS "centerId",
@@ -79,13 +82,13 @@ router.get("/followup-reports", async (req, res) => {
 router.post("/followup-reports", async (req, res) => {
   try {
     await ensureTable();
-    const { childId, centerId, fecha, lider, facilitadora, ecoNumber, dniNino, fechaNacNino, adultNombre, adultDni, bodyText, firmanteNombre, firmanteTitulo, firmanteMatricula } = req.body;
+    const { childId, centerId, fecha, lider, facilitadora, ecoNumber, dniNino, fechaNacNino, adultNombre, adultDni, bodyText, firmanteNombre, firmanteTitulo, firmanteMatricula, reportType } = req.body;
     if (!childId || !centerId) { res.status(400).json({ error: "childId and centerId are required" }); return; }
     const { rows } = await pool.query(
-      `INSERT INTO child_followup_reports (child_id, center_id, fecha, lider, facilitadora, eco_number, dni_nino, fecha_nac_nino, adult_nombre, adult_dni, body_text, firmante_nombre, firmante_titulo, firmante_matricula)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+      `INSERT INTO child_followup_reports (child_id, center_id, fecha, lider, facilitadora, eco_number, dni_nino, fecha_nac_nino, adult_nombre, adult_dni, body_text, firmante_nombre, firmante_titulo, firmante_matricula, report_type)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
        RETURNING ${RETURNING}`,
-      [childId, centerId, fecha ?? null, lider ?? null, facilitadora ?? null, ecoNumber ?? null, dniNino ?? null, fechaNacNino ?? null, adultNombre ?? null, adultDni ?? null, bodyText ?? null, firmanteNombre ?? null, firmanteTitulo ?? null, firmanteMatricula ?? null]
+      [childId, centerId, fecha ?? null, lider ?? null, facilitadora ?? null, ecoNumber ?? null, dniNino ?? null, fechaNacNino ?? null, adultNombre ?? null, adultDni ?? null, bodyText ?? null, firmanteNombre ?? null, firmanteTitulo ?? null, firmanteMatricula ?? null, reportType ?? "seguimiento"]
     );
     res.status(201).json(rows[0]);
   } catch (err: any) {

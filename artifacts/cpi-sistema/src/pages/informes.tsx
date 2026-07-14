@@ -1323,7 +1323,8 @@ function FollowupReportModal({
     const bodyHtml = isEscolar
       ? `${bodyText ? `<div style="font-size:12pt;line-height:1.8;text-align:justify">${bodyText.replace(/\n\n/g,"</p><p style='margin-bottom:14px'>").replace(/\n/g,"<br/>")}</div>` : ""}
         <div class="cierre">
-          <p>Quedo a disposición para ampliar información o trabajar de manera conjunta. Mail de contacto: ${email ?? escolarEmail}</p>
+          <p>Quedo a disposición para ampliar información o trabajar de manera conjunta.</p>
+          <p>${centerName ?? "CAIPLI"}</p>
           <p style="margin-top:16px">Saluda atentamente,</p>
         </div>`
       : `

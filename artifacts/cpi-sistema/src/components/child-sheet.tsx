@@ -1782,7 +1782,7 @@ export default function ChildSheet({ childId, onClose, roomId }: Props) {
                   <div className="sm:col-span-2"><Label className="text-xs">Observaciones</Label><Textarea value={editObs} onChange={(e) => setEditObs(e.target.value)} rows={2} className="mt-1" /></div>
                 </div>
 
-                <div className="flex gap-2 pt-1">
+                <div className="sticky bottom-0 bg-background pt-2 pb-2 flex gap-2 border-t mt-2">
                   <Button className="flex-1" onClick={handleSaveEdit} disabled={updateChild.isPending} data-testid="btn-save-edit">
                     {updateChild.isPending ? "Guardando..." : "Guardar cambios"}
                   </Button>

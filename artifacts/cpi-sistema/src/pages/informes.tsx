@@ -705,7 +705,7 @@ function NewReportModal({
 }
 
 // ── Report edit/detail modal ───────────────────────────────────────────────
-function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { report: Report; onClose: () => void; onSaved: () => void; logoBase64?: string; userRole?: string | null }) {
+function ReportModal({ report, onClose, onSaved, logoBase64, userRole, centerName }: { report: Report; onClose: () => void; onSaved: () => void; logoBase64?: string; userRole?: string | null; centerName?: string | null }) {
   const { toast } = useToast();
   const template = ECO_TEMPLATES[report.ecoNumber ?? 0] ?? [];
   const childName = `${report.apellido}, ${report.nombre}`;
@@ -891,7 +891,7 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole }: { repor
       ${logoHtml}
       <div class="header-text">
         <h1>Informe de Desarrollo</h1>
-        <p>Sala ECO ${report.ecoNumber ?? 0} &nbsp;·&nbsp; CPI Norte</p>
+        <p>Sala ECO ${report.ecoNumber ?? 0} &nbsp;·&nbsp; ${centerName ?? "CAIPLI"}</p>
       </div>
       <span class="header-badge">${report.period}</span>
     </div>
@@ -2234,7 +2234,7 @@ export default function Informes() {
         )}
       </div>
 
-      {selected && <ReportModal report={selected} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); qc.invalidateQueries({ queryKey: ["all-reports"] }); }} logoBase64={logoBase64} userRole={role} />}
+      {selected && <ReportModal report={selected} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); qc.invalidateQueries({ queryKey: ["all-reports"] }); }} logoBase64={logoBase64} userRole={role} centerName={centerName} />}
       {showNew && centerId && (
         <NewReportModal
           centerId={centerId}

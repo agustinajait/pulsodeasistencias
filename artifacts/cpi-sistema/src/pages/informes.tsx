@@ -1319,8 +1319,13 @@ function FollowupReportModal({
       ? `<div style="display:flex;gap:40px;margin-top:48px;justify-content:center">${firmaBlocks.join("")}</div>`
       : "";
     const tituloInforme = isEscolar ? "Informe Escolar" : "Informe de Seguimiento";
+    const escolarEmail = centerName?.toLowerCase().includes("sur") ? "caiplisur@inclusioncaii.org" : "caiplinorte@inclusioncaii.org";
     const bodyHtml = isEscolar
-      ? (bodyText ? `<div style="font-size:12pt;line-height:1.8;text-align:justify">${bodyText.replace(/\n\n/g,"</p><p style='margin-bottom:14px'>").replace(/\n/g,"<br/>")}</div>` : "")
+      ? `${bodyText ? `<div style="font-size:12pt;line-height:1.8;text-align:justify">${bodyText.replace(/\n\n/g,"</p><p style='margin-bottom:14px'>").replace(/\n/g,"<br/>")}</div>` : ""}
+        <div class="cierre">
+          <p>Quedo a disposición para ampliar información o trabajar de manera conjunta. Mail de contacto: ${email ?? escolarEmail}</p>
+          <p style="margin-top:16px">Saluda atentamente,</p>
+        </div>`
       : `
         <p class="section-title">Datos de la niño/a:</p>
         <div class="section-body">

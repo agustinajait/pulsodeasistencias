@@ -1238,8 +1238,8 @@ const PIDCAM_EJES: {
   },
 ];
 
-function pidcamSectionKey(ejeKey: string, audKey: string) {
-  return `${ejeKey}_${audKey}`;
+function pidcamEvalKey(ejeKey: string, audKey: string) {
+  return `eval_${ejeKey}_${audKey}`;
 }
 
 // ── PIDCAM PDF ────────────────────────────────────────────────────────────────
@@ -1256,20 +1256,26 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
 
   let ejesHtml = "";
   for (const eje of PIDCAM_EJES) {
-    // Una fila con 4 celdas de planificación + 1 celda de evaluación
-    const planCells = eje.audiencias.map(a =>
-      `<td class="cell cell-plan">
-        <p class="lbl-act">Actividad ejemplo:</p>
-        <p class="txt-act">${a.actividad}</p>
-        <p class="lbl-obj">Objetivo específico:</p>
-        <p class="txt-obj">${a.objetivo}</p>
-      </td>`
-    ).join("");
-
-    const evalTxt = secs[eje.evalKey] ?? "";
-    const evalParts = evalTxt.trim()
-      ? evalTxt.replace(/\n/g, "<br/>")
-      : '<span class="empty">Sin completar</span>';
+    // 4 columnas: plan (actividad+objetivo) | evaluación — por cada audiencia
+    const colsHtml = eje.audiencias.map(a => {
+      const evalTxt = secs[pidcamEvalKey(eje.key, a.key)] ?? "";
+      const evalHtml = evalTxt.trim()
+        ? evalTxt.replace(/\n/g, "<br/>")
+        : '<span class="empty">Sin completar</span>';
+      return `
+        <td class="cell">
+          <div class="plan-block">
+            <p class="lbl-act">Actividad ejemplo:</p>
+            <p class="txt-act">${a.actividad}</p>
+            <p class="lbl-obj">Objetivo específico:</p>
+            <p class="txt-obj">${a.objetivo}</p>
+          </div>
+          <div class="eval-block">
+            <p class="lbl-eval">Evaluación:</p>
+            <p class="txt-eval">${evalHtml}</p>
+          </div>
+        </td>`;
+    }).join("");
 
     ejesHtml += `
     <div class="eje-wrap">
@@ -1282,15 +1288,11 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
       <table class="pidcam-table">
         <thead>
           <tr>
-            ${eje.audiencias.map(a => `<th class="th-plan">${a.label}</th>`).join("")}
-            <th class="th-eval">Evaluación</th>
+            ${eje.audiencias.map(a => `<th class="th-col">${a.label}</th>`).join("")}
           </tr>
         </thead>
         <tbody>
-          <tr>
-            ${planCells}
-            <td class="cell cell-eval">${evalParts || '<span class="empty">Sin completar</span>'}</td>
-          </tr>
+          <tr>${colsHtml}</tr>
         </tbody>
       </table>
     </div>`;
@@ -1328,16 +1330,16 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
 
     /* TABLE */
     .pidcam-table{ width:100%; border-collapse:collapse; border-top:none; }
-    .th-plan{ background:#b2e8f0 !important; padding:7px 9px; font-size:9pt; font-weight:800; color:#1a4a52; text-align:center; text-transform:uppercase; letter-spacing:.04em; border:1.5px solid #8dd4df; }
-    .th-eval{ background:#b8efd0 !important; padding:7px 9px; font-size:9pt; font-weight:800; color:#1a4a36; text-align:center; text-transform:uppercase; letter-spacing:.04em; border:1.5px solid #8ddfb0; width:22%; }
-    .cell{ padding:9px 10px; vertical-align:top; font-size:8.5pt; line-height:1.55; }
-    .cell-plan{ background:#d6f3f8 !important; border:1.5px solid #9ed8e2; }
-    .cell-eval{ background:#e8f8ef !important; border:1.5px solid #8ddfb0; }
-    .lbl-act{ font-size:7.5pt; font-weight:700; text-decoration:underline; color:#1a5a6a; margin:0 0 3px; }
-    .txt-act{ margin:0 0 7px; color:#1a3a42; }
-    .lbl-obj{ font-size:7.5pt; font-weight:700; text-decoration:underline; color:#1a5a6a; margin:0 0 3px; }
+    .th-col{ background:#b2e8f0 !important; padding:7px 9px; font-size:9pt; font-weight:800; color:#1a4a52; text-align:center; text-transform:uppercase; letter-spacing:.04em; border:1.5px solid #8dd4df; width:25%; }
+    .cell{ padding:0; vertical-align:top; font-size:8pt; line-height:1.5; border:1.5px solid #9ed8e2; width:25%; }
+    .plan-block{ background:#d6f3f8 !important; padding:8px 10px; border-bottom:2px dashed #9ed8e2; }
+    .eval-block{ background:#e8f8ef !important; padding:8px 10px; }
+    .lbl-act{ font-size:7pt; font-weight:700; text-transform:uppercase; color:#1a5a6a; margin:0 0 3px; letter-spacing:.03em; }
+    .txt-act{ margin:0 0 6px; color:#1a3a42; }
+    .lbl-obj{ font-size:7pt; font-weight:700; text-transform:uppercase; color:#1a5a6a; margin:0 0 3px; letter-spacing:.03em; }
     .txt-obj{ margin:0; color:#1a3a42; font-style:italic; }
-    .txt-eval{ margin:0 0 8px; color:#1a3a2e; }
+    .lbl-eval{ font-size:7pt; font-weight:700; text-transform:uppercase; color:#1a4a36; margin:0 0 3px; letter-spacing:.03em; }
+    .txt-eval{ margin:0; color:#1a3a2e; }
     .empty{ color:#bbb; font-style:italic; }
 
     /* FOOTER */
@@ -1467,57 +1469,61 @@ function PidcamModal({
 
         <div className="overflow-y-auto flex-1 px-4 py-4 space-y-6">
           {PIDCAM_EJES.map((eje) => {
-            const evalTxt = secciones[eje.evalKey] ?? "";
+            const allFilled = eje.audiencias.every(a => (secciones[pidcamEvalKey(eje.key, a.key)] ?? "").trim());
             return (
               <div key={eje.key} className="space-y-3">
 
                 {/* ── EJE HEADER ── */}
-                <div className="bg-[#1e1147] rounded-xl px-4 py-3">
-                  <p className="font-bold text-sm text-white">{eje.label}</p>
-                  <p className="text-xs text-white/60 mt-0.5">Objetivo general: {eje.objetivoGeneral}</p>
-                  <p className="text-xs text-white/40 mt-0.5 italic">Temas: {eje.temas}</p>
+                <div className="bg-[#1e1147] rounded-xl px-4 py-3 flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-bold text-sm text-white">{eje.label}</p>
+                    <p className="text-xs text-white/60 mt-0.5">Objetivo: {eje.objetivoGeneral}</p>
+                    <p className="text-xs text-white/40 mt-0.5 italic">Temas: {eje.temas}</p>
+                  </div>
+                  {!editing && (
+                    <span className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full font-bold mt-0.5 ${allFilled ? "bg-emerald-500 text-white" : "bg-amber-400 text-white"}`}>
+                      {allFilled ? "Completo" : "Pendiente"}
+                    </span>
+                  )}
                 </div>
 
-                {/* ── PLANIFICACIÓN POR AUDIENCIA ── */}
-                <div className="rounded-xl border border-sky-200 overflow-hidden">
-                  <div className="bg-sky-100 px-4 py-2">
-                    <p className="text-[10px] font-bold text-sky-700 uppercase tracking-widest">Plan de trabajo</p>
-                  </div>
-                  {eje.audiencias.map((aud, i) => (
-                    <div key={aud.key} className={`px-4 py-3 ${i < eje.audiencias.length - 1 ? "border-b border-sky-100" : ""} bg-sky-50`}>
-                      <p className="text-xs font-bold text-[#1e1147] uppercase tracking-wide mb-1">{aud.label}</p>
-                      <p className="text-xs text-gray-700 leading-relaxed"><span className="font-semibold text-sky-700">Actividad:</span> {aud.actividad}</p>
-                      <p className="text-xs text-gray-500 mt-1 italic"><span className="font-semibold not-italic text-sky-600">Objetivo:</span> {aud.objetivo}</p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* ── EVALUACIÓN DEL EJE ── */}
-                <div className="rounded-xl border border-emerald-200 overflow-hidden">
-                  <div className="bg-emerald-100 px-4 py-2 flex items-center justify-between">
-                    <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest">¿Se cumplieron los objetivos?</p>
-                    {!editing && evalTxt.trim() && (
-                      <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold">Completado</span>
-                    )}
-                    {!editing && !evalTxt.trim() && (
-                      <span className="text-[10px] bg-amber-400 text-white px-2 py-0.5 rounded-full font-bold">Pendiente</span>
-                    )}
-                  </div>
-                  <div className="bg-white px-4 py-3">
-                    {editing ? (
-                      <textarea
-                        value={evalTxt}
-                        onChange={(e) => setSeccion(eje.evalKey, e.target.value)}
-                        rows={5}
-                        placeholder={`Describí si se cumplieron los objetivos del ${eje.label.toLowerCase()}...`}
-                        className="w-full rounded-lg border border-emerald-200 bg-emerald-50/30 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-300 placeholder:text-gray-300"
-                      />
-                    ) : evalTxt.trim() ? (
-                      <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{evalTxt}</p>
-                    ) : (
-                      <p className="text-sm text-gray-300 italic">Sin evaluación cargada aún.</p>
-                    )}
-                  </div>
+                {/* ── AUDIENCIAS: plan + evaluación ── */}
+                <div className="rounded-xl border border-sky-200 overflow-hidden divide-y divide-sky-100">
+                  {eje.audiencias.map((aud) => {
+                    const evalKey = pidcamEvalKey(eje.key, aud.key);
+                    const evalTxt = secciones[evalKey] ?? "";
+                    return (
+                      <div key={aud.key}>
+                        {/* plan */}
+                        <div className="bg-sky-50 px-4 py-3">
+                          <p className="text-[10px] font-bold text-[#1e1147] uppercase tracking-widest mb-1.5">{aud.label}</p>
+                          <p className="text-xs text-gray-700 leading-relaxed">
+                            <span className="font-semibold text-sky-700">Actividad: </span>{aud.actividad}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1 italic">
+                            <span className="font-semibold not-italic text-sky-600">Objetivo: </span>{aud.objetivo}
+                          </p>
+                        </div>
+                        {/* evaluación */}
+                        <div className="bg-emerald-50/60 px-4 py-3 border-t border-emerald-100">
+                          <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest mb-1.5">Evaluación {aud.label}</p>
+                          {editing ? (
+                            <textarea
+                              value={evalTxt}
+                              onChange={(e) => setSeccion(evalKey, e.target.value)}
+                              rows={4}
+                              placeholder={`¿Cómo se trabajó con ${aud.label.toLowerCase()}? ¿Se cumplieron los objetivos?`}
+                              className="w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-300 placeholder:text-gray-300"
+                            />
+                          ) : evalTxt.trim() ? (
+                            <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{evalTxt}</p>
+                          ) : (
+                            <p className="text-sm text-gray-300 italic">Sin evaluación cargada.</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
               </div>

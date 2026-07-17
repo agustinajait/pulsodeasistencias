@@ -1234,110 +1234,118 @@ function pidcamSectionKey(ejeKey: string, audKey: string) {
 // ── PIDCAM PDF ────────────────────────────────────────────────────────────────
 function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, logoBase64: string | undefined) {
   const tipoLabel = ev.tipo === "final" ? "Evaluación Final" : "Evaluación Semestral";
-  const tipoPlazo = ev.tipo === "final" ? "Primera semana de diciembre" : "Primera semana de julio";
+  const tipoPlazo = ev.tipo === "final"
+    ? "Primera semana de diciembre: detallar si se logró o no el objetivo. De no llegar al objetivo aclarar cómo y cuándo se reformula."
+    : "Primera semana de julio: detallar si se logró o no el objetivo. Posibilidad de reajustar PIDCAN y/o actividades.";
   const yearLabel = ev.year ?? new Date().getFullYear();
+  const logoImgHtml = logoBase64 ? `<img src="${logoBase64}" style="height:90px;object-fit:contain;" />` : `<span style="font-size:28pt;font-weight:900;color:#1e1147">CAIPLI</span>`;
+  const logoSmall = logoBase64 ? `<img src="${logoBase64}" style="height:38px;object-fit:contain;" />` : `<span style="font-size:14pt;font-weight:900;color:#1e1147">CAIPLI</span>`;
 
-  const logoImgHtml = logoBase64
-    ? `<img src="${logoBase64}" style="height:80px;object-fit:contain;display:block;margin:0 auto 16px;" />`
-    : "";
+  const secs = ev.secciones ?? {};
 
   let ejesHtml = "";
   for (const eje of PIDCAM_EJES) {
-    let audRows = "";
-    for (const aud of eje.audiencias) {
-      const evalText = (ev.secciones ?? {})[pidcamSectionKey(eje.key, aud.key)] ?? "";
-      audRows += `
-        <div class="aud-block">
-          <div class="aud-header">
-            <span class="aud-label">${aud.label}</span>
-          </div>
-          <div class="aud-body">
-            <div class="col objetivo">
-              <div class="col-title">Objetivo planificado</div>
-              <p class="col-text">${aud.objetivo}</p>
-            </div>
-            <div class="col evaluacion">
-              <div class="col-title">Evaluación</div>
-              <p class="col-text">${evalText.trim() ? evalText.replace(/\n/g, "<br/>") : '<span style="color:#bbb;font-style:italic">Sin completar</span>'}</p>
-            </div>
-          </div>
-        </div>`;
-    }
+    // build cells
+    const planCells = eje.audiencias.map(a =>
+      `<td class="cell plan"><b class="cell-obj">Objetivo:</b><br/>${a.objetivo}</td>`
+    ).join("");
+    const evalCells = eje.audiencias.map(a => {
+      const txt = secs[pidcamSectionKey(eje.key, a.key)] ?? "";
+      return `<td class="cell eval">${txt.trim() ? txt.replace(/\n/g, "<br/>") : '<span class="empty">—</span>'}</td>`;
+    }).join("");
+
     ejesHtml += `
-      <div class="eje-block">
-        <div class="eje-header">
-          <div class="eje-title">${eje.label}</div>
-          <div class="eje-objetivo">${eje.objetivoGeneral}</div>
-          <div class="eje-temas">Temas: ${eje.temas}</div>
-        </div>
-        ${audRows}
-      </div>`;
+    <div class="eje-wrap">
+      <div class="eje-title-bar">
+        <span class="eje-name">${eje.label}</span>
+        <span class="eje-obj-gen">${eje.objetivoGeneral}</span>
+        <span class="eje-temas">Temas: ${eje.temas}</span>
+      </div>
+      <table class="pidcam-table">
+        <thead>
+          <tr>
+            ${eje.audiencias.map(a => `<th>${a.label}</th>`).join("")}
+            <th class="th-eval">Evaluación</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="row-plan">
+            ${planCells}
+            <td class="cell eval-note" rowspan="2">${tipoPlazo}</td>
+          </tr>
+          <tr class="row-eval">
+            ${evalCells}
+          </tr>
+        </tbody>
+      </table>
+    </div>`;
   }
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
-  <title>PIDCAM ${tipoLabel} ${yearLabel} - ${centerName ?? "CAIPLI"}</title>
+  <title>PIDCAM ${tipoLabel} ${yearLabel} · ${centerName ?? "CAIPLI"}</title>
   <style>
-    @page { margin: 18mm 16mm; size: A4; }
-    * { box-sizing: border-box; }
-    body { font-family: Arial, Helvetica, sans-serif; color: #1a1a2e; margin:0; padding:0; font-size:10pt; }
+    @page { margin:15mm 12mm; size:A4 landscape; }
+    *{ box-sizing:border-box; margin:0; padding:0; }
+    body{ font-family:Arial,Helvetica,sans-serif; font-size:9pt; color:#1a1a2e; background:#fff; }
 
-    /* ── CARÁTULA ── */
-    .cover { page-break-after: always; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:260mm; text-align:center; padding:40px; }
-    .cover-logo { margin-bottom:32px; }
-    .cover-title { font-size:22pt; font-weight:900; color:#1e1147; margin-bottom:8px; letter-spacing:-0.5px; }
-    .cover-subtitle { font-size:13pt; font-weight:700; color:#1e1147; margin-bottom:6px; }
-    .cover-pidcan { font-size:11pt; color:#555; margin-bottom:4px; }
-    .cover-lema { font-size:10pt; color:#888; font-style:italic; margin-bottom:32px; }
-    .cover-badge { display:inline-block; background:#1e1147; color:#fff; font-size:13pt; font-weight:700; padding:12px 32px; border-radius:32px; margin-bottom:8px; }
-    .cover-center { font-size:11pt; color:#4a3f8c; font-weight:600; margin-top:8px; }
-    .cover-plazo { font-size:9pt; color:#888; margin-top:24px; border-top:1px solid #e5e7eb; padding-top:16px; width:100%; }
+    /* CARÁTULA */
+    .cover{ page-break-after:always; display:flex; flex-direction:column; align-items:center; justify-content:center; height:190mm; text-align:center; gap:10px; }
+    .cover-logo{ margin-bottom:20px; }
+    .cover h1{ font-size:26pt; font-weight:900; color:#1e1147; letter-spacing:-1px; }
+    .cover h2{ font-size:14pt; font-weight:700; color:#1e1147; }
+    .cover .pidcan{ font-size:10.5pt; color:#555; }
+    .cover .lema{ font-size:10pt; color:#999; font-style:italic; }
+    .cover .badge{ margin-top:24px; background:#1e1147; color:#fff; font-size:14pt; font-weight:800; padding:14px 40px; border-radius:40px; letter-spacing:0.5px; }
+    .cover .centro{ margin-top:10px; font-size:12pt; color:#4a3f8c; font-weight:700; }
+    .cover .plazo-note{ margin-top:28px; font-size:8.5pt; color:#aaa; border-top:1px solid #e5e7eb; padding-top:14px; max-width:420px; line-height:1.5; }
 
-    /* ── CONTENIDO ── */
-    .page-header { display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #1e1147; padding-bottom:8px; margin-bottom:20px; }
-    .page-header-logo img { height:36px; }
-    .page-header-info { text-align:right; font-size:8.5pt; color:#666; }
-    .page-header-info strong { color:#1e1147; }
+    /* PAGE HEADER */
+    .ph{ display:flex; align-items:center; justify-content:space-between; border-bottom:2.5px solid #1e1147; padding-bottom:7px; margin-bottom:16px; }
+    .ph-right{ text-align:right; font-size:8.5pt; color:#666; line-height:1.4; }
+    .ph-right strong{ color:#1e1147; font-size:10pt; }
 
-    .eje-block { margin-bottom:28px; }
-    .eje-header { background:#1e1147; color:#fff; padding:10px 14px; border-radius:6px 6px 0 0; margin-bottom:0; }
-    .eje-title { font-size:12pt; font-weight:900; margin-bottom:3px; }
-    .eje-objetivo { font-size:9pt; opacity:0.85; margin-bottom:2px; }
-    .eje-temas { font-size:8.5pt; opacity:0.7; font-style:italic; }
+    /* EJE */
+    .eje-wrap{ margin-bottom:20px; break-inside:avoid; }
+    .eje-title-bar{ background:#1e1147; color:#fff; padding:8px 12px; border-radius:6px 6px 0 0; display:flex; flex-wrap:wrap; gap:6px; align-items:baseline; }
+    .eje-name{ font-size:11pt; font-weight:900; margin-right:8px; }
+    .eje-obj-gen{ font-size:8.5pt; opacity:.8; }
+    .eje-temas{ font-size:7.5pt; opacity:.6; font-style:italic; margin-left:auto; }
 
-    .aud-block { border:1px solid #e5e7eb; border-top:none; }
-    .aud-block:last-child { border-radius:0 0 6px 6px; }
-    .aud-header { background:#f0eeff; padding:6px 14px; border-bottom:1px solid #e5e7eb; }
-    .aud-label { font-size:9.5pt; font-weight:800; color:#4a3f8c; text-transform:uppercase; letter-spacing:0.04em; }
-    .aud-body { display:flex; gap:0; }
-    .col { flex:1; padding:10px 14px; font-size:9.5pt; line-height:1.55; }
-    .col.objetivo { border-right:1px solid #e5e7eb; background:#fafafa; }
-    .col.evaluacion { background:#fff; }
-    .col-title { font-size:8pt; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:5px; }
-    .col-text { margin:0; color:#333; }
-    .col.evaluacion .col-text { color:#1a1a2e; }
+    /* TABLE */
+    .pidcam-table{ width:100%; border-collapse:collapse; border:1.5px solid #c7c7e8; border-top:none; }
+    .pidcam-table thead tr{ background:#b2e8f0; }
+    .pidcam-table th{ padding:7px 9px; font-size:9pt; font-weight:800; color:#1a4a52; text-align:center; text-transform:uppercase; letter-spacing:.04em; border:1px solid #8dd4df; }
+    .pidcam-table th.th-eval{ background:#b8efd0; color:#1a4a36; }
+    .cell{ padding:8px 9px; vertical-align:top; border:1px solid #9ed8e2; font-size:8.5pt; line-height:1.5; }
+    .cell-obj{ display:block; font-size:7.5pt; color:#2a7a8a; font-style:italic; margin-bottom:4px; }
+    .row-plan .cell{ background:#d6f3f8; }
+    .row-eval .cell{ background:#e8f8ef; }
+    .cell.eval-note{ background:#fef9e7; font-size:7.5pt; color:#7a6200; font-style:italic; line-height:1.5; vertical-align:middle; text-align:center; border:1.5px solid #f5d76e; width:130px; padding:10px; }
+    .empty{ color:#ccc; font-style:italic; }
 
-    .doc-footer { margin-top:24px; border-top:1px solid #e5e7eb; padding-top:10px; font-size:8pt; color:#aaa; text-align:center; }
+    /* FOOTER */
+    .doc-footer{ margin-top:16px; border-top:1px solid #e5e7eb; padding-top:8px; font-size:7.5pt; color:#bbb; text-align:center; }
   </style>
   </head><body>
 
   <!-- CARÁTULA -->
   <div class="cover">
     <div class="cover-logo">${logoImgHtml}</div>
-    <div class="cover-title">Planificación Integral ${yearLabel}</div>
-    <div class="cover-subtitle">Centro de Primera Infancia CAIPLI</div>
-    <div class="cover-pidcan">Proyecto Integral de Cuidado a la Niñez</div>
-    <div class="cover-lema">"Cuidar para Crecer"</div>
-    <div class="cover-badge">${tipoLabel} ${yearLabel}</div>
-    <div class="cover-center">${centerName ?? "CAIPLI"}</div>
-    <div class="cover-plazo">${tipoPlazo}: detalle del logro de objetivos${ev.tipo === "final" ? " · De no alcanzar el objetivo, aclarar cómo y cuándo se reformula" : " · Posibilidad de reajustar PIDCAN y/o actividades"}</div>
+    <h1>Planificación Integral ${yearLabel}</h1>
+    <h2>Centro de Primera Infancia CAIPLI</h2>
+    <p class="pidcan">Proyecto Integral de Cuidado a la Niñez (PIDCAN)</p>
+    <p class="lema">"Cuidar para Crecer"</p>
+    <div class="badge">${tipoLabel} ${yearLabel}</div>
+    <div class="centro">${centerName ?? "CAIPLI"}</div>
+    <p class="plazo-note">${tipoPlazo}</p>
   </div>
 
-  <!-- ENCABEZADO DE PÁGINA -->
-  <div class="page-header">
-    <div class="page-header-logo">${logoBase64 ? `<img src="${logoBase64}" style="height:32px;" />` : `<strong style="color:#1e1147;font-size:13pt">CAIPLI</strong>`}</div>
-    <div class="page-header-info">
+  <!-- ENCABEZADO -->
+  <div class="ph">
+    ${logoSmall}
+    <div class="ph-right">
       <strong>${tipoLabel} ${yearLabel}</strong><br/>
-      ${centerName ?? "CAIPLI"}
+      ${centerName ?? "CAIPLI"} · Planificación Integral
     </div>
   </div>
 

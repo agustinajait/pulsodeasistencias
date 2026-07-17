@@ -24,6 +24,7 @@ import aiRouter from "./ai";
 import portfoliosRouter from "./portfolios";
 import mercaderiaFirmaRouter from "./mercaderia-firma";
 import convivirRouter from "./convivir";
+import pidcamRouter from "./pidcam";
 
 const router: IRouter = Router();
 
@@ -52,5 +53,6 @@ router.use(aiRouter);
 router.use(portfoliosRouter);
 router.use(mercaderiaFirmaRouter);
 router.use(convivirRouter);
+router.use(pidcamRouter);
 
 export default router;

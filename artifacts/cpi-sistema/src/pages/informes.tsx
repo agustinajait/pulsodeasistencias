@@ -1167,7 +1167,7 @@ const PIDCAM_EJES: {
   label: string;
   objetivoGeneral: string;
   temas: string;
-  audiencias: { key: string; label: string; objetivo: string }[];
+  audiencias: { key: string; label: string; actividad: string; objetivo: string }[];
 }[] = [
   {
     key: "principal",
@@ -1178,22 +1178,26 @@ const PIDCAM_EJES: {
       {
         key: "ninos",
         label: "Niñas/os",
+        actividad: "Juego simbólico para abordar temáticas de salud integral como \"ir al doctor\" y hábitos de higiene: rutina de lavado de manos, cepillado de dientes y el juego \"bañar bebés\". Incorporar frutas y verduras en desayunos y meriendas mediante juego simbólico.",
         objetivo: "Fomentar el cuidado del cuerpo, incorporando hábitos de cuidado e higiene. Educar en la importancia de incorporar alimentos saludables.",
       },
       {
         key: "personal",
         label: "Personal",
+        actividad: "Espacios de capacitación sobre el cuidado respetuoso de las infancias y el autocuidado entre adultos: \"Cuidar a los que cuidan y cuidarnos entre quienes cuidamos\". Instancia de formación sobre manipulación de alimentos e inauguración del \"Lactario Bar\".",
         objetivo: "Reflexionar sobre las distintas instancias de cuidado, entre adultos y con las infancias. Que todo el equipo esté formado en la correcta manipulación de alimentos y su importancia.",
       },
       {
         key: "familias",
         label: "Familias",
-        objetivo: "Integrar al CESAC al CPI. Acercar información relevante a las familias. Realizar un relevamiento del carnet de vacunas de las infancias, gestionando su actualización en caso de ser necesario. Que las familias participen de forma activa de la educación.",
+        actividad: "Jornadas de vacunación revisando calendarios, articulando con el CESAC para compartir actividades y controles. Taller abierto de elaboración de preparaciones sencillas donde familias e infancias manipulen alimentos saludables y cocinen en comunidad.",
+        objetivo: "Integrar al CESAC al CPI. Acercar información relevante a las familias. Relevamiento del carnet de vacunas. Que las familias participen de forma activa de la educación.",
       },
       {
         key: "comunidad",
         label: "Comunidad",
-        objetivo: "Integrar a estudiantes de enfermería al proyecto de cuidado integral del niño/a. Realizar un relevamiento del estado bucal de los niños, identificando casos que requieran de seguimiento posterior al control.",
+        actividad: "Articulación con estudiantes de enfermería (Hospital Británico) para charlas a familias: mano-boca-pie, vacunación y controles médicos. Relevamiento del estado bucal de los niños. Cuidado del medio ambiente: inauguración de la \"Eco Librería\".",
+        objetivo: "Integrar a estudiantes de enfermería al proyecto de cuidado integral del niño/a. Relevamiento del estado bucal, identificando casos que requieran seguimiento.",
       },
     ],
   },
@@ -1206,22 +1210,26 @@ const PIDCAM_EJES: {
       {
         key: "ninos",
         label: "Niñas/os",
-        objetivo: "Estimular el lenguaje. Destinar dentro de la rutina diaria momentos para lectura de libros, show de títeres y canciones.",
+        actividad: "Momentos de exposición literaria dentro de la rutina diaria: lectura de libros, show de títeres, canciones. Espacios que ofrezcan alternativas significativas al uso de pantallas.",
+        objetivo: "Estimular el lenguaje. Destinar un momento diario para lectura compartida, títeres y canciones.",
       },
       {
         key: "personal",
         label: "Personal",
-        objetivo: "Adquirir materiales concretos que despierten la creatividad y sean un medio para estimular el lenguaje. Confección de títeres de dedo y \"Cuentos en lata\".",
+        actividad: "Talleres de elaboración de materiales: confección de títeres de dedo y \"Cuentos en lata\". Planificación de escenarios literarios y recursos que estimulen el lenguaje.",
+        objetivo: "Adquirir materiales concretos que despierten la creatividad y sean un medio para estimular el lenguaje.",
       },
       {
         key: "familias",
         label: "Familias",
-        objetivo: "Que las familias encuentren alternativas para evitar el uso excesivo de pantallas en las infancias. Taller abierto de elaboración de material sensorial.",
+        actividad: "Taller abierto de elaboración de material sensorial. Herramientas para fortalecer la lectura en el hogar y alternativas al uso excesivo de pantallas en las infancias.",
+        objetivo: "Que las familias encuentren alternativas para evitar el uso excesivo de pantallas en las infancias.",
       },
       {
         key: "comunidad",
         label: "Comunidad",
-        objetivo: "Generar una red de servicios que se brindan en relación a la infancia, incluyendo propuestas culturales, de entretenimiento o relacionadas a aspectos legales o de salud. Brindar a las familias información sobre lugares y propuestas en la ciudad.",
+        actividad: "Generar una red de servicios relacionados a la infancia (propuestas culturales, de entretenimiento, legales o de salud). Brindar información sobre lugares y actividades en la ciudad, promoviendo el acceso a eventos culturales fuera del barrio.",
+        objetivo: "Generar una red de servicios vinculados a la infancia. Brindar a las familias información sobre propuestas culturales y de salud en la ciudad.",
       },
     ],
   },
@@ -1247,7 +1255,7 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
   for (const eje of PIDCAM_EJES) {
     // build cells
     const planCells = eje.audiencias.map(a =>
-      `<td class="cell plan"><b class="cell-obj">Objetivo:</b><br/>${a.objetivo}</td>`
+      `<td class="cell plan"><span class="cell-act-label">Actividad:</span> ${a.actividad}<br/><span class="cell-obj-label">Objetivo:</span> <em>${a.objetivo}</em></td>`
     ).join("");
     const evalCells = eje.audiencias.map(a => {
       const txt = secs[pidcamSectionKey(eje.key, a.key)] ?? "";
@@ -1285,7 +1293,7 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
   <title>PIDCAM ${tipoLabel} ${yearLabel} · ${centerName ?? "CAIPLI"}</title>
   <style>
     @page { margin:15mm 12mm; size:A4 landscape; }
-    *{ box-sizing:border-box; margin:0; padding:0; }
+    *{ box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; color-adjust:exact !important; }
     body{ font-family:Arial,Helvetica,sans-serif; font-size:9pt; color:#1a1a2e; background:#fff; }
 
     /* CARÁTULA */
@@ -1317,7 +1325,8 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
     .pidcam-table th{ padding:7px 9px; font-size:9pt; font-weight:800; color:#1a4a52; text-align:center; text-transform:uppercase; letter-spacing:.04em; border:1px solid #8dd4df; }
     .pidcam-table th.th-eval{ background:#b8efd0; color:#1a4a36; }
     .cell{ padding:8px 9px; vertical-align:top; border:1px solid #9ed8e2; font-size:8.5pt; line-height:1.5; }
-    .cell-obj{ display:block; font-size:7.5pt; color:#2a7a8a; font-style:italic; margin-bottom:4px; }
+    .cell-act-label{ font-size:7.5pt; font-weight:700; color:#1a5a6a; text-decoration:underline; }
+    .cell-obj-label{ font-size:7.5pt; font-weight:700; color:#1a5a6a; text-decoration:underline; margin-top:5px; display:inline-block; }
     .row-plan .cell{ background:#d6f3f8; }
     .row-eval .cell{ background:#e8f8ef; }
     .cell.eval-note{ background:#fef9e7; font-size:7.5pt; color:#7a6200; font-style:italic; line-height:1.5; vertical-align:middle; text-align:center; border:1.5px solid #f5d76e; width:130px; padding:10px; }

@@ -1162,32 +1162,25 @@ type PidcamEval = {
 };
 
 // ── PIDCAM structure ──────────────────────────────────────────────────────────
+const PIDCAM_AUDIENCIAS = [
+  { key: "ninos", label: "Niñas/os" },
+  { key: "personal", label: "Personal" },
+  { key: "familias", label: "Familias" },
+  { key: "comunidad", label: "Comunidad" },
+];
+
 const PIDCAM_EJES = [
   {
     key: "principal",
     label: "Eje Principal: Hábitos Saludables",
-    intro: "El eje principal trabajado durante el período fue Hábitos Saludables, orientado a fortalecer prácticas de cuidado, alimentación, higiene y bienestar en la comunidad del centro.",
-    audiencias: [
-      { key: "ninos_1", label: "Niñas/os 1 año" },
-      { key: "ninos_2", label: "Niñas/os 2 años" },
-      { key: "ninos_3", label: "Niñas/os 3 años" },
-      { key: "personal", label: "Personal" },
-      { key: "familias", label: "Familias" },
-      { key: "comunidad", label: "Comunidad" },
-    ],
+    temas: "Salud integral · Alimentación saludable · Autocuidado · Lactancia",
+    audiencias: PIDCAM_AUDIENCIAS,
   },
   {
     key: "secundario",
     label: "Eje Secundario: Crianza",
-    intro: "El eje secundario abordado fue Crianza, buscando acompañar y fortalecer los vínculos entre familias y niñas/os, promoviendo prácticas de crianza respetuosa.",
-    audiencias: [
-      { key: "ninos_1", label: "Niñas/os 1 año" },
-      { key: "ninos_2", label: "Niñas/os 2 años" },
-      { key: "ninos_3", label: "Niñas/os 3 años" },
-      { key: "personal", label: "Personal" },
-      { key: "familias", label: "Familias" },
-      { key: "comunidad", label: "Comunidad" },
-    ],
+    temas: "Estimulación del lenguaje · Uso excesivo de pantallas · Red de actividades",
+    audiencias: PIDCAM_AUDIENCIAS,
   },
 ];
 
@@ -1208,7 +1201,7 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
   for (const eje of PIDCAM_EJES) {
     ejesHtml += `<div class="eje-block">
       <div class="eje-title">${eje.label}</div>
-      <p class="eje-intro">${eje.intro}</p>`;
+      <p class="eje-temas">Temas: ${eje.temas}</p>`;
     for (const aud of eje.audiencias) {
       const text = (ev.secciones ?? {})[pidcamSectionKey(eje.key, aud.key)] ?? "";
       if (!text.trim()) continue;
@@ -1232,7 +1225,7 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
     .center-name { font-size:10pt; color:#888; margin-top:4px; }
     .eje-block { margin-bottom:24px; page-break-inside:avoid; }
     .eje-title { font-size:13pt; font-weight:900; color:#1e1147; border-left:4px solid #1e1147; padding-left:10px; margin-bottom:8px; }
-    .eje-intro { font-size:10pt; color:#555; font-style:italic; margin-bottom:12px; }
+    .eje-temas { font-size:9.5pt; color:#666; font-style:italic; margin-bottom:14px; }
     .seccion { margin-bottom:14px; }
     .seccion-label { font-size:10pt; font-weight:700; color:#4a3f8c; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.03em; }
     .seccion-text { font-size:10.5pt; line-height:1.6; margin:0; }
@@ -1360,7 +1353,7 @@ function PidcamModal({
             <div key={eje.key} className="space-y-3">
               <div className="border-l-4 border-[#1e1147] pl-3">
                 <h3 className="font-bold text-sm text-[#1e1147]">{eje.label}</h3>
-                <p className="text-xs text-gray-500 mt-0.5">{eje.intro}</p>
+                <p className="text-xs text-gray-500 mt-0.5">Temas: {eje.temas}</p>
               </div>
               {eje.audiencias.map((aud) => {
                 const key = pidcamSectionKey(eje.key, aud.key);

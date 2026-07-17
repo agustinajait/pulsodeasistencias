@@ -1297,52 +1297,56 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
   <title>PIDCAM ${tipoLabel} ${yearLabel} · ${centerName ?? "CAIPLI"}</title>
   <style>
-    @page { margin:15mm 12mm; size:A4 landscape; }
+    @page { margin:14mm 14mm; size:A4 landscape; }
     *{ box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; color-adjust:exact !important; }
-    body{ font-family:Arial,Helvetica,sans-serif; font-size:9pt; color:#1a1a2e; background:#fff; }
+    body{ font-family:Arial,Helvetica,sans-serif; font-size:8.5pt; color:#1a1a2e; background:#fff; }
 
-    /* CARÁTULA */
-    .cover{ page-break-after:always; display:flex; flex-direction:column; align-items:center; justify-content:center; height:190mm; text-align:center; gap:10px; }
-    .cover-logo{ margin-bottom:20px; }
-    .cover h1{ font-size:26pt; font-weight:900; color:#1e1147; letter-spacing:-1px; }
-    .cover h2{ font-size:14pt; font-weight:700; color:#1e1147; }
-    .cover .pidcan{ font-size:10.5pt; color:#555; }
-    .cover .lema{ font-size:10pt; color:#999; font-style:italic; }
-    .cover .badge{ margin-top:24px; background:#1e1147; color:#fff; font-size:14pt; font-weight:800; padding:14px 40px; border-radius:40px; letter-spacing:0.5px; }
-    .cover .centro{ margin-top:10px; font-size:12pt; color:#4a3f8c; font-weight:700; }
-    .cover .plazo-note{ margin-top:28px; font-size:8.5pt; color:#aaa; border-top:1px solid #e5e7eb; padding-top:14px; max-width:420px; line-height:1.5; }
+    /* CARÁTULA — ocupa exactamente 1 página landscape sin sobrar */
+    .cover{
+      page-break-after:always;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      height:176mm; /* landscape A4 interior = 210mm - 2×17mm margins ≈ 176mm */
+      text-align:center; gap:8px;
+    }
+    .cover-logo{ margin-bottom:14px; }
+    .cover h1{ font-size:22pt; font-weight:900; color:#1e1147; letter-spacing:-0.5px; }
+    .cover h2{ font-size:12pt; font-weight:700; color:#1e1147; margin-top:2px; }
+    .cover .pidcan{ font-size:9.5pt; color:#555; margin-top:2px; }
+    .cover .lema{ font-size:9pt; color:#aaa; font-style:italic; }
+    .cover .badge{ margin-top:18px; background:#1e1147; color:#fff; font-size:12pt; font-weight:800; padding:10px 32px; border-radius:32px; }
+    .cover .centro{ margin-top:8px; font-size:11pt; color:#4a3f8c; font-weight:700; }
+    .cover .plazo-note{ margin-top:20px; font-size:7.5pt; color:#aaa; border-top:1px solid #e5e7eb; padding-top:10px; max-width:380px; line-height:1.5; }
 
-    /* PAGE HEADER */
-    .ph{ display:flex; align-items:center; justify-content:space-between; border-bottom:2.5px solid #1e1147; padding-bottom:7px; margin-bottom:16px; }
-    .ph-right{ text-align:right; font-size:8.5pt; color:#666; line-height:1.4; }
-    .ph-right strong{ color:#1e1147; font-size:10pt; }
+    /* HEADER each page after cover */
+    .ph{ display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #1e1147; padding-bottom:6px; margin-bottom:12px; }
+    .ph-right{ text-align:right; font-size:7.5pt; color:#666; line-height:1.4; }
+    .ph-right strong{ color:#1e1147; font-size:9pt; }
 
     /* EJE */
-    .eje-wrap{ margin-bottom:20px; break-inside:avoid; }
-    .eje-title-bar{ background:#1e1147; color:#fff; padding:8px 12px; border-radius:6px 6px 0 0; display:flex; flex-wrap:wrap; gap:6px; align-items:baseline; }
-    .eje-name{ font-size:11pt; font-weight:900; margin-right:8px; }
-    .eje-obj-gen{ font-size:8.5pt; opacity:.8; }
-    .eje-temas{ font-size:7.5pt; opacity:.6; font-style:italic; margin-left:auto; }
+    .eje-wrap{ margin-bottom:14px; break-inside:avoid; }
+    .eje-title-bar{ background:#1e1147; color:#fff; padding:7px 10px; border-radius:5px 5px 0 0; display:flex; flex-wrap:wrap; gap:5px; align-items:baseline; }
+    .eje-name{ font-size:10pt; font-weight:900; margin-right:6px; }
+    .eje-obj-gen{ font-size:7.5pt; opacity:.75; }
+    .eje-temas{ font-size:7pt; opacity:.55; font-style:italic; margin-left:auto; }
 
-    /* TABLE */
-    .pidcam-table{ width:100%; border-collapse:collapse; }
-    .th-aud{ background:#1e1147 !important; width:80px; border:1.5px solid #2d1b6e; }
-    .th-plan{ background:#b2e8f0 !important; padding:6px 10px; font-size:8.5pt; font-weight:800; color:#1a4a52; text-align:left; text-transform:uppercase; letter-spacing:.04em; border:1.5px solid #8dd4df; width:52%; }
-    .th-eval{ background:#b8efd0 !important; padding:6px 10px; font-size:8.5pt; font-weight:800; color:#1a4a36; text-align:left; text-transform:uppercase; letter-spacing:.04em; border:1.5px solid #8ddfb0; width:38%; }
-    .cell-aud{ background:#f4f0ff !important; border:1.5px solid #c9bff0; padding:8px 10px; font-size:8pt; font-weight:800; color:#1e1147; text-transform:uppercase; letter-spacing:.04em; vertical-align:middle; width:80px; text-align:center; }
-    .cell{ padding:8px 10px; vertical-align:top; font-size:8pt; line-height:1.55; }
-    .cell-plan{ background:#d6f3f8 !important; border:1.5px solid #9ed8e2; }
-    .cell-eval{ background:#e8f8ef !important; border:1.5px solid #8ddfb0; }
-    .lbl-act{ font-size:7pt; font-weight:700; text-transform:uppercase; color:#1a5a6a; margin:0 0 3px; letter-spacing:.03em; }
-    .txt-act{ margin:0 0 6px; color:#1a3a42; }
-    .lbl-obj{ font-size:7pt; font-weight:700; text-transform:uppercase; color:#1a5a6a; margin:0 0 3px; letter-spacing:.03em; }
+    /* TABLE — max-width keeps it from bleeding edge to edge */
+    .pidcam-table{ width:100%; max-width:255mm; border-collapse:collapse; }
+    .th-aud{ background:#1e1147 !important; width:62px; border:1px solid #2d1b6e; }
+    .th-plan{ background:#b2e8f0 !important; padding:5px 8px; font-size:7.5pt; font-weight:800; color:#1a4a52; text-align:left; text-transform:uppercase; letter-spacing:.04em; border:1px solid #8dd4df; width:50%; }
+    .th-eval{ background:#b8efd0 !important; padding:5px 8px; font-size:7.5pt; font-weight:800; color:#1a4a36; text-align:left; text-transform:uppercase; letter-spacing:.04em; border:1px solid #8ddfb0; }
+    .cell-aud{ background:#f4f0ff !important; border:1px solid #c9bff0; padding:6px 7px; font-size:7pt; font-weight:800; color:#1e1147; text-transform:uppercase; letter-spacing:.04em; vertical-align:middle; width:62px; text-align:center; }
+    .cell{ padding:6px 8px; vertical-align:top; font-size:7.5pt; line-height:1.5; }
+    .cell-plan{ background:#d6f3f8 !important; border:1px solid #9ed8e2; }
+    .cell-eval{ background:#e8f8ef !important; border:1px solid #8ddfb0; }
+    .lbl-act{ font-size:6.5pt; font-weight:700; text-transform:uppercase; color:#1a5a6a; margin:0 0 2px; letter-spacing:.03em; }
+    .txt-act{ margin:0 0 5px; color:#1a3a42; }
+    .lbl-obj{ font-size:6.5pt; font-weight:700; text-transform:uppercase; color:#1a5a6a; margin:0 0 2px; letter-spacing:.03em; }
     .txt-obj{ margin:0; color:#1a3a42; font-style:italic; }
-    .lbl-eval{ font-size:7pt; font-weight:700; text-transform:uppercase; color:#1a4a36; margin:0 0 3px; letter-spacing:.03em; }
+    .lbl-eval{ font-size:6.5pt; font-weight:700; text-transform:uppercase; color:#1a4a36; margin:0 0 2px; letter-spacing:.03em; }
     .txt-eval{ margin:0; color:#1a3a2e; }
-    .empty{ color:#bbb; font-style:italic; }
+    .empty{ color:#ccc; font-style:italic; }
 
-    /* FOOTER */
-    .doc-footer{ margin-top:16px; border-top:1px solid #e5e7eb; padding-top:8px; font-size:7.5pt; color:#bbb; text-align:center; }
+    .doc-footer{ margin-top:12px; border-top:1px solid #e5e7eb; padding-top:6px; font-size:7pt; color:#ccc; text-align:center; }
   </style>
   </head><body>
 
@@ -1358,7 +1362,7 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
     <p class="plazo-note">${tipoPlazo}</p>
   </div>
 
-  <!-- ENCABEZADO -->
+  <!-- ENCABEZADO pág 2+ -->
   <div class="ph">
     ${logoSmall}
     <div class="ph-right">

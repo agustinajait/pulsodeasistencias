@@ -1162,25 +1162,68 @@ type PidcamEval = {
 };
 
 // ── PIDCAM structure ──────────────────────────────────────────────────────────
-const PIDCAM_AUDIENCIAS = [
-  { key: "ninos", label: "Niñas/os" },
-  { key: "personal", label: "Personal" },
-  { key: "familias", label: "Familias" },
-  { key: "comunidad", label: "Comunidad" },
-];
-
-const PIDCAM_EJES = [
+const PIDCAM_EJES: {
+  key: string;
+  label: string;
+  objetivoGeneral: string;
+  temas: string;
+  audiencias: { key: string; label: string; objetivo: string }[];
+}[] = [
   {
     key: "principal",
     label: "Eje Principal: Hábitos Saludables",
+    objetivoGeneral: "Educar en la adquisición de hábitos de cuidado intra e inter personales.",
     temas: "Salud integral · Alimentación saludable · Autocuidado · Lactancia",
-    audiencias: PIDCAM_AUDIENCIAS,
+    audiencias: [
+      {
+        key: "ninos",
+        label: "Niñas/os",
+        objetivo: "Fomentar el cuidado del cuerpo, incorporando hábitos de cuidado e higiene. Educar en la importancia de incorporar alimentos saludables.",
+      },
+      {
+        key: "personal",
+        label: "Personal",
+        objetivo: "Reflexionar sobre las distintas instancias de cuidado, entre adultos y con las infancias. Que todo el equipo esté formado en la correcta manipulación de alimentos y su importancia.",
+      },
+      {
+        key: "familias",
+        label: "Familias",
+        objetivo: "Integrar al CESAC al CPI. Acercar información relevante a las familias. Realizar un relevamiento del carnet de vacunas de las infancias, gestionando su actualización en caso de ser necesario. Que las familias participen de forma activa de la educación.",
+      },
+      {
+        key: "comunidad",
+        label: "Comunidad",
+        objetivo: "Integrar a estudiantes de enfermería al proyecto de cuidado integral del niño/a. Realizar un relevamiento del estado bucal de los niños, identificando casos que requieran de seguimiento posterior al control.",
+      },
+    ],
   },
   {
     key: "secundario",
     label: "Eje Secundario: Crianza",
+    objetivoGeneral: "Estimulación del lenguaje, uso excesivo de pantallas y red de actividades.",
     temas: "Estimulación del lenguaje · Uso excesivo de pantallas · Red de actividades",
-    audiencias: PIDCAM_AUDIENCIAS,
+    audiencias: [
+      {
+        key: "ninos",
+        label: "Niñas/os",
+        objetivo: "Estimular el lenguaje. Destinar dentro de la rutina diaria momentos para lectura de libros, show de títeres y canciones.",
+      },
+      {
+        key: "personal",
+        label: "Personal",
+        objetivo: "Adquirir materiales concretos que despierten la creatividad y sean un medio para estimular el lenguaje. Confección de títeres de dedo y \"Cuentos en lata\".",
+      },
+      {
+        key: "familias",
+        label: "Familias",
+        objetivo: "Que las familias encuentren alternativas para evitar el uso excesivo de pantallas en las infancias. Taller abierto de elaboración de material sensorial.",
+      },
+      {
+        key: "comunidad",
+        label: "Comunidad",
+        objetivo: "Generar una red de servicios que se brindan en relación a la infancia, incluyendo propuestas culturales, de entretenimiento o relacionadas a aspectos legales o de salud. Brindar a las familias información sobre lugares y propuestas en la ciudad.",
+      },
+    ],
   },
 ];
 
@@ -1191,64 +1234,123 @@ function pidcamSectionKey(ejeKey: string, audKey: string) {
 // ── PIDCAM PDF ────────────────────────────────────────────────────────────────
 function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, logoBase64: string | undefined) {
   const tipoLabel = ev.tipo === "final" ? "Evaluación Final" : "Evaluación Semestral";
+  const tipoPlazo = ev.tipo === "final" ? "Primera semana de diciembre" : "Primera semana de julio";
   const yearLabel = ev.year ?? new Date().getFullYear();
 
-  const logoHtml = logoBase64
-    ? `<img src="${logoBase64}" style="height:56px;object-fit:contain;" />`
-    : `<div style="font-size:22px;font-weight:900;color:#1e1147">${centerName ?? "CAIPLI"}</div>`;
+  const logoImgHtml = logoBase64
+    ? `<img src="${logoBase64}" style="height:80px;object-fit:contain;display:block;margin:0 auto 16px;" />`
+    : "";
 
   let ejesHtml = "";
   for (const eje of PIDCAM_EJES) {
-    ejesHtml += `<div class="eje-block">
-      <div class="eje-title">${eje.label}</div>
-      <p class="eje-temas">Temas: ${eje.temas}</p>`;
+    let audRows = "";
     for (const aud of eje.audiencias) {
-      const text = (ev.secciones ?? {})[pidcamSectionKey(eje.key, aud.key)] ?? "";
-      if (!text.trim()) continue;
-      ejesHtml += `<div class="seccion">
-        <div class="seccion-label">${aud.label}</div>
-        <p class="seccion-text">${text.replace(/\n/g, "<br/>")}</p>
-      </div>`;
+      const evalText = (ev.secciones ?? {})[pidcamSectionKey(eje.key, aud.key)] ?? "";
+      audRows += `
+        <div class="aud-block">
+          <div class="aud-header">
+            <span class="aud-label">${aud.label}</span>
+          </div>
+          <div class="aud-body">
+            <div class="col objetivo">
+              <div class="col-title">Objetivo planificado</div>
+              <p class="col-text">${aud.objetivo}</p>
+            </div>
+            <div class="col evaluacion">
+              <div class="col-title">Evaluación</div>
+              <p class="col-text">${evalText.trim() ? evalText.replace(/\n/g, "<br/>") : '<span style="color:#bbb;font-style:italic">Sin completar</span>'}</p>
+            </div>
+          </div>
+        </div>`;
     }
-    ejesHtml += `</div>`;
+    ejesHtml += `
+      <div class="eje-block">
+        <div class="eje-header">
+          <div class="eje-title">${eje.label}</div>
+          <div class="eje-objetivo">${eje.objetivoGeneral}</div>
+          <div class="eje-temas">Temas: ${eje.temas}</div>
+        </div>
+        ${audRows}
+      </div>`;
   }
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
-  <title>Informe PIDCAM ${yearLabel}</title>
+  <title>PIDCAM ${tipoLabel} ${yearLabel} - ${centerName ?? "CAIPLI"}</title>
   <style>
-    @page { margin: 20mm 18mm; }
-    body { font-family: 'Georgia', serif; color: #1a1a2e; margin:0; padding:0; font-size:11pt; }
-    .header { display:flex; align-items:center; justify-content:space-between; border-bottom:3px solid #1e1147; padding-bottom:12px; margin-bottom:20px; }
-    .header-right { text-align:right; }
-    .header-right .title { font-size:16pt; font-weight:900; color:#1e1147; }
-    .header-right .subtitle { font-size:10pt; color:#555; margin-top:2px; }
-    .center-name { font-size:10pt; color:#888; margin-top:4px; }
-    .eje-block { margin-bottom:24px; page-break-inside:avoid; }
-    .eje-title { font-size:13pt; font-weight:900; color:#1e1147; border-left:4px solid #1e1147; padding-left:10px; margin-bottom:8px; }
-    .eje-temas { font-size:9.5pt; color:#666; font-style:italic; margin-bottom:14px; }
-    .seccion { margin-bottom:14px; }
-    .seccion-label { font-size:10pt; font-weight:700; color:#4a3f8c; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.03em; }
-    .seccion-text { font-size:10.5pt; line-height:1.6; margin:0; }
-    .footer { margin-top:32px; border-top:1px solid #ccc; padding-top:12px; font-size:9pt; color:#888; text-align:center; }
+    @page { margin: 18mm 16mm; size: A4; }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #1a1a2e; margin:0; padding:0; font-size:10pt; }
+
+    /* ── CARÁTULA ── */
+    .cover { page-break-after: always; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:260mm; text-align:center; padding:40px; }
+    .cover-logo { margin-bottom:32px; }
+    .cover-title { font-size:22pt; font-weight:900; color:#1e1147; margin-bottom:8px; letter-spacing:-0.5px; }
+    .cover-subtitle { font-size:13pt; font-weight:700; color:#1e1147; margin-bottom:6px; }
+    .cover-pidcan { font-size:11pt; color:#555; margin-bottom:4px; }
+    .cover-lema { font-size:10pt; color:#888; font-style:italic; margin-bottom:32px; }
+    .cover-badge { display:inline-block; background:#1e1147; color:#fff; font-size:13pt; font-weight:700; padding:12px 32px; border-radius:32px; margin-bottom:8px; }
+    .cover-center { font-size:11pt; color:#4a3f8c; font-weight:600; margin-top:8px; }
+    .cover-plazo { font-size:9pt; color:#888; margin-top:24px; border-top:1px solid #e5e7eb; padding-top:16px; width:100%; }
+
+    /* ── CONTENIDO ── */
+    .page-header { display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #1e1147; padding-bottom:8px; margin-bottom:20px; }
+    .page-header-logo img { height:36px; }
+    .page-header-info { text-align:right; font-size:8.5pt; color:#666; }
+    .page-header-info strong { color:#1e1147; }
+
+    .eje-block { margin-bottom:28px; }
+    .eje-header { background:#1e1147; color:#fff; padding:10px 14px; border-radius:6px 6px 0 0; margin-bottom:0; }
+    .eje-title { font-size:12pt; font-weight:900; margin-bottom:3px; }
+    .eje-objetivo { font-size:9pt; opacity:0.85; margin-bottom:2px; }
+    .eje-temas { font-size:8.5pt; opacity:0.7; font-style:italic; }
+
+    .aud-block { border:1px solid #e5e7eb; border-top:none; }
+    .aud-block:last-child { border-radius:0 0 6px 6px; }
+    .aud-header { background:#f0eeff; padding:6px 14px; border-bottom:1px solid #e5e7eb; }
+    .aud-label { font-size:9.5pt; font-weight:800; color:#4a3f8c; text-transform:uppercase; letter-spacing:0.04em; }
+    .aud-body { display:flex; gap:0; }
+    .col { flex:1; padding:10px 14px; font-size:9.5pt; line-height:1.55; }
+    .col.objetivo { border-right:1px solid #e5e7eb; background:#fafafa; }
+    .col.evaluacion { background:#fff; }
+    .col-title { font-size:8pt; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:5px; }
+    .col-text { margin:0; color:#333; }
+    .col.evaluacion .col-text { color:#1a1a2e; }
+
+    .doc-footer { margin-top:24px; border-top:1px solid #e5e7eb; padding-top:10px; font-size:8pt; color:#aaa; text-align:center; }
   </style>
   </head><body>
-  <div class="header">
-    ${logoHtml}
-    <div class="header-right">
-      <div class="title">Informe PIDCAM</div>
-      <div class="subtitle">${tipoLabel} ${yearLabel}</div>
-      <div class="center-name">${centerName ?? "CAIPLI"}</div>
+
+  <!-- CARÁTULA -->
+  <div class="cover">
+    <div class="cover-logo">${logoImgHtml}</div>
+    <div class="cover-title">Planificación Integral ${yearLabel}</div>
+    <div class="cover-subtitle">Centro de Primera Infancia CAIPLI</div>
+    <div class="cover-pidcan">Proyecto Integral de Cuidado a la Niñez</div>
+    <div class="cover-lema">"Cuidar para Crecer"</div>
+    <div class="cover-badge">${tipoLabel} ${yearLabel}</div>
+    <div class="cover-center">${centerName ?? "CAIPLI"}</div>
+    <div class="cover-plazo">${tipoPlazo}: detalle del logro de objetivos${ev.tipo === "final" ? " · De no alcanzar el objetivo, aclarar cómo y cuándo se reformula" : " · Posibilidad de reajustar PIDCAN y/o actividades"}</div>
+  </div>
+
+  <!-- ENCABEZADO DE PÁGINA -->
+  <div class="page-header">
+    <div class="page-header-logo">${logoBase64 ? `<img src="${logoBase64}" style="height:32px;" />` : `<strong style="color:#1e1147;font-size:13pt">CAIPLI</strong>`}</div>
+    <div class="page-header-info">
+      <strong>${tipoLabel} ${yearLabel}</strong><br/>
+      ${centerName ?? "CAIPLI"}
     </div>
   </div>
+
   ${ejesHtml}
-  <div class="footer">${centerName ?? "CAIPLI"} · ${tipoLabel} ${yearLabel}</div>
+
+  <div class="doc-footer">${centerName ?? "CAIPLI"} · Planificación Integral ${yearLabel} · ${tipoLabel}</div>
   </body></html>`;
 
   const w = window.open("", "_blank");
   if (!w) return;
   w.document.write(html);
   w.document.close();
-  setTimeout(() => w.print(), 600);
+  setTimeout(() => w.print(), 700);
 }
 
 // ── PIDCAM Modal ──────────────────────────────────────────────────────────────
@@ -1305,71 +1407,74 @@ function PidcamModal({
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="bg-white w-full max-w-2xl max-h-[95dvh] sm:rounded-2xl flex flex-col overflow-hidden">
         {/* header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+        <div className="bg-[#1e1147] text-white px-5 py-4 shrink-0 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">Informe PIDCAM</h2>
-            <p className="text-xs text-gray-500 mt-0.5">{centerName ?? "CAIPLI"}</p>
+            <h2 className="text-base font-bold">Evaluación PIDCAM</h2>
+            <p className="text-xs text-white/60 mt-0.5">{centerName ?? "CAIPLI"} · Planificación Integral</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="text-white/60 hover:text-white p-1"><X className="w-5 h-5" /></button>
         </div>
 
-        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
+        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-6">
           {/* Año y tipo */}
-          {!evalData?.id && (
+          {!evalData?.id ? (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Año</label>
-                <select
-                  value={year}
-                  onChange={(e) => setYear(Number(e.target.value))}
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
-                >
-                  {[currentYear - 1, currentYear, currentYear + 1].map((y) => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
+                <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
+                  {[currentYear - 1, currentYear, currentYear + 1].map((y) => <option key={y} value={y}>{y}</option>)}
                 </select>
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Tipo</label>
-                <select
-                  value={tipo}
-                  onChange={(e) => setTipo(e.target.value as "semestre" | "final")}
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
-                >
+                <select value={tipo} onChange={(e) => setTipo(e.target.value as "semestre" | "final")} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
                   <option value="semestre">Semestral (julio)</option>
                   <option value="final">Final (diciembre)</option>
                 </select>
               </div>
             </div>
-          )}
-          {evalData?.id && (
-            <div className="bg-violet-50 rounded-xl px-4 py-2 text-sm text-violet-700 font-semibold">
-              {evalData.tipo === "final" ? "Evaluación Final" : "Evaluación Semestral"} {evalData.year}
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="bg-[#1e1147] text-white text-xs font-bold px-3 py-1 rounded-full">
+                {evalData.tipo === "final" ? "Evaluación Final" : "Evaluación Semestral"}
+              </span>
+              <span className="text-sm text-gray-500">{evalData.year}</span>
             </div>
           )}
 
           {/* Ejes */}
           {PIDCAM_EJES.map((eje) => (
-            <div key={eje.key} className="space-y-3">
-              <div className="border-l-4 border-[#1e1147] pl-3">
-                <h3 className="font-bold text-sm text-[#1e1147]">{eje.label}</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Temas: {eje.temas}</p>
+            <div key={eje.key} className="rounded-xl border border-gray-200 overflow-hidden">
+              {/* eje header */}
+              <div className="bg-[#1e1147] px-4 py-3">
+                <h3 className="font-bold text-sm text-white">{eje.label}</h3>
+                <p className="text-xs text-white/60 mt-0.5">{eje.objetivoGeneral}</p>
+                <p className="text-xs text-white/40 mt-0.5 italic">Temas: {eje.temas}</p>
               </div>
-              {eje.audiencias.map((aud) => {
-                const key = pidcamSectionKey(eje.key, aud.key);
-                return (
-                  <div key={key} className="space-y-1">
-                    <label className="text-xs font-semibold text-violet-700 uppercase tracking-wide">{aud.label}</label>
-                    <textarea
-                      value={secciones[key] ?? ""}
-                      onChange={(e) => setSeccion(key, e.target.value)}
-                      rows={3}
-                      placeholder={`Evaluación para ${aud.label}...`}
-                      className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300"
-                    />
-                  </div>
-                );
-              })}
+              {/* audiencias */}
+              <div className="divide-y divide-gray-100">
+                {eje.audiencias.map((aud) => {
+                  const key = pidcamSectionKey(eje.key, aud.key);
+                  return (
+                    <div key={key} className="px-4 py-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-[#4a3f8c] uppercase tracking-wider">{aud.label}</span>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg px-3 py-2 text-xs text-gray-500 border border-gray-100">
+                        <span className="font-semibold text-gray-400 uppercase tracking-wide text-[10px]">Objetivo planificado · </span>
+                        {aud.objetivo}
+                      </div>
+                      <textarea
+                        value={secciones[key] ?? ""}
+                        onChange={(e) => setSeccion(key, e.target.value)}
+                        rows={3}
+                        placeholder="Escribí la evaluación de este objetivo..."
+                        className="w-full rounded-lg border border-violet-200 bg-violet-50/30 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300 placeholder:text-gray-300"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           ))}
         </div>

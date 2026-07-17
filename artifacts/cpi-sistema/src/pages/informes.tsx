@@ -1243,7 +1243,7 @@ function pidcamEvalKey(ejeKey: string, audKey: string) {
 }
 
 // ── PIDCAM PDF ────────────────────────────────────────────────────────────────
-function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, logoBase64: string | undefined) {
+function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, logoBase64: string | undefined, orientation: "landscape" | "portrait" = "landscape") {
   const tipoLabel = ev.tipo === "final" ? "Evaluación Final" : "1er Semestre";
   const tipoPlazo = ev.tipo === "final"
     ? "Primera semana de diciembre: detallar si se logró o no el objetivo. De no llegar al objetivo aclarar cómo y cuándo se reformula."
@@ -1297,7 +1297,7 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
   <title>PIDCAM ${tipoLabel} ${yearLabel} · ${centerName ?? "CAIPLI"}</title>
   <style>
-    @page { margin:14mm 14mm; size:A4 landscape; }
+    @page { margin:14mm 14mm; size:A4 ${orientation}; }
     *{ box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; color-adjust:exact !important; }
     body{ font-family:Arial,Helvetica,sans-serif; font-size:8.5pt; color:#1a1a2e; background:#fff; }
 
@@ -1546,11 +1546,20 @@ function PidcamModal({
         <div className="border-t border-gray-100 px-5 py-4 shrink-0 flex gap-2">
           <Button variant="outline" onClick={onClose} className="flex-1">Cerrar</Button>
           <Button
-            onClick={() => printPidcamPdf({ ...evalData, year, tipo, secciones, centerId }, centerName, logoBase64)}
+            onClick={() => printPidcamPdf({ ...evalData, year, tipo, secciones, centerId }, centerName, logoBase64, "portrait")}
             variant="outline"
-            className="gap-1.5"
+            className="gap-1.5 text-xs"
+            title="PDF vertical"
           >
-            <Printer className="w-4 h-4" />PDF
+            <Printer className="w-4 h-4" />▯
+          </Button>
+          <Button
+            onClick={() => printPidcamPdf({ ...evalData, year, tipo, secciones, centerId }, centerName, logoBase64, "landscape")}
+            variant="outline"
+            className="gap-1.5 text-xs"
+            title="PDF horizontal"
+          >
+            <Printer className="w-4 h-4" />▭
           </Button>
           {editing ? (
             <Button onClick={handleSave} disabled={saving} className="flex-1 bg-[#1e1147] hover:bg-[#2d1b6e]">

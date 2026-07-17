@@ -1301,12 +1301,14 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
     *{ box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; color-adjust:exact !important; }
     body{ font-family:Arial,Helvetica,sans-serif; font-size:8.5pt; color:#1a1a2e; background:#fff; }
 
-    /* CARÁTULA — ocupa exactamente 1 página landscape sin sobrar */
+    /* CARÁTULA */
     .cover{
       page-break-after:always;
-      display:flex; flex-direction:column; align-items:center; justify-content:center;
-      height:176mm; /* landscape A4 interior = 210mm - 2×17mm margins ≈ 176mm */
+      break-after:page;
+      display:flex; flex-direction:column; align-items:center;
+      padding-top:40mm;
       text-align:center; gap:8px;
+      overflow:hidden;
     }
     .cover-logo{ margin-bottom:14px; }
     .cover h1{ font-size:22pt; font-weight:900; color:#1e1147; letter-spacing:-0.5px; }

@@ -1151,6 +1151,255 @@ type FollowupReport = {
   createdAt?: string;
 };
 
+type PidcamEval = {
+  id?: number;
+  centerId?: number;
+  year?: number;
+  tipo?: "semestre" | "final";
+  secciones?: Record<string, string>;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+// ── PIDCAM structure ──────────────────────────────────────────────────────────
+const PIDCAM_EJES = [
+  {
+    key: "principal",
+    label: "Eje Principal: Hábitos Saludables",
+    intro: "El eje principal trabajado durante el período fue Hábitos Saludables, orientado a fortalecer prácticas de cuidado, alimentación, higiene y bienestar en la comunidad del centro.",
+    audiencias: [
+      { key: "ninos_1", label: "Niñas/os 1 año" },
+      { key: "ninos_2", label: "Niñas/os 2 años" },
+      { key: "ninos_3", label: "Niñas/os 3 años" },
+      { key: "personal", label: "Personal" },
+      { key: "familias", label: "Familias" },
+      { key: "comunidad", label: "Comunidad" },
+    ],
+  },
+  {
+    key: "secundario",
+    label: "Eje Secundario: Crianza",
+    intro: "El eje secundario abordado fue Crianza, buscando acompañar y fortalecer los vínculos entre familias y niñas/os, promoviendo prácticas de crianza respetuosa.",
+    audiencias: [
+      { key: "ninos_1", label: "Niñas/os 1 año" },
+      { key: "ninos_2", label: "Niñas/os 2 años" },
+      { key: "ninos_3", label: "Niñas/os 3 años" },
+      { key: "personal", label: "Personal" },
+      { key: "familias", label: "Familias" },
+      { key: "comunidad", label: "Comunidad" },
+    ],
+  },
+];
+
+function pidcamSectionKey(ejeKey: string, audKey: string) {
+  return `${ejeKey}_${audKey}`;
+}
+
+// ── PIDCAM PDF ────────────────────────────────────────────────────────────────
+function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, logoBase64: string | undefined) {
+  const tipoLabel = ev.tipo === "final" ? "Evaluación Final" : "Evaluación Semestral";
+  const yearLabel = ev.year ?? new Date().getFullYear();
+
+  const logoHtml = logoBase64
+    ? `<img src="${logoBase64}" style="height:56px;object-fit:contain;" />`
+    : `<div style="font-size:22px;font-weight:900;color:#1e1147">${centerName ?? "CAIPLI"}</div>`;
+
+  let ejesHtml = "";
+  for (const eje of PIDCAM_EJES) {
+    ejesHtml += `<div class="eje-block">
+      <div class="eje-title">${eje.label}</div>
+      <p class="eje-intro">${eje.intro}</p>`;
+    for (const aud of eje.audiencias) {
+      const text = (ev.secciones ?? {})[pidcamSectionKey(eje.key, aud.key)] ?? "";
+      if (!text.trim()) continue;
+      ejesHtml += `<div class="seccion">
+        <div class="seccion-label">${aud.label}</div>
+        <p class="seccion-text">${text.replace(/\n/g, "<br/>")}</p>
+      </div>`;
+    }
+    ejesHtml += `</div>`;
+  }
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+  <title>Informe PIDCAM ${yearLabel}</title>
+  <style>
+    @page { margin: 20mm 18mm; }
+    body { font-family: 'Georgia', serif; color: #1a1a2e; margin:0; padding:0; font-size:11pt; }
+    .header { display:flex; align-items:center; justify-content:space-between; border-bottom:3px solid #1e1147; padding-bottom:12px; margin-bottom:20px; }
+    .header-right { text-align:right; }
+    .header-right .title { font-size:16pt; font-weight:900; color:#1e1147; }
+    .header-right .subtitle { font-size:10pt; color:#555; margin-top:2px; }
+    .center-name { font-size:10pt; color:#888; margin-top:4px; }
+    .eje-block { margin-bottom:24px; page-break-inside:avoid; }
+    .eje-title { font-size:13pt; font-weight:900; color:#1e1147; border-left:4px solid #1e1147; padding-left:10px; margin-bottom:8px; }
+    .eje-intro { font-size:10pt; color:#555; font-style:italic; margin-bottom:12px; }
+    .seccion { margin-bottom:14px; }
+    .seccion-label { font-size:10pt; font-weight:700; color:#4a3f8c; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.03em; }
+    .seccion-text { font-size:10.5pt; line-height:1.6; margin:0; }
+    .footer { margin-top:32px; border-top:1px solid #ccc; padding-top:12px; font-size:9pt; color:#888; text-align:center; }
+  </style>
+  </head><body>
+  <div class="header">
+    ${logoHtml}
+    <div class="header-right">
+      <div class="title">Informe PIDCAM</div>
+      <div class="subtitle">${tipoLabel} ${yearLabel}</div>
+      <div class="center-name">${centerName ?? "CAIPLI"}</div>
+    </div>
+  </div>
+  ${ejesHtml}
+  <div class="footer">${centerName ?? "CAIPLI"} · ${tipoLabel} ${yearLabel}</div>
+  </body></html>`;
+
+  const w = window.open("", "_blank");
+  if (!w) return;
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => w.print(), 600);
+}
+
+// ── PIDCAM Modal ──────────────────────────────────────────────────────────────
+function PidcamModal({
+  centerId, centerName, evalData, logoBase64, onClose, onSaved,
+}: {
+  centerId: number;
+  centerName?: string | null;
+  evalData?: PidcamEval | null;
+  logoBase64?: string;
+  onClose: () => void;
+  onSaved: (updated: PidcamEval) => void;
+}) {
+  const { toast } = useToast();
+  const currentYear = new Date().getFullYear();
+  const [year, setYear] = React.useState<number>(evalData?.year ?? currentYear);
+  const [tipo, setTipo] = React.useState<"semestre" | "final">(evalData?.tipo ?? "semestre");
+  const [secciones, setSecciones] = React.useState<Record<string, string>>(evalData?.secciones ?? {});
+  const [saving, setSaving] = React.useState(false);
+
+  function setSeccion(key: string, val: string) {
+    setSecciones((prev) => ({ ...prev, [key]: val }));
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      let r: Response;
+      if (evalData?.id) {
+        r = await fetch(`${BASE}/pidcam/${evalData.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ secciones }),
+        });
+      } else {
+        r = await fetch(`${BASE}/pidcam`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ centerId, year, tipo, secciones }),
+        });
+      }
+      if (!r.ok) throw new Error(await r.text());
+      const saved = await r.json();
+      toast({ title: "Evaluación guardada" });
+      onSaved(saved);
+    } catch (e: any) {
+      toast({ title: "Error al guardar", description: e.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="bg-white w-full max-w-2xl max-h-[95dvh] sm:rounded-2xl flex flex-col overflow-hidden">
+        {/* header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">Informe PIDCAM</h2>
+            <p className="text-xs text-gray-500 mt-0.5">{centerName ?? "CAIPLI"}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X className="w-5 h-5" /></button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
+          {/* Año y tipo */}
+          {!evalData?.id && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Año</label>
+                <select
+                  value={year}
+                  onChange={(e) => setYear(Number(e.target.value))}
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                >
+                  {[currentYear - 1, currentYear, currentYear + 1].map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Tipo</label>
+                <select
+                  value={tipo}
+                  onChange={(e) => setTipo(e.target.value as "semestre" | "final")}
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="semestre">Semestral (julio)</option>
+                  <option value="final">Final (diciembre)</option>
+                </select>
+              </div>
+            </div>
+          )}
+          {evalData?.id && (
+            <div className="bg-violet-50 rounded-xl px-4 py-2 text-sm text-violet-700 font-semibold">
+              {evalData.tipo === "final" ? "Evaluación Final" : "Evaluación Semestral"} {evalData.year}
+            </div>
+          )}
+
+          {/* Ejes */}
+          {PIDCAM_EJES.map((eje) => (
+            <div key={eje.key} className="space-y-3">
+              <div className="border-l-4 border-[#1e1147] pl-3">
+                <h3 className="font-bold text-sm text-[#1e1147]">{eje.label}</h3>
+                <p className="text-xs text-gray-500 mt-0.5">{eje.intro}</p>
+              </div>
+              {eje.audiencias.map((aud) => {
+                const key = pidcamSectionKey(eje.key, aud.key);
+                return (
+                  <div key={key} className="space-y-1">
+                    <label className="text-xs font-semibold text-violet-700 uppercase tracking-wide">{aud.label}</label>
+                    <textarea
+                      value={secciones[key] ?? ""}
+                      onChange={(e) => setSeccion(key, e.target.value)}
+                      rows={3}
+                      placeholder={`Evaluación para ${aud.label}...`}
+                      className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+
+        {/* footer */}
+        <div className="border-t border-gray-100 px-5 py-4 shrink-0 flex gap-3">
+          <Button variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
+          <Button
+            onClick={() => printPidcamPdf({ ...evalData, year, tipo, secciones, centerId }, centerName, logoBase64)}
+            variant="outline"
+            className="flex-1 gap-1.5"
+          >
+            <Printer className="w-4 h-4" />PDF
+          </Button>
+          <Button onClick={handleSave} disabled={saving} className="flex-1 bg-[#1e1147] hover:bg-[#2d1b6e]">
+            {saving ? "Guardando..." : "Guardar"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function calcEdad(fnac: string): string {
   const parts = fnac.split(/[\/\-]/);
   if (parts.length < 3) return "";
@@ -1858,7 +2107,7 @@ export default function Informes() {
   const periods = (profileQ.data?.reportPeriods?.length ? profileQ.data.reportPeriods : null) ?? PERIODS;
 
   const urlParams = new URLSearchParams(window.location.search);
-  const [tab, setTab] = useState<"desarrollo" | "seguimiento" | "escolar" | "asistencia">(urlParams.get("tab") === "seguimiento" ? "seguimiento" : urlParams.get("tab") === "escolar" ? "escolar" : "desarrollo");
+  const [tab, setTab] = useState<"desarrollo" | "seguimiento" | "escolar" | "asistencia" | "pidcam">(urlParams.get("tab") === "seguimiento" ? "seguimiento" : urlParams.get("tab") === "escolar" ? "escolar" : urlParams.get("tab") === "pidcam" ? "pidcam" : "desarrollo");
   const [showAsistencia, setShowAsistencia] = useState(false);
   const urlChildId = urlParams.get("childId") ? Number(urlParams.get("childId")) : null;
   const [search, setSearch] = useState("");
@@ -1871,6 +2120,19 @@ export default function Informes() {
   const [showNewFollowup, setShowNewFollowup] = useState(() => urlParams.get("tab") === "seguimiento" && !!urlParams.get("childId"));
   const [showNewEscolar, setShowNewEscolar] = useState(false);
   const [selectedEscolar, setSelectedEscolar] = useState<FollowupReport | null>(null);
+  const [showNewPidcam, setShowNewPidcam] = useState(false);
+  const [selectedPidcam, setSelectedPidcam] = useState<PidcamEval | null>(null);
+
+  const pidcamQ = useQuery<PidcamEval[]>({
+    queryKey: ["pidcam", centerId],
+    queryFn: async () => {
+      if (!centerId) return [];
+      const r = await fetch(`${BASE}/pidcam?centerId=${centerId}`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    },
+    enabled: !!centerId && isCoord,
+  });
 
   const roomsQ = useListRooms();
   const rooms = (roomsQ.data ?? []).filter((r: any) => !centerId || r.centerId === centerId);
@@ -1952,9 +2214,9 @@ export default function Informes() {
       <div className="bg-[#1e1147] text-white px-5 pt-6 pb-4 lg:pt-8">
         <div className="text-white/50 text-[11px] font-semibold uppercase tracking-widest">Informes</div>
         <div className="flex items-end justify-between mt-1 mb-4">
-          <h1 className="text-2xl font-bold">{tab === "desarrollo" ? "Desarrollo" : tab === "seguimiento" ? "Seguimiento" : tab === "escolar" ? "Escolar" : "Asistencia"}</h1>
+          <h1 className="text-2xl font-bold">{tab === "desarrollo" ? "Desarrollo" : tab === "seguimiento" ? "Seguimiento" : tab === "escolar" ? "Escolar" : tab === "pidcam" ? "PIDCAM" : "Asistencia"}</h1>
           <button
-            onClick={() => tab === "desarrollo" ? setShowNew(true) : tab === "seguimiento" ? setShowNewFollowup(true) : tab === "escolar" ? setShowNewEscolar(true) : setShowAsistencia(true)}
+            onClick={() => tab === "desarrollo" ? setShowNew(true) : tab === "seguimiento" ? setShowNewFollowup(true) : tab === "escolar" ? setShowNewEscolar(true) : tab === "pidcam" ? setShowNewPidcam(true) : setShowAsistencia(true)}
             className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 text-white text-sm font-semibold px-3 py-1.5 rounded-xl transition-colors"
           >
             <Plus className="w-4 h-4" />Nuevo
@@ -1986,6 +2248,14 @@ export default function Informes() {
           >
             Asistencia
           </button>
+          {isCoord && (
+            <button
+              onClick={() => setTab("pidcam")}
+              className={`flex-1 text-sm font-semibold py-1.5 rounded-lg transition-colors ${tab === "pidcam" ? "bg-white text-[#1e1147]" : "text-white/70 hover:text-white"}`}
+            >
+              PIDCAM
+            </button>
+          )}
         </div>
       </div>
 
@@ -2238,6 +2508,49 @@ export default function Informes() {
             </div>
           </>
         )}
+
+        {tab === "pidcam" && isCoord && (
+          <>
+            <div className="bg-violet-50 border border-violet-200 rounded-xl px-4 py-3 text-sm text-violet-800">
+              <p className="font-semibold">Evaluación institucional PIDCAM</p>
+              <p className="text-xs text-violet-600 mt-0.5">Evaluación semestral y final del plan integral del centro. Solo visible para coordinación.</p>
+            </div>
+
+            {pidcamQ.isPending && <p className="text-center py-12 text-gray-400 text-sm">Cargando...</p>}
+
+            {!pidcamQ.isPending && (pidcamQ.data ?? []).length === 0 && (
+              <div className="text-center py-16">
+                <FileText className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+                <p className="text-gray-400 text-sm">No hay evaluaciones PIDCAM cargadas</p>
+                <button onClick={() => setShowNewPidcam(true)} className="mt-4 text-violet-600 text-sm font-semibold hover:underline flex items-center gap-1 mx-auto">
+                  <Plus className="w-4 h-4" />Crear la primera evaluación
+                </button>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {(pidcamQ.data ?? []).map((ev) => (
+                <div key={ev.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <button
+                    onClick={() => setSelectedPidcam(ev)}
+                    className="w-full flex items-center gap-3 px-4 py-4 hover:bg-violet-50/50 transition-colors text-left"
+                  >
+                    <FileText className="w-4 h-4 text-violet-400 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-gray-900">
+                        {ev.tipo === "final" ? "Evaluación Final" : "Evaluación Semestral"} {ev.year}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {ev.tipo === "final" ? "Diciembre" : "Julio"} · {centerName ?? ""}
+                      </p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {selected && <ReportModal report={selected} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); qc.invalidateQueries({ queryKey: ["all-reports"] }); }} logoBase64={logoBase64} userRole={role} centerName={centerName} />}
@@ -2282,6 +2595,16 @@ export default function Informes() {
           reportType="escolar"
           onClose={() => { setShowNewEscolar(false); setSelectedEscolar(null); }}
           onSaved={() => { qc.invalidateQueries({ queryKey: ["escolar-reports"] }); }}
+        />
+      )}
+      {(showNewPidcam || selectedPidcam) && centerId && (
+        <PidcamModal
+          centerId={centerId}
+          centerName={centerName}
+          evalData={selectedPidcam ?? undefined}
+          logoBase64={logoBase64}
+          onClose={() => { setShowNewPidcam(false); setSelectedPidcam(null); }}
+          onSaved={() => { setShowNewPidcam(false); setSelectedPidcam(null); qc.invalidateQueries({ queryKey: ["pidcam"] }); }}
         />
       )}
     </div>

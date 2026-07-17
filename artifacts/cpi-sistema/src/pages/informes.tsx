@@ -1299,7 +1299,7 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
   <title>PIDCAM ${tipoLabel} ${yearLabel} · ${centerName ?? "CAIPLI"}</title>
   <style>
-    @page { margin:16mm 18mm; size:A4 ${orientation}; }
+    @page { margin:18mm 20mm; size:A4 ${orientation}; }
     *{ box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; color-adjust:exact !important; }
     body{ font-family:-apple-system,Arial,Helvetica,sans-serif; font-size:8.5pt; color:#1a1a2e; background:#fff; }
 
@@ -1320,7 +1320,7 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
 
     /* EJE — idéntico al modal */
     .eje-wrap{ margin-bottom:12px; border-radius:10px; overflow:hidden; border:1.5px solid #e2e8f0; }
-    .eje-head{ background:#1e1147 !important; padding:10px 16px; display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+    .eje-head{ background:#1e1147 !important; padding:12px 20px; display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
     .eje-head-left h3{ font-size:10pt; font-weight:900; color:#fff; }
     .eje-head-left .obj{ font-size:7.5pt; color:rgba(255,255,255,.6); margin-top:2px; }
     .eje-head-left .temas{ font-size:7pt; color:rgba(255,255,255,.38); font-style:italic; margin-top:1px; }
@@ -1331,15 +1331,15 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
     /* col headers */
     .th-row{ display:flex; background:#1e1147 !important; }
     .th-aud{ width:100px; flex-shrink:0; }
-    .th-plan{ flex:1; padding:6px 12px; font-size:7pt; font-weight:800; color:#0e7490; text-transform:uppercase; letter-spacing:.06em; background:#e0f2fe !important; border-left:1px solid #bae6fd; }
-    .th-eval{ flex:1; padding:6px 12px; font-size:7pt; font-weight:800; color:#065f46; text-transform:uppercase; letter-spacing:.06em; background:#d1fae5 !important; border-left:1px solid #a7f3d0; }
+    .th-plan{ flex:1; padding:6px 18px; font-size:7pt; font-weight:800; color:#0e7490; text-transform:uppercase; letter-spacing:.06em; background:#e0f2fe !important; border-left:1px solid #bae6fd; }
+    .th-eval{ flex:1; padding:6px 18px; font-size:7pt; font-weight:800; color:#065f46; text-transform:uppercase; letter-spacing:.06em; background:#d1fae5 !important; border-left:1px solid #a7f3d0; }
 
     /* rows */
     .aud-row{ display:flex; border-top:1px solid #e2e8f0; }
-    .col-aud{ width:90px; flex-shrink:0; background:#f8f7ff !important; border-right:1.5px solid #e2e8f0; display:flex; align-items:center; justify-content:center; padding:10px 8px; }
+    .col-aud{ width:90px; flex-shrink:0; background:#f8f7ff !important; border-right:1.5px solid #e2e8f0; display:flex; align-items:center; justify-content:center; padding:12px 10px; }
     .col-aud span{ font-size:7pt; font-weight:800; color:#1e1147; text-transform:uppercase; letter-spacing:.06em; text-align:center; }
-    .col-plan{ flex:1; background:#f0faff !important; padding:10px 12px; border-right:1px solid #bae6fd; }
-    .col-eval{ flex:1; background:#f0fdf8 !important; padding:10px 12px; }
+    .col-plan{ flex:1; background:#f0faff !important; padding:12px 18px; border-right:1px solid #bae6fd; }
+    .col-eval{ flex:1; background:#f0fdf8 !important; padding:12px 18px; }
 
     .lbl{ font-size:6.5pt; font-weight:700; text-transform:uppercase; letter-spacing:.04em; margin:0 0 2px; }
     .lbl-a{ color:#0369a1; }

@@ -1257,8 +1257,8 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
   let ejesHtml = "";
   for (const eje of PIDCAM_EJES) {
     const allFilled = eje.audiencias.every(a => (secs[pidcamEvalKey(eje.key, a.key)] ?? "").trim());
-    const badgeClass = allFilled ? "badge-status badge-ok" : "badge-status badge-warn";
-    const badgeLabel = allFilled ? "Completo" : "Pendiente";
+    const badgeClass = "";
+    const badgeLabel = "";
 
     const rows = eje.audiencias.map(a => {
       const evalTxt = (secs[pidcamEvalKey(eje.key, a.key)] ?? "").trim();
@@ -1286,7 +1286,6 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
           <p class="obj">Objetivo: ${eje.objetivoGeneral}</p>
           <p class="temas">Temas: ${eje.temas}</p>
         </div>
-        <span class="${badgeClass}">${badgeLabel}</span>
       </div>
       <div class="th-row">
         <div class="th-aud"></div>

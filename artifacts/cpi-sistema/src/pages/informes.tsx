@@ -1253,36 +1253,43 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
 
   let ejesHtml = "";
   for (const eje of PIDCAM_EJES) {
-    // build cells
+    // Una fila con 4 celdas de planificación + 1 celda de evaluación
     const planCells = eje.audiencias.map(a =>
-      `<td class="cell plan"><span class="cell-act-label">Actividad:</span> ${a.actividad}<br/><span class="cell-obj-label">Objetivo:</span> <em>${a.objetivo}</em></td>`
+      `<td class="cell cell-plan">
+        <p class="lbl-act">Actividad ejemplo:</p>
+        <p class="txt-act">${a.actividad}</p>
+        <p class="lbl-obj">Objetivo específico:</p>
+        <p class="txt-obj">${a.objetivo}</p>
+      </td>`
     ).join("");
-    const evalCells = eje.audiencias.map(a => {
+
+    // La columna evaluación muestra el texto de cada audiencia etiquetado
+    const evalParts = eje.audiencias.map(a => {
       const txt = secs[pidcamSectionKey(eje.key, a.key)] ?? "";
-      return `<td class="cell eval">${txt.trim() ? txt.replace(/\n/g, "<br/>") : '<span class="empty">—</span>'}</td>`;
-    }).join("");
+      return txt.trim()
+        ? `<p class="lbl-obj">${a.label}:</p><p class="txt-eval">${txt.replace(/\n/g, "<br/>")}</p>`
+        : "";
+    }).filter(Boolean).join("");
 
     ejesHtml += `
     <div class="eje-wrap">
       <div class="eje-title-bar">
         <span class="eje-name">${eje.label}</span>
-        <span class="eje-obj-gen">${eje.objetivoGeneral}</span>
+        <span class="eje-sep">·</span>
+        <span class="eje-obj-gen">Objetivo: ${eje.objetivoGeneral}</span>
         <span class="eje-temas">Temas: ${eje.temas}</span>
       </div>
       <table class="pidcam-table">
         <thead>
           <tr>
-            ${eje.audiencias.map(a => `<th>${a.label}</th>`).join("")}
+            ${eje.audiencias.map(a => `<th class="th-plan">${a.label}</th>`).join("")}
             <th class="th-eval">Evaluación</th>
           </tr>
         </thead>
         <tbody>
-          <tr class="row-plan">
+          <tr>
             ${planCells}
-            <td class="cell eval-note" rowspan="2">${tipoPlazo}</td>
-          </tr>
-          <tr class="row-eval">
-            ${evalCells}
+            <td class="cell cell-eval">${evalParts || '<span class="empty">Sin completar</span>'}</td>
           </tr>
         </tbody>
       </table>
@@ -1320,17 +1327,18 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
     .eje-temas{ font-size:7.5pt; opacity:.6; font-style:italic; margin-left:auto; }
 
     /* TABLE */
-    .pidcam-table{ width:100%; border-collapse:collapse; border:1.5px solid #c7c7e8; border-top:none; }
-    .pidcam-table thead tr{ background:#b2e8f0; }
-    .pidcam-table th{ padding:7px 9px; font-size:9pt; font-weight:800; color:#1a4a52; text-align:center; text-transform:uppercase; letter-spacing:.04em; border:1px solid #8dd4df; }
-    .pidcam-table th.th-eval{ background:#b8efd0; color:#1a4a36; }
-    .cell{ padding:8px 9px; vertical-align:top; border:1px solid #9ed8e2; font-size:8.5pt; line-height:1.5; }
-    .cell-act-label{ font-size:7.5pt; font-weight:700; color:#1a5a6a; text-decoration:underline; }
-    .cell-obj-label{ font-size:7.5pt; font-weight:700; color:#1a5a6a; text-decoration:underline; margin-top:5px; display:inline-block; }
-    .row-plan .cell{ background:#d6f3f8; }
-    .row-eval .cell{ background:#e8f8ef; }
-    .cell.eval-note{ background:#fef9e7; font-size:7.5pt; color:#7a6200; font-style:italic; line-height:1.5; vertical-align:middle; text-align:center; border:1.5px solid #f5d76e; width:130px; padding:10px; }
-    .empty{ color:#ccc; font-style:italic; }
+    .pidcam-table{ width:100%; border-collapse:collapse; border-top:none; }
+    .th-plan{ background:#b2e8f0 !important; padding:7px 9px; font-size:9pt; font-weight:800; color:#1a4a52; text-align:center; text-transform:uppercase; letter-spacing:.04em; border:1.5px solid #8dd4df; }
+    .th-eval{ background:#b8efd0 !important; padding:7px 9px; font-size:9pt; font-weight:800; color:#1a4a36; text-align:center; text-transform:uppercase; letter-spacing:.04em; border:1.5px solid #8ddfb0; width:22%; }
+    .cell{ padding:9px 10px; vertical-align:top; font-size:8.5pt; line-height:1.55; }
+    .cell-plan{ background:#d6f3f8 !important; border:1.5px solid #9ed8e2; }
+    .cell-eval{ background:#e8f8ef !important; border:1.5px solid #8ddfb0; }
+    .lbl-act{ font-size:7.5pt; font-weight:700; text-decoration:underline; color:#1a5a6a; margin:0 0 3px; }
+    .txt-act{ margin:0 0 7px; color:#1a3a42; }
+    .lbl-obj{ font-size:7.5pt; font-weight:700; text-decoration:underline; color:#1a5a6a; margin:0 0 3px; }
+    .txt-obj{ margin:0; color:#1a3a42; font-style:italic; }
+    .txt-eval{ margin:0 0 8px; color:#1a3a2e; }
+    .empty{ color:#bbb; font-style:italic; }
 
     /* FOOTER */
     .doc-footer{ margin-top:16px; border-top:1px solid #e5e7eb; padding-top:8px; font-size:7.5pt; color:#bbb; text-align:center; }

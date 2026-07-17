@@ -1243,7 +1243,7 @@ function pidcamEvalKey(ejeKey: string, audKey: string) {
 }
 
 // ── PIDCAM PDF ────────────────────────────────────────────────────────────────
-function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, logoBase64: string | undefined) {
+function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, logoBase64: string | undefined, orientation: "landscape" | "portrait" = "landscape") {
   const tipoLabel = ev.tipo === "final" ? "Evaluación Final" : "1er Semestre";
   const tipoPlazo = ev.tipo === "final"
     ? "Primera semana de diciembre: detallar si se logró o no el objetivo. De no llegar al objetivo aclarar cómo y cuándo se reformula."
@@ -1297,7 +1297,7 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
   <title>PIDCAM ${tipoLabel} ${yearLabel} · ${centerName ?? "CAIPLI"}</title>
   <style>
-    @page { margin:14mm 14mm; size:A4 landscape; }
+    @page { margin:14mm 14mm; size:A4 ${orientation}; }
     *{ box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; color-adjust:exact !important; }
     body{ font-family:Arial,Helvetica,sans-serif; font-size:8.5pt; color:#1a1a2e; background:#fff; }
 
@@ -1324,21 +1324,21 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
     .ph-right strong{ color:#1e1147; font-size:9pt; }
 
     /* EJE */
-    .eje-wrap{ margin-bottom:14px; break-inside:avoid; }
-    .eje-title-bar{ background:#1e1147; color:#fff; padding:7px 10px; border-radius:5px 5px 0 0; display:flex; flex-wrap:wrap; gap:5px; align-items:baseline; }
+    .eje-wrap{ margin-bottom:14px; break-inside:avoid; border:1.5px solid #1e1147; border-radius:6px; overflow:hidden; }
+    .eje-title-bar{ background:#1e1147; color:#fff; padding:7px 10px; display:flex; flex-wrap:wrap; gap:5px; align-items:baseline; }
     .eje-name{ font-size:10pt; font-weight:900; margin-right:6px; }
     .eje-obj-gen{ font-size:7.5pt; opacity:.75; }
     .eje-temas{ font-size:7pt; opacity:.55; font-style:italic; margin-left:auto; }
 
     /* TABLE */
     .pidcam-table{ width:100%; border-collapse:collapse; table-layout:fixed; }
-    .th-aud{ background:#1e1147 !important; width:62px; border:1px solid #2d1b6e; }
-    .th-plan{ background:#b2e8f0 !important; padding:5px 8px; font-size:7.5pt; font-weight:800; color:#1a4a52; text-align:left; text-transform:uppercase; letter-spacing:.04em; border:1px solid #8dd4df; width:50%; }
-    .th-eval{ background:#b8efd0 !important; padding:5px 8px; font-size:7.5pt; font-weight:800; color:#1a4a36; text-align:left; text-transform:uppercase; letter-spacing:.04em; border:1px solid #8ddfb0; }
-    .cell-aud{ background:#f4f0ff !important; border:1px solid #c9bff0; padding:6px 7px; font-size:7pt; font-weight:800; color:#1e1147; text-transform:uppercase; letter-spacing:.04em; vertical-align:middle; width:62px; text-align:center; }
+    .th-aud{ background:#1e1147 !important; width:62px; border:1px solid #2d1b6e; border-top:none; border-left:none; }
+    .th-plan{ background:#b2e8f0 !important; padding:5px 8px; font-size:7.5pt; font-weight:800; color:#1a4a52; text-align:left; text-transform:uppercase; letter-spacing:.04em; border:1px solid #8dd4df; border-top:none; width:50%; }
+    .th-eval{ background:#b8efd0 !important; padding:5px 8px; font-size:7.5pt; font-weight:800; color:#1a4a36; text-align:left; text-transform:uppercase; letter-spacing:.04em; border:1px solid #8ddfb0; border-top:none; border-right:none; }
+    .cell-aud{ background:#f4f0ff !important; border:1px solid #c9bff0; border-left:none; padding:6px 7px; font-size:7pt; font-weight:800; color:#1e1147; text-transform:uppercase; letter-spacing:.04em; vertical-align:middle; width:62px; text-align:center; }
     .cell{ padding:6px 8px; vertical-align:top; font-size:7.5pt; line-height:1.5; }
     .cell-plan{ background:#d6f3f8 !important; border:1px solid #9ed8e2; }
-    .cell-eval{ background:#e8f8ef !important; border:1px solid #8ddfb0; }
+    .cell-eval{ background:#e8f8ef !important; border:1px solid #8ddfb0; border-right:none; }
     .lbl-act{ font-size:6.5pt; font-weight:700; text-transform:uppercase; color:#1a5a6a; margin:0 0 2px; letter-spacing:.03em; }
     .txt-act{ margin:0 0 5px; color:#1a3a42; }
     .lbl-obj{ font-size:6.5pt; font-weight:700; text-transform:uppercase; color:#1a5a6a; margin:0 0 2px; letter-spacing:.03em; }
@@ -1546,11 +1546,20 @@ function PidcamModal({
         <div className="border-t border-gray-100 px-5 py-4 shrink-0 flex gap-2">
           <Button variant="outline" onClick={onClose} className="flex-1">Cerrar</Button>
           <Button
-            onClick={() => printPidcamPdf({ ...evalData, year, tipo, secciones, centerId }, centerName, logoBase64)}
+            onClick={() => printPidcamPdf({ ...evalData, year, tipo, secciones, centerId }, centerName, logoBase64, "portrait")}
             variant="outline"
-            className="gap-1.5"
+            className="gap-1.5 text-xs"
+            title="PDF vertical"
           >
-            <Printer className="w-4 h-4" />PDF
+            <Printer className="w-4 h-4" />▯
+          </Button>
+          <Button
+            onClick={() => printPidcamPdf({ ...evalData, year, tipo, secciones, centerId }, centerName, logoBase64, "landscape")}
+            variant="outline"
+            className="gap-1.5 text-xs"
+            title="PDF horizontal"
+          >
+            <Printer className="w-4 h-4" />▭
           </Button>
           {editing ? (
             <Button onClick={handleSave} disabled={saving} className="flex-1 bg-[#1e1147] hover:bg-[#2d1b6e]">

@@ -1168,12 +1168,14 @@ const PIDCAM_EJES: {
   objetivoGeneral: string;
   temas: string;
   audiencias: { key: string; label: string; actividad: string; objetivo: string }[];
+  evalKey: string;
 }[] = [
   {
     key: "principal",
     label: "Eje Principal: Hábitos Saludables",
     objetivoGeneral: "Educar en la adquisición de hábitos de cuidado intra e inter personales.",
     temas: "Salud integral · Alimentación saludable · Autocuidado · Lactancia",
+    evalKey: "eval_principal",
     audiencias: [
       {
         key: "ninos",
@@ -1206,6 +1208,7 @@ const PIDCAM_EJES: {
     label: "Eje Secundario: Crianza",
     objetivoGeneral: "Estimulación del lenguaje, uso excesivo de pantallas y red de actividades.",
     temas: "Estimulación del lenguaje · Uso excesivo de pantallas · Red de actividades",
+    evalKey: "eval_secundario",
     audiencias: [
       {
         key: "ninos",
@@ -1263,13 +1266,10 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
       </td>`
     ).join("");
 
-    // La columna evaluación muestra el texto de cada audiencia etiquetado
-    const evalParts = eje.audiencias.map(a => {
-      const txt = secs[pidcamSectionKey(eje.key, a.key)] ?? "";
-      return txt.trim()
-        ? `<p class="lbl-obj">${a.label}:</p><p class="txt-eval">${txt.replace(/\n/g, "<br/>")}</p>`
-        : "";
-    }).filter(Boolean).join("");
+    const evalTxt = secs[eje.evalKey] ?? "";
+    const evalParts = evalTxt.trim()
+      ? evalTxt.replace(/\n/g, "<br/>")
+      : '<span class="empty">Sin completar</span>';
 
     ejesHtml += `
     <div class="eje-wrap">
@@ -1391,6 +1391,8 @@ function PidcamModal({
 }) {
   const { toast } = useToast();
   const currentYear = new Date().getFullYear();
+  const isNew = !evalData?.id;
+  const [editing, setEditing] = React.useState(isNew);
   const [year, setYear] = React.useState<number>(evalData?.year ?? currentYear);
   const [tipo, setTipo] = React.useState<"semestre" | "final">(evalData?.tipo ?? "semestre");
   const [secciones, setSecciones] = React.useState<Record<string, string>>(evalData?.secciones ?? {});
@@ -1420,6 +1422,7 @@ function PidcamModal({
       if (!r.ok) throw new Error(await r.text());
       const saved = await r.json();
       toast({ title: "Evaluación guardada" });
+      setEditing(false);
       onSaved(saved);
     } catch (e: any) {
       toast({ title: "Error al guardar", description: e.message, variant: "destructive" });
@@ -1428,95 +1431,119 @@ function PidcamModal({
     }
   }
 
+  const tipoLabel = tipo === "final" ? "Evaluación Final" : "Evaluación Semestral";
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="bg-white w-full max-w-2xl max-h-[95dvh] sm:rounded-2xl flex flex-col overflow-hidden">
+
         {/* header */}
         <div className="bg-[#1e1147] text-white px-5 py-4 shrink-0 flex items-center justify-between">
           <div>
-            <h2 className="text-base font-bold">Evaluación PIDCAM</h2>
-            <p className="text-xs text-white/60 mt-0.5">{centerName ?? "CAIPLI"} · Planificación Integral</p>
+            <h2 className="text-base font-bold">Planificación Integral · {tipoLabel} {year}</h2>
+            <p className="text-xs text-white/60 mt-0.5">{centerName ?? "CAIPLI"}</p>
           </div>
           <button onClick={onClose} className="text-white/60 hover:text-white p-1"><X className="w-5 h-5" /></button>
         </div>
 
-        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-6">
-          {/* Año y tipo */}
-          {!evalData?.id ? (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Año</label>
-                <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
-                  {[currentYear - 1, currentYear, currentYear + 1].map((y) => <option key={y} value={y}>{y}</option>)}
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Tipo</label>
-                <select value={tipo} onChange={(e) => setTipo(e.target.value as "semestre" | "final")} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
-                  <option value="semestre">Semestral (julio)</option>
-                  <option value="final">Final (diciembre)</option>
-                </select>
-              </div>
+        {/* modo nuevo: selectores */}
+        {isNew && (
+          <div className="px-5 pt-4 pb-0 grid grid-cols-2 gap-3 shrink-0">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Año</label>
+              <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
+                {[currentYear - 1, currentYear, currentYear + 1].map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
             </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <span className="bg-[#1e1147] text-white text-xs font-bold px-3 py-1 rounded-full">
-                {evalData.tipo === "final" ? "Evaluación Final" : "Evaluación Semestral"}
-              </span>
-              <span className="text-sm text-gray-500">{evalData.year}</span>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Tipo</label>
+              <select value={tipo} onChange={(e) => setTipo(e.target.value as "semestre" | "final")} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
+                <option value="semestre">Semestral (julio)</option>
+                <option value="final">Final (diciembre)</option>
+              </select>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Ejes */}
-          {PIDCAM_EJES.map((eje) => (
-            <div key={eje.key} className="rounded-xl border border-gray-200 overflow-hidden">
-              {/* eje header */}
-              <div className="bg-[#1e1147] px-4 py-3">
-                <h3 className="font-bold text-sm text-white">{eje.label}</h3>
-                <p className="text-xs text-white/60 mt-0.5">{eje.objetivoGeneral}</p>
-                <p className="text-xs text-white/40 mt-0.5 italic">Temas: {eje.temas}</p>
-              </div>
-              {/* audiencias */}
-              <div className="divide-y divide-gray-100">
-                {eje.audiencias.map((aud) => {
-                  const key = pidcamSectionKey(eje.key, aud.key);
-                  return (
-                    <div key={key} className="px-4 py-3 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-[#4a3f8c] uppercase tracking-wider">{aud.label}</span>
-                      </div>
-                      <div className="bg-gray-50 rounded-lg px-3 py-2 text-xs text-gray-500 border border-gray-100">
-                        <span className="font-semibold text-gray-400 uppercase tracking-wide text-[10px]">Objetivo planificado · </span>
-                        {aud.objetivo}
-                      </div>
-                      <textarea
-                        value={secciones[key] ?? ""}
-                        onChange={(e) => setSeccion(key, e.target.value)}
-                        rows={3}
-                        placeholder="Escribí la evaluación de este objetivo..."
-                        className="w-full rounded-lg border border-violet-200 bg-violet-50/30 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300 placeholder:text-gray-300"
-                      />
+        <div className="overflow-y-auto flex-1 px-4 py-4 space-y-6">
+          {PIDCAM_EJES.map((eje) => {
+            const evalTxt = secciones[eje.evalKey] ?? "";
+            return (
+              <div key={eje.key} className="space-y-3">
+
+                {/* ── EJE HEADER ── */}
+                <div className="bg-[#1e1147] rounded-xl px-4 py-3">
+                  <p className="font-bold text-sm text-white">{eje.label}</p>
+                  <p className="text-xs text-white/60 mt-0.5">Objetivo general: {eje.objetivoGeneral}</p>
+                  <p className="text-xs text-white/40 mt-0.5 italic">Temas: {eje.temas}</p>
+                </div>
+
+                {/* ── PLANIFICACIÓN POR AUDIENCIA ── */}
+                <div className="rounded-xl border border-sky-200 overflow-hidden">
+                  <div className="bg-sky-100 px-4 py-2">
+                    <p className="text-[10px] font-bold text-sky-700 uppercase tracking-widest">Plan de trabajo</p>
+                  </div>
+                  {eje.audiencias.map((aud, i) => (
+                    <div key={aud.key} className={`px-4 py-3 ${i < eje.audiencias.length - 1 ? "border-b border-sky-100" : ""} bg-sky-50`}>
+                      <p className="text-xs font-bold text-[#1e1147] uppercase tracking-wide mb-1">{aud.label}</p>
+                      <p className="text-xs text-gray-700 leading-relaxed"><span className="font-semibold text-sky-700">Actividad:</span> {aud.actividad}</p>
+                      <p className="text-xs text-gray-500 mt-1 italic"><span className="font-semibold not-italic text-sky-600">Objetivo:</span> {aud.objetivo}</p>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
+
+                {/* ── EVALUACIÓN DEL EJE ── */}
+                <div className="rounded-xl border border-emerald-200 overflow-hidden">
+                  <div className="bg-emerald-100 px-4 py-2 flex items-center justify-between">
+                    <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest">¿Se cumplieron los objetivos?</p>
+                    {!editing && evalTxt.trim() && (
+                      <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold">Completado</span>
+                    )}
+                    {!editing && !evalTxt.trim() && (
+                      <span className="text-[10px] bg-amber-400 text-white px-2 py-0.5 rounded-full font-bold">Pendiente</span>
+                    )}
+                  </div>
+                  <div className="bg-white px-4 py-3">
+                    {editing ? (
+                      <textarea
+                        value={evalTxt}
+                        onChange={(e) => setSeccion(eje.evalKey, e.target.value)}
+                        rows={5}
+                        placeholder={`Describí si se cumplieron los objetivos del ${eje.label.toLowerCase()}...`}
+                        className="w-full rounded-lg border border-emerald-200 bg-emerald-50/30 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-300 placeholder:text-gray-300"
+                      />
+                    ) : evalTxt.trim() ? (
+                      <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{evalTxt}</p>
+                    ) : (
+                      <p className="text-sm text-gray-300 italic">Sin evaluación cargada aún.</p>
+                    )}
+                  </div>
+                </div>
+
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* footer */}
-        <div className="border-t border-gray-100 px-5 py-4 shrink-0 flex gap-3">
-          <Button variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
+        <div className="border-t border-gray-100 px-5 py-4 shrink-0 flex gap-2">
+          <Button variant="outline" onClick={onClose} className="flex-1">Cerrar</Button>
           <Button
             onClick={() => printPidcamPdf({ ...evalData, year, tipo, secciones, centerId }, centerName, logoBase64)}
             variant="outline"
-            className="flex-1 gap-1.5"
+            className="gap-1.5"
           >
             <Printer className="w-4 h-4" />PDF
           </Button>
-          <Button onClick={handleSave} disabled={saving} className="flex-1 bg-[#1e1147] hover:bg-[#2d1b6e]">
-            {saving ? "Guardando..." : "Guardar"}
-          </Button>
+          {editing ? (
+            <Button onClick={handleSave} disabled={saving} className="flex-1 bg-[#1e1147] hover:bg-[#2d1b6e]">
+              {saving ? "Guardando..." : "Guardar"}
+            </Button>
+          ) : (
+            <Button onClick={() => setEditing(true)} className="flex-1 bg-[#1e1147] hover:bg-[#2d1b6e]">
+              Editar evaluación
+            </Button>
+          )}
         </div>
       </div>
     </div>

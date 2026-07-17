@@ -1261,7 +1261,7 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
       return `<tr>
         <td class="cell-aud">${a.label}</td>
         <td class="cell cell-plan">
-          <p class="lbl-act">Actividad:</p>
+          <p class="lbl-act">Ej. Actividad:</p>
           <p class="txt-act">${a.actividad}</p>
           <p class="lbl-obj">Objetivo:</p>
           <p class="txt-obj">${a.objetivo}</p>
@@ -1317,7 +1317,6 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
     .cover .lema{ font-size:9pt; color:#aaa; font-style:italic; }
     .cover .badge{ margin-top:18px; background:#1e1147; color:#fff; font-size:12pt; font-weight:800; padding:10px 32px; border-radius:32px; }
     .cover .centro{ margin-top:8px; font-size:11pt; color:#4a3f8c; font-weight:700; }
-    .cover .plazo-note{ margin-top:20px; font-size:7.5pt; color:#aaa; border-top:1px solid #e5e7eb; padding-top:10px; max-width:380px; line-height:1.5; }
 
     /* HEADER each page after cover */
     .ph{ display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #1e1147; padding-bottom:6px; margin-bottom:12px; }
@@ -1331,8 +1330,8 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
     .eje-obj-gen{ font-size:7.5pt; opacity:.75; }
     .eje-temas{ font-size:7pt; opacity:.55; font-style:italic; margin-left:auto; }
 
-    /* TABLE — max-width keeps it from bleeding edge to edge */
-    .pidcam-table{ width:100%; max-width:255mm; border-collapse:collapse; }
+    /* TABLE */
+    .pidcam-table{ width:100%; border-collapse:collapse; table-layout:fixed; }
     .th-aud{ background:#1e1147 !important; width:62px; border:1px solid #2d1b6e; }
     .th-plan{ background:#b2e8f0 !important; padding:5px 8px; font-size:7.5pt; font-weight:800; color:#1a4a52; text-align:left; text-transform:uppercase; letter-spacing:.04em; border:1px solid #8dd4df; width:50%; }
     .th-eval{ background:#b8efd0 !important; padding:5px 8px; font-size:7.5pt; font-weight:800; color:#1a4a36; text-align:left; text-transform:uppercase; letter-spacing:.04em; border:1px solid #8ddfb0; }
@@ -1361,7 +1360,6 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
     <p class="lema">"Cuidar para Crecer"</p>
     <div class="badge">${tipoLabel} ${yearLabel}</div>
     <div class="centro">${centerName ?? "CAIPLI"}</div>
-    <p class="plazo-note">${tipoPlazo}</p>
   </div>
 
   <!-- ENCABEZADO pág 2+ -->

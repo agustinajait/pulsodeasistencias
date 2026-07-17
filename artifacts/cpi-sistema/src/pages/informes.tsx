@@ -1244,7 +1244,7 @@ function pidcamEvalKey(ejeKey: string, audKey: string) {
 
 // ── PIDCAM PDF ────────────────────────────────────────────────────────────────
 function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, logoBase64: string | undefined) {
-  const tipoLabel = ev.tipo === "final" ? "Evaluación Diciembre" : "Evaluación Julio";
+  const tipoLabel = ev.tipo === "final" ? "Evaluación Final" : "1er Semestre";
   const tipoPlazo = ev.tipo === "final"
     ? "Primera semana de diciembre: detallar si se logró o no el objetivo. De no llegar al objetivo aclarar cómo y cuándo se reformula."
     : "Primera semana de julio: detallar si se logró o no el objetivo. Posibilidad de reajustar PIDCAN y/o actividades.";
@@ -1432,7 +1432,7 @@ function PidcamModal({
     }
   }
 
-  const tipoLabel = tipo === "final" ? "Evaluación Diciembre" : "Evaluación Julio";
+  const tipoLabel = tipo === "final" ? "Evaluación Final" : "1er Semestre";
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -1459,7 +1459,7 @@ function PidcamModal({
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Tipo</label>
               <select value={tipo} onChange={(e) => setTipo(e.target.value as "semestre" | "final")} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
-                <option value="semestre">Julio</option>
+                <option value="semestre">1er Semestre</option>
                 <option value="final">Diciembre</option>
               </select>
             </div>
@@ -2701,7 +2701,7 @@ export default function Informes() {
                     <FileText className="w-4 h-4 text-violet-400 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-gray-900">
-                        {ev.tipo === "final" ? "Evaluación Diciembre" : "Evaluación Julio"} {ev.year}
+                        {ev.tipo === "final" ? "Evaluación Final" : "1er Semestre"} {ev.year}
                       </p>
                       <p className="text-xs text-gray-500 mt-0.5">
                         {ev.tipo === "final" ? "Diciembre" : "Julio"} · {centerName ?? ""}

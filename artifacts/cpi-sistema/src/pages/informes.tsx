@@ -1313,14 +1313,14 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
 
     /* TABLE */
     .pidcam-table{ width:100%; border-collapse:collapse; border:1.5px solid #c7c7e8; border-top:none; }
-    .pidcam-table thead tr{ background:#e8e4ff; }
-    .pidcam-table th{ padding:7px 9px; font-size:9pt; font-weight:800; color:#1e1147; text-align:center; text-transform:uppercase; letter-spacing:.04em; border:1px solid #c7c7e8; }
-    .pidcam-table th.th-eval{ background:#d4f0e0; color:#1a6640; }
-    .cell{ padding:8px 9px; vertical-align:top; border:1px solid #d8d8ed; font-size:8.5pt; line-height:1.5; }
-    .cell-obj{ display:block; font-size:7.5pt; color:#888; font-style:italic; margin-bottom:4px; }
-    .row-plan .cell{ background:#eef0ff; }
-    .row-eval .cell{ background:#f4faf7; }
-    .cell.eval-note{ background:#fffbea; font-size:7.5pt; color:#7a6200; font-style:italic; line-height:1.5; vertical-align:middle; text-align:center; border:1.5px solid #f0d060; width:130px; padding:10px; }
+    .pidcam-table thead tr{ background:#b2e8f0; }
+    .pidcam-table th{ padding:7px 9px; font-size:9pt; font-weight:800; color:#1a4a52; text-align:center; text-transform:uppercase; letter-spacing:.04em; border:1px solid #8dd4df; }
+    .pidcam-table th.th-eval{ background:#b8efd0; color:#1a4a36; }
+    .cell{ padding:8px 9px; vertical-align:top; border:1px solid #9ed8e2; font-size:8.5pt; line-height:1.5; }
+    .cell-obj{ display:block; font-size:7.5pt; color:#2a7a8a; font-style:italic; margin-bottom:4px; }
+    .row-plan .cell{ background:#d6f3f8; }
+    .row-eval .cell{ background:#e8f8ef; }
+    .cell.eval-note{ background:#fef9e7; font-size:7.5pt; color:#7a6200; font-style:italic; line-height:1.5; vertical-align:middle; text-align:center; border:1.5px solid #f5d76e; width:130px; padding:10px; }
     .empty{ color:#ccc; font-style:italic; }
 
     /* FOOTER */

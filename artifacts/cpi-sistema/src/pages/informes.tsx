@@ -1256,41 +1256,44 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
 
   let ejesHtml = "";
   for (const eje of PIDCAM_EJES) {
+    const allFilled = eje.audiencias.every(a => (secs[pidcamEvalKey(eje.key, a.key)] ?? "").trim());
+    const badgeClass = allFilled ? "badge-status badge-ok" : "badge-status badge-warn";
+    const badgeLabel = allFilled ? "Completo" : "Pendiente";
+
     const rows = eje.audiencias.map(a => {
       const evalTxt = (secs[pidcamEvalKey(eje.key, a.key)] ?? "").trim();
-      return `<tr>
-        <td class="cell-aud">${a.label}</td>
-        <td class="cell cell-plan">
-          <p class="lbl-act">Actividad ejemplo:</p>
+      return `
+      <div class="aud-row">
+        <div class="col-aud"><span>${a.label}</span></div>
+        <div class="col-plan">
+          <p class="lbl lbl-a">Actividad ejemplo:</p>
           <p class="txt-act">${a.actividad}</p>
-          <p class="lbl-obj">Objetivo:</p>
+          <p class="lbl lbl-o">Objetivo:</p>
           <p class="txt-obj">${a.objetivo}</p>
-        </td>
-        <td class="cell cell-eval">
-          <p class="lbl-eval">Evaluación:</p>
+        </div>
+        <div class="col-eval">
+          <p class="lbl lbl-e">Evaluación:</p>
           <p class="txt-eval">${evalTxt ? evalTxt.replace(/\n/g, "<br/>") : '<span class="empty">Sin completar</span>'}</p>
-        </td>
-      </tr>`;
+        </div>
+      </div>`;
     }).join("");
 
     ejesHtml += `
     <div class="eje-wrap">
-      <div class="eje-title-bar">
-        <span class="eje-name">${eje.label}</span>
-        <span class="eje-sep">·</span>
-        <span class="eje-obj-gen">Objetivo: ${eje.objetivoGeneral}</span>
-        <span class="eje-temas">Temas: ${eje.temas}</span>
+      <div class="eje-head">
+        <div class="eje-head-left">
+          <h3>${eje.label}</h3>
+          <p class="obj">Objetivo: ${eje.objetivoGeneral}</p>
+          <p class="temas">Temas: ${eje.temas}</p>
+        </div>
+        <span class="${badgeClass}">${badgeLabel}</span>
       </div>
-      <table class="pidcam-table">
-        <thead>
-          <tr>
-            <th class="th-aud"></th>
-            <th class="th-plan">Planificación</th>
-            <th class="th-eval">Evaluación</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
+      <div class="th-row">
+        <div class="th-aud"></div>
+        <div class="th-plan">Planificación</div>
+        <div class="th-eval">Evaluación</div>
+      </div>
+      ${rows}
     </div>`;
   }
 
@@ -1299,55 +1302,56 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
   <style>
     @page { margin:14mm 14mm; size:A4 ${orientation}; }
     *{ box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; color-adjust:exact !important; }
-    body{ font-family:Arial,Helvetica,sans-serif; font-size:8.5pt; color:#1a1a2e; background:#fff; }
+    body{ font-family:-apple-system,Arial,Helvetica,sans-serif; font-size:8.5pt; color:#1a1a2e; background:#fff; }
 
     /* CARÁTULA */
-    .cover{
-      page-break-after:always;
-      break-after:page;
-      display:flex; flex-direction:column; align-items:center;
-      padding-top:40mm;
-      text-align:center; gap:8px;
-      overflow:hidden;
-    }
-    .cover-logo{ margin-bottom:14px; }
+    .cover{ page-break-after:always; break-after:page; display:flex; flex-direction:column; align-items:center; padding-top:38mm; text-align:center; gap:9px; overflow:hidden; }
+    .cover-logo{ margin-bottom:12px; }
     .cover h1{ font-size:22pt; font-weight:900; color:#1e1147; letter-spacing:-0.5px; }
-    .cover h2{ font-size:12pt; font-weight:700; color:#1e1147; margin-top:2px; }
-    .cover .pidcan{ font-size:9.5pt; color:#555; margin-top:2px; }
-    .cover .lema{ font-size:9pt; color:#aaa; font-style:italic; }
-    .cover .badge{ margin-top:18px; background:#1e1147; color:#fff; font-size:12pt; font-weight:800; padding:10px 32px; border-radius:32px; }
-    .cover .centro{ margin-top:8px; font-size:11pt; color:#4a3f8c; font-weight:700; }
+    .cover h2{ font-size:12pt; font-weight:700; color:#1e1147; }
+    .cover .pidcan{ font-size:9pt; color:#666; }
+    .cover .lema{ font-size:8.5pt; color:#aaa; font-style:italic; }
+    .cover .badge{ margin-top:16px; background:#1e1147; color:#fff; font-size:11pt; font-weight:800; padding:9px 28px; border-radius:28px; }
+    .cover .centro{ margin-top:6px; font-size:10.5pt; color:#4a3f8c; font-weight:700; }
 
-    /* HEADER each page after cover */
+    /* HEADER pág 2+ */
     .ph{ display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #1e1147; padding-bottom:6px; margin-bottom:12px; }
-    .ph-right{ text-align:right; font-size:7.5pt; color:#666; line-height:1.4; }
-    .ph-right strong{ color:#1e1147; font-size:9pt; }
+    .ph-title{ font-size:9pt; font-weight:800; color:#1e1147; }
+    .ph-sub{ font-size:7.5pt; color:#666; margin-top:1px; }
 
-    /* EJE */
-    .eje-wrap{ margin-bottom:14px; break-inside:avoid; border:1.5px solid #1e1147; border-radius:6px; overflow:hidden; }
-    .eje-title-bar{ background:#1e1147; color:#fff; padding:7px 10px; display:flex; flex-wrap:wrap; gap:5px; align-items:baseline; }
-    .eje-name{ font-size:10pt; font-weight:900; margin-right:6px; }
-    .eje-obj-gen{ font-size:7.5pt; opacity:.75; }
-    .eje-temas{ font-size:7pt; opacity:.55; font-style:italic; margin-left:auto; }
+    /* EJE — idéntico al modal */
+    .eje-wrap{ margin-bottom:12px; border-radius:10px; overflow:hidden; border:1.5px solid #e2e8f0; }
+    .eje-head{ background:#1e1147 !important; padding:10px 14px; display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+    .eje-head-left h3{ font-size:10pt; font-weight:900; color:#fff; }
+    .eje-head-left .obj{ font-size:7.5pt; color:rgba(255,255,255,.6); margin-top:2px; }
+    .eje-head-left .temas{ font-size:7pt; color:rgba(255,255,255,.38); font-style:italic; margin-top:1px; }
+    .badge-status{ font-size:7pt; font-weight:700; padding:2px 7px; border-radius:20px; white-space:nowrap; margin-top:2px; }
+    .badge-ok{ background:#10b981 !important; color:#fff !important; }
+    .badge-warn{ background:#f59e0b !important; color:#fff !important; }
 
-    /* TABLE */
-    .pidcam-table{ width:100%; border-collapse:collapse; table-layout:fixed; }
-    .th-aud{ background:#1e1147 !important; width:62px; border:1px solid #2d1b6e; border-top:none; border-left:none; }
-    .th-plan{ background:#b2e8f0 !important; padding:5px 8px; font-size:7.5pt; font-weight:800; color:#1a4a52; text-align:left; text-transform:uppercase; letter-spacing:.04em; border:1px solid #8dd4df; border-top:none; width:50%; }
-    .th-eval{ background:#b8efd0 !important; padding:5px 8px; font-size:7.5pt; font-weight:800; color:#1a4a36; text-align:left; text-transform:uppercase; letter-spacing:.04em; border:1px solid #8ddfb0; border-top:none; border-right:none; }
-    .cell-aud{ background:#f4f0ff !important; border:1px solid #c9bff0; border-left:none; padding:6px 7px; font-size:7pt; font-weight:800; color:#1e1147; text-transform:uppercase; letter-spacing:.04em; vertical-align:middle; width:62px; text-align:center; }
-    .cell{ padding:6px 8px; vertical-align:top; font-size:7.5pt; line-height:1.5; }
-    .cell-plan{ background:#d6f3f8 !important; border:1px solid #9ed8e2; }
-    .cell-eval{ background:#e8f8ef !important; border:1px solid #8ddfb0; border-right:none; }
-    .lbl-act{ font-size:6.5pt; font-weight:700; text-transform:uppercase; color:#1a5a6a; margin:0 0 2px; letter-spacing:.03em; }
-    .txt-act{ margin:0 0 5px; color:#1a3a42; }
-    .lbl-obj{ font-size:6.5pt; font-weight:700; text-transform:uppercase; color:#1a5a6a; margin:0 0 2px; letter-spacing:.03em; }
-    .txt-obj{ margin:0; color:#1a3a42; font-style:italic; }
-    .lbl-eval{ font-size:6.5pt; font-weight:700; text-transform:uppercase; color:#1a4a36; margin:0 0 2px; letter-spacing:.03em; }
-    .txt-eval{ margin:0; color:#1a3a2e; }
-    .empty{ color:#ccc; font-style:italic; }
+    /* col headers */
+    .th-row{ display:flex; background:#1e1147 !important; }
+    .th-aud{ width:100px; flex-shrink:0; }
+    .th-plan{ flex:1; padding:5px 10px; font-size:7pt; font-weight:800; color:#0e7490; text-transform:uppercase; letter-spacing:.06em; background:#e0f2fe !important; border-left:1px solid #bae6fd; }
+    .th-eval{ flex:1; padding:5px 10px; font-size:7pt; font-weight:800; color:#065f46; text-transform:uppercase; letter-spacing:.06em; background:#d1fae5 !important; border-left:1px solid #a7f3d0; }
 
-    .doc-footer{ margin-top:12px; border-top:1px solid #e5e7eb; padding-top:6px; font-size:7pt; color:#ccc; text-align:center; }
+    /* rows */
+    .aud-row{ display:flex; border-top:1px solid #e2e8f0; }
+    .col-aud{ width:100px; flex-shrink:0; background:#f8f7ff !important; border-right:1.5px solid #e2e8f0; display:flex; align-items:center; justify-content:center; padding:8px 6px; }
+    .col-aud span{ font-size:7pt; font-weight:800; color:#1e1147; text-transform:uppercase; letter-spacing:.06em; text-align:center; }
+    .col-plan{ flex:1; background:#f0faff !important; padding:8px 10px; border-right:1px solid #bae6fd; }
+    .col-eval{ flex:1; background:#f0fdf8 !important; padding:8px 10px; }
+
+    .lbl{ font-size:6.5pt; font-weight:700; text-transform:uppercase; letter-spacing:.04em; margin:0 0 2px; }
+    .lbl-a{ color:#0369a1; }
+    .lbl-o{ color:#0369a1; }
+    .lbl-e{ color:#047857; }
+    .txt-act{ font-size:7.5pt; color:#374151; line-height:1.5; margin:0 0 5px; }
+    .txt-obj{ font-size:7.5pt; color:#4b5563; line-height:1.5; font-style:italic; margin:0; }
+    .txt-eval{ font-size:7.5pt; color:#1f2937; line-height:1.55; margin:0; }
+    .empty{ color:#d1d5db; font-style:italic; }
+
+    .doc-footer{ margin-top:10px; border-top:1px solid #e5e7eb; padding-top:6px; font-size:6.5pt; color:#ccc; text-align:center; }
   </style>
   </head><body>
 
@@ -1365,9 +1369,9 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
   <!-- ENCABEZADO pág 2+ -->
   <div class="ph">
     ${logoSmall}
-    <div class="ph-right">
-      <strong>${tipoLabel} ${yearLabel}</strong><br/>
-      ${centerName ?? "CAIPLI"} · Planificación Integral
+    <div>
+      <div class="ph-title">${tipoLabel} ${yearLabel}</div>
+      <div class="ph-sub">${centerName ?? "CAIPLI"} · Planificación Integral de Cuidado a la Niñez</div>
     </div>
   </div>
 

@@ -1261,7 +1261,7 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
       return `<tr>
         <td class="cell-aud">${a.label}</td>
         <td class="cell cell-plan">
-          <p class="lbl-act">Ej. Actividad:</p>
+          <p class="lbl-act">Actividad ejemplo:</p>
           <p class="txt-act">${a.actividad}</p>
           <p class="lbl-obj">Objetivo:</p>
           <p class="txt-obj">${a.objetivo}</p>

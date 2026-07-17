@@ -1168,12 +1168,14 @@ const PIDCAM_EJES: {
   objetivoGeneral: string;
   temas: string;
   audiencias: { key: string; label: string; actividad: string; objetivo: string }[];
+  evalKey: string;
 }[] = [
   {
     key: "principal",
     label: "Eje Principal: Hábitos Saludables",
     objetivoGeneral: "Educar en la adquisición de hábitos de cuidado intra e inter personales.",
     temas: "Salud integral · Alimentación saludable · Autocuidado · Lactancia",
+    evalKey: "eval_principal",
     audiencias: [
       {
         key: "ninos",
@@ -1206,6 +1208,7 @@ const PIDCAM_EJES: {
     label: "Eje Secundario: Crianza",
     objetivoGeneral: "Estimulación del lenguaje, uso excesivo de pantallas y red de actividades.",
     temas: "Estimulación del lenguaje · Uso excesivo de pantallas · Red de actividades",
+    evalKey: "eval_secundario",
     audiencias: [
       {
         key: "ninos",
@@ -1263,13 +1266,10 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
       </td>`
     ).join("");
 
-    // La columna evaluación muestra el texto de cada audiencia etiquetado
-    const evalParts = eje.audiencias.map(a => {
-      const txt = secs[pidcamSectionKey(eje.key, a.key)] ?? "";
-      return txt.trim()
-        ? `<p class="lbl-obj">${a.label}:</p><p class="txt-eval">${txt.replace(/\n/g, "<br/>")}</p>`
-        : "";
-    }).filter(Boolean).join("");
+    const evalTxt = secs[eje.evalKey] ?? "";
+    const evalParts = evalTxt.trim()
+      ? evalTxt.replace(/\n/g, "<br/>")
+      : '<span class="empty">Sin completar</span>';
 
     ejesHtml += `
     <div class="eje-wrap">
@@ -1465,63 +1465,61 @@ function PidcamModal({
           </div>
         )}
 
-        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+        <div className="overflow-y-auto flex-1 px-4 py-4 space-y-6">
           {PIDCAM_EJES.map((eje) => {
-            const hasEval = eje.audiencias.some(a => (secciones[pidcamSectionKey(eje.key, a.key)] ?? "").trim());
+            const evalTxt = secciones[eje.evalKey] ?? "";
             return (
-              <div key={eje.key} className="rounded-xl border border-gray-200 overflow-hidden">
-                {/* eje header */}
-                <div className="bg-[#1e1147] px-4 py-3">
+              <div key={eje.key} className="space-y-3">
+
+                {/* ── EJE HEADER ── */}
+                <div className="bg-[#1e1147] rounded-xl px-4 py-3">
                   <p className="font-bold text-sm text-white">{eje.label}</p>
-                  <p className="text-xs text-white/55 mt-0.5">Objetivo: {eje.objetivoGeneral}</p>
-                  <p className="text-xs text-white/35 mt-0.5 italic">Temas: {eje.temas}</p>
+                  <p className="text-xs text-white/60 mt-0.5">Objetivo general: {eje.objetivoGeneral}</p>
+                  <p className="text-xs text-white/40 mt-0.5 italic">Temas: {eje.temas}</p>
                 </div>
 
-                {/* evaluación por audiencia */}
-                <div className="divide-y divide-gray-100">
-                  {eje.audiencias.map((aud) => {
-                    const key = pidcamSectionKey(eje.key, aud.key);
-                    const evalTxt = secciones[key] ?? "";
-                    return (
-                      <div key={key} className="px-4 py-3">
-                        {/* label audiencia */}
-                        <p className="text-xs font-bold text-[#4a3f8c] uppercase tracking-wider mb-2">{aud.label}</p>
-
-                        {/* planificado (siempre visible) */}
-                        <div className="rounded-lg bg-sky-50 border border-sky-100 px-3 py-2 mb-2">
-                          <p className="text-[10px] font-bold text-sky-600 uppercase tracking-wider mb-1">Planificado</p>
-                          <p className="text-xs text-sky-900 leading-relaxed">{aud.actividad}</p>
-                          <p className="text-[10px] text-sky-600 mt-1 italic">Objetivo: {aud.objetivo}</p>
-                        </div>
-
-                        {/* evaluación */}
-                        {editing ? (
-                          <textarea
-                            value={evalTxt}
-                            onChange={(e) => setSeccion(key, e.target.value)}
-                            rows={3}
-                            placeholder="Escribí la evaluación de este objetivo..."
-                            className="w-full rounded-lg border border-emerald-200 bg-emerald-50/40 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-300 placeholder:text-gray-300"
-                          />
-                        ) : (
-                          <div className="rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2">
-                            <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-1">Evaluación</p>
-                            {evalTxt.trim()
-                              ? <p className="text-xs text-emerald-900 leading-relaxed whitespace-pre-wrap">{evalTxt}</p>
-                              : <p className="text-xs text-gray-300 italic">Sin completar</p>
-                            }
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {!hasEval && !editing && (
-                  <div className="px-4 py-2 bg-amber-50 border-t border-amber-100">
-                    <p className="text-xs text-amber-600 italic">Este eje aún no tiene evaluación cargada.</p>
+                {/* ── PLANIFICACIÓN POR AUDIENCIA ── */}
+                <div className="rounded-xl border border-sky-200 overflow-hidden">
+                  <div className="bg-sky-100 px-4 py-2">
+                    <p className="text-[10px] font-bold text-sky-700 uppercase tracking-widest">Plan de trabajo</p>
                   </div>
-                )}
+                  {eje.audiencias.map((aud, i) => (
+                    <div key={aud.key} className={`px-4 py-3 ${i < eje.audiencias.length - 1 ? "border-b border-sky-100" : ""} bg-sky-50`}>
+                      <p className="text-xs font-bold text-[#1e1147] uppercase tracking-wide mb-1">{aud.label}</p>
+                      <p className="text-xs text-gray-700 leading-relaxed"><span className="font-semibold text-sky-700">Actividad:</span> {aud.actividad}</p>
+                      <p className="text-xs text-gray-500 mt-1 italic"><span className="font-semibold not-italic text-sky-600">Objetivo:</span> {aud.objetivo}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* ── EVALUACIÓN DEL EJE ── */}
+                <div className="rounded-xl border border-emerald-200 overflow-hidden">
+                  <div className="bg-emerald-100 px-4 py-2 flex items-center justify-between">
+                    <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest">¿Se cumplieron los objetivos?</p>
+                    {!editing && evalTxt.trim() && (
+                      <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold">Completado</span>
+                    )}
+                    {!editing && !evalTxt.trim() && (
+                      <span className="text-[10px] bg-amber-400 text-white px-2 py-0.5 rounded-full font-bold">Pendiente</span>
+                    )}
+                  </div>
+                  <div className="bg-white px-4 py-3">
+                    {editing ? (
+                      <textarea
+                        value={evalTxt}
+                        onChange={(e) => setSeccion(eje.evalKey, e.target.value)}
+                        rows={5}
+                        placeholder={`Describí si se cumplieron los objetivos del ${eje.label.toLowerCase()}...`}
+                        className="w-full rounded-lg border border-emerald-200 bg-emerald-50/30 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-300 placeholder:text-gray-300"
+                      />
+                    ) : evalTxt.trim() ? (
+                      <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{evalTxt}</p>
+                    ) : (
+                      <p className="text-sm text-gray-300 italic">Sin evaluación cargada aún.</p>
+                    )}
+                  </div>
+                </div>
+
               </div>
             );
           })}

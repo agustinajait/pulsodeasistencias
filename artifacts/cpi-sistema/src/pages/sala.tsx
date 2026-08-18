@@ -138,6 +138,185 @@ function MercaderiaRow({ child, mercaderia, fecha, onToggle, onClickChild }: {
   );
 }
 
+const MES_ES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+function mesLabel(ym: string) { const [,m] = ym.split("-"); return MES_ES[parseInt(m)-1] ?? ym; }
+function mesLargo(ym: string) { const d = new Date(ym+"-15"); return d.toLocaleDateString("es-AR",{month:"long",year:"numeric"}); }
+function getLast12Months() {
+  const months: string[] = [];
+  const now = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);
+  }
+  return months;
+}
+
+function ResumenMensual({ roomId, centerId, isSuperAdmin }: { roomId: number | null; centerId: number | null | undefined; isSuperAdmin: boolean }) {
+  const months = getLast12Months();
+  const [selMonth, setSelMonth] = useState(months[months.length - 1]);
+
+  // Fetch monthly attendance for selected month
+  const attQ = useQuery({
+    queryKey: ["resumen-att", roomId, centerId, selMonth],
+    queryFn: async () => {
+      const qs = new URLSearchParams();
+      if (roomId) qs.set("roomId", String(roomId));
+      qs.set("month", selMonth);
+      const r = await fetch(`${BASE}/attendance?${qs}`);
+      if (!r.ok) return [];
+      return r.json() as Promise<AttendanceRecord[]>;
+    },
+  });
+
+  // Fetch children for this room/center
+  const childrenQ = useQuery({
+    queryKey: ["resumen-children", roomId, centerId],
+    queryFn: async () => {
+      const qs = new URLSearchParams();
+      if (roomId) qs.set("roomId", String(roomId));
+      const r = await fetch(`${BASE}/children?${qs}`);
+      if (!r.ok) return [];
+      const j = await r.json();
+      return (j.children ?? j) as { id: number; nombre: string; apellido: string; activo: boolean; estado: string }[];
+    },
+  });
+
+  const att = attQ.data ?? [];
+  const kids = (childrenQ.data ?? []).filter(c => c.activo && c.estado !== "EN REVISION");
+
+  // Group attendance by day
+  const byDay: Record<string, { present: number; absent: number; total: number }> = {};
+  att.forEach(a => {
+    if (!a.fecha) return;
+    if (!byDay[a.fecha]) byDay[a.fecha] = { present: 0, absent: 0, total: 0 };
+    byDay[a.fecha].total++;
+    if (a.estado === "P") byDay[a.fecha].present++;
+    if (a.estado === "A") byDay[a.fecha].absent++;
+  });
+
+  // Monthly totals
+  const totalRecords = att.filter(a => a.estado === "P" || a.estado === "A").length;
+  const totalPresent = att.filter(a => a.estado === "P").length;
+  const pctMes = totalRecords > 0 ? Math.round((totalPresent / totalRecords) * 100) : 0;
+  const diasConRegistro = Object.keys(byDay).filter(d => byDay[d].total > 0);
+  const pctColor = pctMes >= 80 ? "text-green-600" : pctMes >= 60 ? "text-amber-600" : pctMes > 0 ? "text-red-600" : "text-gray-300";
+
+  // Per-child monthly summary
+  const kidSummary = kids.map(k => {
+    const kAtt = att.filter(a => a.childId === k.id);
+    const pres = kAtt.filter(a => a.estado === "P").length;
+    const aus = kAtt.filter(a => a.estado === "A").length;
+    const total = pres + aus;
+    const pct = total > 0 ? Math.round((pres / total) * 100) : 0;
+    return { ...k, pres, aus, total, pct };
+  }).sort((a, b) => a.pct - b.pct); // worst first
+
+  return (
+    <div className="space-y-4">
+      {/* Month selector */}
+      <div className="bg-card rounded-xl border border-border shadow-sm p-4">
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-sm font-bold text-gray-700">Mes:</span>
+          <select
+            className="flex-1 text-sm border border-border rounded-lg px-3 py-1.5 bg-background"
+            value={selMonth}
+            onChange={e => setSelMonth(e.target.value)}
+          >
+            {months.map(m => (
+              <option key={m} value={m}>{mesLargo(m)}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Monthly KPIs */}
+        <div className="grid grid-cols-3 gap-3 text-center">
+          <div className="bg-gray-50 rounded-lg p-3">
+            <div className={`text-2xl font-bold ${pctColor}`}>{pctMes > 0 ? `${pctMes}%` : "—"}</div>
+            <div className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mt-0.5">Asistencia</div>
+          </div>
+          <div className="bg-green-50 rounded-lg p-3">
+            <div className="text-2xl font-bold text-green-600">{totalPresent}</div>
+            <div className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mt-0.5">Presencias</div>
+          </div>
+          <div className="bg-red-50 rounded-lg p-3">
+            <div className="text-2xl font-bold text-red-500">{att.filter(a=>a.estado==="A").length}</div>
+            <div className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mt-0.5">Ausencias</div>
+          </div>
+        </div>
+
+        {diasConRegistro.length > 0 && (
+          <p className="text-xs text-gray-400 mt-2 text-center">{diasConRegistro.length} días con registro en el mes</p>
+        )}
+      </div>
+
+      {/* Bar chart by day */}
+      {diasConRegistro.length > 0 && (
+        <div className="bg-card rounded-xl border border-border shadow-sm p-4">
+          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">Asistencia diaria</p>
+          <div className="flex items-end gap-1 h-20 overflow-x-auto pb-1">
+            {diasConRegistro.sort().map(d => {
+              const { present, total } = byDay[d];
+              const pct = total > 0 ? Math.round((present / total) * 100) : 0;
+              const barH = Math.max(4, Math.round((pct / 100) * 64));
+              const col = pct >= 80 ? "bg-green-400" : pct >= 60 ? "bg-amber-400" : "bg-red-400";
+              return (
+                <div key={d} className="flex flex-col items-center gap-0.5 min-w-[18px]">
+                  <div className="text-[9px] text-gray-400 font-medium">{pct}%</div>
+                  <div className={`w-full rounded-t ${col}`} style={{ height: barH }} title={`${d}: ${present}/${total}`} />
+                  <div className="text-[9px] text-gray-400">{d.slice(8)}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Per-child breakdown */}
+      {kidSummary.length > 0 && (
+        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-border">
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Resumen por niño/a</p>
+          </div>
+          <div className="divide-y divide-border">
+            {kidSummary.map(k => {
+              const kColor = k.pct >= 80 ? "text-green-600" : k.pct >= 60 ? "text-amber-600" : k.pct > 0 ? "text-red-600" : "text-gray-300";
+              const barCol = k.pct >= 80 ? "bg-green-400" : k.pct >= 60 ? "bg-amber-400" : k.pct > 0 ? "bg-red-400" : "bg-gray-200";
+              return (
+                <div key={k.id} className="flex items-center gap-3 px-4 py-2.5">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold text-gray-800 truncate">{k.apellido}, {k.nombre}</div>
+                    <div className="h-1.5 bg-gray-100 rounded-full mt-1 overflow-hidden">
+                      <div className={`h-1.5 rounded-full ${barCol}`} style={{ width: `${k.pct}%` }} />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0 text-sm">
+                    <span className="text-green-600 font-medium w-6 text-right">{k.pres}</span>
+                    <span className="text-red-500 font-medium w-6 text-right">{k.aus}</span>
+                    <span className={`font-bold w-10 text-right ${kColor}`}>{k.total > 0 ? `${k.pct}%` : "—"}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-4 px-4 py-2 bg-gray-50 border-t border-border text-[11px] text-gray-400 font-medium">
+            <span className="flex-1"/>
+            <span className="text-green-600 w-6 text-right font-bold">P</span>
+            <span className="text-red-500 w-6 text-right font-bold">A</span>
+            <span className="w-10 text-right font-bold">%</span>
+          </div>
+        </div>
+      )}
+
+      {attQ.isLoading && <p className="text-center text-sm text-gray-400 py-8">Cargando...</p>}
+      {!attQ.isLoading && diasConRegistro.length === 0 && (
+        <div className="text-center py-12 text-gray-400">
+          <p className="text-sm font-medium">Sin registros en {mesLargo(selMonth)}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SalaPage() {
   const { role, ecoNumber, centerId: authCenterId, centerName, logout } = useAuth();
   const [, setLocation] = useLocation();
@@ -493,6 +672,7 @@ export default function SalaPage() {
             <TabsTrigger value="lista" className="flex-1" data-testid="tab-lista">Lista</TabsTrigger>
             <TabsTrigger value="mercaderia" className="flex-1" data-testid="tab-mercaderia">Mercadería</TabsTrigger>
             <TabsTrigger value="calendario" className="flex-1" data-testid="tab-calendario">Calendario</TabsTrigger>
+            <TabsTrigger value="resumen" className="flex-1" data-testid="tab-resumen">Resumen</TabsTrigger>
           </TabsList>
 
           {/* LISTA */}
@@ -870,6 +1050,11 @@ export default function SalaPage() {
                 </div>
               </div>
             )}
+          </TabsContent>
+
+          {/* RESUMEN MENSUAL */}
+          <TabsContent value="resumen">
+            <ResumenMensual roomId={roomId} centerId={centerId} isSuperAdmin={isSuperAdmin} />
           </TabsContent>
         </Tabs>
       </div>

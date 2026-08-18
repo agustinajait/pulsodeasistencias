@@ -1262,20 +1262,19 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
 
     const rows = eje.audiencias.map(a => {
       const evalTxt = (secs[pidcamEvalKey(eje.key, a.key)] ?? "").trim();
-      return `
-      <div class="aud-row">
-        <div class="col-aud"><span>${a.label}</span></div>
-        <div class="col-plan">
+      return `<tr>
+        <td class="col-aud">${a.label}</td>
+        <td class="col-plan">
           <p class="lbl lbl-a">Actividad ejemplo:</p>
           <p class="txt-act">${a.actividad}</p>
           <p class="lbl lbl-o">Objetivo:</p>
           <p class="txt-obj">${a.objetivo}</p>
-        </div>
-        <div class="col-eval">
+        </td>
+        <td class="col-eval">
           <p class="lbl lbl-e">Evaluación:</p>
           <p class="txt-eval">${evalTxt ? evalTxt.replace(/\n/g, "<br/>") : '<span class="empty">Sin completar</span>'}</p>
-        </div>
-      </div>`;
+        </td>
+      </tr>`;
     }).join("");
 
     ejesHtml += `
@@ -1287,12 +1286,14 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
           <p class="temas">Temas: ${eje.temas}</p>
         </div>
       </div>
-      <div class="th-row">
-        <div class="th-aud"></div>
-        <div class="th-plan">Planificación</div>
-        <div class="th-eval">Evaluación</div>
-      </div>
-      ${rows}
+      <table class="pidcam-table">
+        <thead><tr>
+          <th class="th-aud"></th>
+          <th class="th-plan">Planificación</th>
+          <th class="th-eval">Evaluación</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
     </div>`;
   }
 
@@ -1328,18 +1329,14 @@ function printPidcamPdf(ev: PidcamEval, centerName: string | null | undefined, l
     .badge-ok{ background:#10b981 !important; color:#fff !important; }
     .badge-warn{ background:#f59e0b !important; color:#fff !important; }
 
-    /* col headers */
-    .th-row{ display:flex; background:#1e1147 !important; }
-    .th-aud{ width:100px; flex-shrink:0; }
-    .th-plan{ flex:1; padding:6px 18px; font-size:7pt; font-weight:800; color:#0e7490; text-transform:uppercase; letter-spacing:.06em; background:#e0f2fe !important; border-left:1px solid #bae6fd; }
-    .th-eval{ flex:1; padding:6px 18px; font-size:7pt; font-weight:800; color:#065f46; text-transform:uppercase; letter-spacing:.06em; background:#d1fae5 !important; border-left:1px solid #a7f3d0; }
-
-    /* rows */
-    .aud-row{ display:flex; border-top:1px solid #e2e8f0; }
-    .col-aud{ width:90px; flex-shrink:0; background:#f8f7ff !important; border-right:1.5px solid #e2e8f0; display:flex; align-items:center; justify-content:center; padding:12px 10px; }
-    .col-aud span{ font-size:7pt; font-weight:800; color:#1e1147; text-transform:uppercase; letter-spacing:.06em; text-align:center; }
-    .col-plan{ flex:1; background:#f0faff !important; padding:12px 18px; border-right:1px solid #bae6fd; }
-    .col-eval{ flex:1; background:#f0fdf8 !important; padding:12px 18px; }
+    /* TABLE */
+    .pidcam-table{ width:100%; border-collapse:collapse; table-layout:fixed; }
+    .th-aud{ background:#1e1147 !important; width:90px; border:none; }
+    .th-plan{ background:#e0f2fe !important; padding:6px 18px; font-size:7pt; font-weight:800; color:#0e7490; text-transform:uppercase; letter-spacing:.06em; border:1px solid #bae6fd; border-top:none; }
+    .th-eval{ background:#d1fae5 !important; padding:6px 18px; font-size:7pt; font-weight:800; color:#065f46; text-transform:uppercase; letter-spacing:.06em; border:1px solid #a7f3d0; border-top:none; border-right:none; }
+    .col-aud{ background:#f8f7ff !important; border:1px solid #e2e8f0; border-left:none; width:90px; text-align:center; vertical-align:middle; padding:10px 8px; font-size:7pt; font-weight:800; color:#1e1147; text-transform:uppercase; letter-spacing:.06em; }
+    .col-plan{ background:#f0faff !important; border:1px solid #bae6fd; padding:12px 18px; vertical-align:top; }
+    .col-eval{ background:#f0fdf8 !important; border:1px solid #a7f3d0; border-right:none; padding:12px 18px; vertical-align:top; }
 
     .lbl{ font-size:6.5pt; font-weight:700; text-transform:uppercase; letter-spacing:.04em; margin:0 0 2px; }
     .lbl-a{ color:#0369a1; }

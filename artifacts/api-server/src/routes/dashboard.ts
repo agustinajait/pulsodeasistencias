@@ -305,6 +305,98 @@ router.get("/dashboard/monthly-trend", async (req, res) => {
   }
 });
 
+// GET /dashboard/aldea-stats — attendance breakdown by barrio (aldea)
+router.get("/dashboard/aldea-stats", async (req, res) => {
+  try {
+    const today = TODAY();
+    const currentMonth = today.slice(0, 7);
+    const effectiveCenterId = resolveCenter(req, (req.query as any).centerId);
+
+    const allRooms = await db.select().from(roomsTable);
+    const rooms = effectiveCenterId ? allRooms.filter((r) => r.centerId === effectiveCenterId) : allRooms;
+    const roomIds = new Set(rooms.map((r) => r.id));
+
+    const allChildren = await db.select().from(childrenTable);
+    const active = allChildren.filter(
+      (c) => c.activo && c.estado !== "EN REVISION" && roomIds.has(c.roomId)
+    );
+    const activeIds = active.map((c) => c.id);
+
+    // Today's attendance
+    const todayAtt = activeIds.length > 0
+      ? await db.select().from(attendanceTable).where(
+          and(eq(attendanceTable.fecha, today), inArray(attendanceTable.childId, activeIds))
+        )
+      : [];
+
+    const todayMap: Record<number, string | null> = {};
+    todayAtt.forEach((a) => { todayMap[a.childId] = a.estado ?? null; });
+
+    // Monthly attendance for current month
+    const monthAtt = activeIds.length > 0
+      ? await db.select({ childId: attendanceTable.childId, fecha: attendanceTable.fecha, estado: attendanceTable.estado })
+          .from(attendanceTable)
+          .where(and(
+            gte(attendanceTable.fecha, currentMonth + "-01"),
+            inArray(attendanceTable.childId, activeIds)
+          ))
+      : [];
+
+    // Build room map
+    const roomInfoMap: Record<number, { name: string; capacity: number }> = {};
+    rooms.forEach((r) => { roomInfoMap[r.id] = { name: r.name, capacity: r.capacity }; });
+
+    // Group children by sala (room)
+    const salaMap: Record<number, { name: string; capacity: number; children: typeof active }> = {};
+    active.forEach((c) => {
+      if (!salaMap[c.roomId]) salaMap[c.roomId] = { ...roomInfoMap[c.roomId] ?? { name: `Sala ${c.roomId}`, capacity: 0 }, children: [] };
+      salaMap[c.roomId].children.push(c);
+    });
+
+    // For each sala: today stats + monthly stats
+    const result = Object.entries(salaMap)
+      .sort(([, a], [, b]) => a.name.localeCompare(b.name))
+      .map(([, { name, capacity, children }]) => {
+        const ids = new Set(children.map((c) => c.id));
+        const tope = capacity || children.length; // use room capacity as tope, fallback to enrolled count
+
+        // Today
+        const presentHoy = children.filter((c) => todayMap[c.id] === "P").length;
+        const ausentesHoy = children.filter((c) => todayMap[c.id] === "A").length;
+        const sinMarcarHoy = children.length - presentHoy - ausentesHoy;
+        const pctHoy = children.length > 0 ? Math.round((presentHoy / children.length) * 100) : 0;
+
+        // Monthly
+        const monthRows = monthAtt.filter((a) => ids.has(a.childId));
+        const monthPresent = monthRows.filter((a) => a.estado === "P").length;
+        const monthTotal = monthRows.length;
+        const pctMes = monthTotal > 0 ? Math.round((monthPresent / monthTotal) * 100) : 0;
+
+        // Vacantes
+        const vacantes = Math.max(0, tope - children.length);
+
+        // Alarm: <60% danger, 60-79% warning, >=80% ok
+        const alarma = pctHoy < 60 ? "peligro" : pctHoy < 80 ? "alerta" : "ok";
+
+        return { barrio: name, tope, inscriptos: children.length, vacantes, presentHoy, ausentesHoy, sinMarcarHoy, pctHoy, pctMes, alarma };
+      });
+
+    // Totals
+    const totalTope = result.reduce((s, r) => s + r.tope, 0);
+    const totalInscriptos = result.reduce((s, r) => s + r.inscriptos, 0);
+    const totalVacantes = result.reduce((s, r) => s + r.vacantes, 0);
+    const totalPresente = result.reduce((s, r) => s + r.presentHoy, 0);
+    const totalAusente = result.reduce((s, r) => s + r.ausentesHoy, 0);
+    const totalSinMarcar = result.reduce((s, r) => s + r.sinMarcarHoy, 0);
+    const pctTotal = totalInscriptos > 0 ? Math.round((totalPresente / totalInscriptos) * 100) : 0;
+
+    res.json({ aldeas: result, totals: { tope: totalTope, inscriptos: totalInscriptos, vacantes: totalVacantes, presente: totalPresente, ausente: totalAusente, sinMarcar: totalSinMarcar, pct: pctTotal } });
+  } catch (err) {
+    req.log.error(err, "Error getting aldea stats");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // GET /dashboard/recent-contacts
 router.get("/dashboard/recent-contacts", async (req, res) => {
   try {

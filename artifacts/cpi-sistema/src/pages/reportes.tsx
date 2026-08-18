@@ -73,6 +73,19 @@ async function fetchMonthlyTrend(centerId?: number | null): Promise<MonthlyPoint
   return r.json();
 }
 
+type AldeaStat = {
+  barrio: string; tope: number; presentHoy: number; ausentesHoy: number;
+  sinMarcarHoy: number; pctHoy: number; pctMes: number; alarma: "ok" | "alerta" | "peligro";
+};
+type AldeaStats = { aldeas: AldeaStat[]; totals: { tope: number; presente: number; ausente: number; sinMarcar: number; pct: number } };
+
+async function fetchAldeaStats(centerId?: number | null): Promise<AldeaStats | null> {
+  const qs = centerId ? `?centerId=${centerId}` : "";
+  const r = await fetch(`${BASE}/dashboard/aldea-stats${qs}`);
+  if (!r.ok) return null;
+  return r.json();
+}
+
 // ── Metric card ───────────────────────────────────────────────────────────
 function Metric({
   value,
@@ -178,6 +191,12 @@ export default function Reportes() {
   const trendQ = useQuery({
     queryKey: ["monthly-trend", centerId],
     queryFn: () => fetchMonthlyTrend(centerId),
+  });
+
+  const aldeaQ = useQuery({
+    queryKey: ["aldea-stats", centerId],
+    queryFn: () => fetchAldeaStats(centerId),
+    refetchInterval: 60_000,
   });
 
   const todayEventsQ = useQuery({
@@ -298,6 +317,64 @@ export default function Reportes() {
             />
           </div>
         </Section>
+
+        {/* ── Asistencia por aldea/barrio ── */}
+        {aldeaQ.data && aldeaQ.data.aldeas.length > 0 && (
+          <Section title="Asistencia por aldea · hoy">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              {/* Header row */}
+              <div className="grid grid-cols-[1fr_52px_52px_52px_64px] gap-0 px-4 py-2 bg-gray-50 border-b border-gray-100">
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Aldea / Barrio</div>
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide text-center">Tope</div>
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide text-center">Pres.</div>
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide text-center">Aus.</div>
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide text-center">% Hoy</div>
+              </div>
+              {/* Aldea rows */}
+              {aldeaQ.data.aldeas.map((a) => {
+                const barColor = a.alarma === "ok" ? "bg-green-500" : a.alarma === "alerta" ? "bg-amber-400" : "bg-red-500";
+                const pctColor = a.alarma === "ok" ? "text-green-600" : a.alarma === "alerta" ? "text-amber-600" : "text-red-600";
+                const badge = a.alarma === "peligro" ? "⚠️" : a.alarma === "alerta" ? "🔶" : "";
+                return (
+                  <div key={a.barrio} className="grid grid-cols-[1fr_52px_52px_52px_64px] gap-0 px-4 py-3 border-b border-gray-50 last:border-0 items-center">
+                    <div>
+                      <div className="text-sm font-semibold text-gray-800">{a.barrio} {badge}</div>
+                      {/* Mini bar */}
+                      <div className="h-1.5 bg-gray-100 rounded-full mt-1 w-full overflow-hidden">
+                        <div className={`h-1.5 rounded-full ${barColor}`} style={{ width: `${Math.min(a.pctHoy, 100)}%` }} />
+                      </div>
+                    </div>
+                    <div className="text-sm text-gray-500 font-medium text-center">{a.tope}</div>
+                    <div className="text-sm text-green-600 font-bold text-center">{a.presentHoy}</div>
+                    <div className="text-sm text-red-500 font-medium text-center">{a.ausentesHoy}</div>
+                    <div className={`text-base font-bold text-center ${pctColor}`}>{a.pctHoy}%</div>
+                  </div>
+                );
+              })}
+              {/* Totals row */}
+              {(() => {
+                const t = aldeaQ.data.totals;
+                const tColor = t.pct < 60 ? "text-red-600" : t.pct < 80 ? "text-amber-600" : "text-green-600";
+                return (
+                  <div className="grid grid-cols-[1fr_52px_52px_52px_64px] gap-0 px-4 py-3 bg-gray-50 border-t border-gray-200 items-center">
+                    <div className="text-xs font-bold text-gray-600 uppercase tracking-wide">Total</div>
+                    <div className="text-sm font-bold text-gray-700 text-center">{t.tope}</div>
+                    <div className="text-sm font-bold text-green-600 text-center">{t.presente}</div>
+                    <div className="text-sm font-bold text-red-500 text-center">{t.ausente}</div>
+                    <div className={`text-base font-bold text-center ${tColor}`}>{t.pct}%</div>
+                  </div>
+                );
+              })()}
+              {/* Legend */}
+              <div className="flex items-center gap-4 px-4 py-2.5 bg-gray-50/80 border-t border-gray-100">
+                <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Alarma:</span>
+                <span className="flex items-center gap-1 text-[11px] text-green-600"><span className="w-2 h-2 rounded-full bg-green-500 inline-block"/>≥80% Ok</span>
+                <span className="flex items-center gap-1 text-[11px] text-amber-600"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block"/>60–79% Alerta</span>
+                <span className="flex items-center gap-1 text-[11px] text-red-600"><span className="w-2 h-2 rounded-full bg-red-500 inline-block"/>&lt;60% Peligro</span>
+              </div>
+            </div>
+          </Section>
+        )}
 
         {/* ── Matrícula ── */}
         <Section title="Matrícula">

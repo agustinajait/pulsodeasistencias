@@ -1054,7 +1054,7 @@ export default function SalaPage() {
 
           {/* RESUMEN MENSUAL */}
           <TabsContent value="resumen">
-            <ResumenMensual roomId={roomId} centerId={centerId} isSuperAdmin={isSuperAdmin} />
+            <ResumenMensual roomId={roomId} centerId={authCenterId} isSuperAdmin={isSuperAdmin} />
           </TabsContent>
         </Tabs>
       </div>

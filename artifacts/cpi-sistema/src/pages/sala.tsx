@@ -154,13 +154,16 @@ function getLast12Months() {
 function ResumenMensual({ roomId, centerId, isSuperAdmin }: { roomId: number | null; centerId: number | null | undefined; isSuperAdmin: boolean }) {
   const months = getLast12Months();
   const [selMonth, setSelMonth] = useState(months[months.length - 1]);
+  const [scope, setScope] = useState<"sala" | "cpi">("sala");
+
+  const useCpiScope = scope === "cpi";
 
   // Fetch monthly attendance for selected month
   const attQ = useQuery({
-    queryKey: ["resumen-att", roomId, centerId, selMonth],
+    queryKey: ["resumen-att", useCpiScope ? "all" : roomId, centerId, selMonth],
     queryFn: async () => {
       const qs = new URLSearchParams();
-      if (roomId) qs.set("roomId", String(roomId));
+      if (!useCpiScope && roomId) qs.set("roomId", String(roomId));
       qs.set("month", selMonth);
       const r = await fetch(`${BASE}/attendance?${qs}`);
       if (!r.ok) return [];
@@ -168,21 +171,35 @@ function ResumenMensual({ roomId, centerId, isSuperAdmin }: { roomId: number | n
     },
   });
 
-  // Fetch children for this room/center
+  // Fetch children
   const childrenQ = useQuery({
-    queryKey: ["resumen-children", roomId, centerId],
+    queryKey: ["resumen-children", useCpiScope ? "all" : roomId, centerId],
     queryFn: async () => {
       const qs = new URLSearchParams();
-      if (roomId) qs.set("roomId", String(roomId));
+      if (!useCpiScope && roomId) qs.set("roomId", String(roomId));
       const r = await fetch(`${BASE}/children?${qs}`);
       if (!r.ok) return [];
       const j = await r.json();
-      return (j.children ?? j) as { id: number; nombre: string; apellido: string; activo: boolean; estado: string }[];
+      return (j.children ?? j) as { id: number; nombre: string; apellido: string; activo: boolean; estado: string; roomId?: number }[];
     },
+  });
+
+  // Fetch rooms (for CPI scope — to show sala name per child)
+  const roomsQ = useQuery({
+    queryKey: ["resumen-rooms"],
+    queryFn: async () => {
+      const r = await fetch(`${BASE}/rooms`);
+      if (!r.ok) return [];
+      const j = await r.json();
+      return (j.rooms ?? j) as { id: number; name: string }[];
+    },
+    enabled: useCpiScope,
   });
 
   const att = attQ.data ?? [];
   const kids = (childrenQ.data ?? []).filter(c => c.activo && c.estado !== "EN REVISION");
+  const roomMap: Record<number, string> = {};
+  (roomsQ.data ?? []).forEach(r => { roomMap[r.id] = r.name; });
 
   // Group attendance by day
   const byDay: Record<string, { present: number; absent: number; total: number }> = {};
@@ -201,6 +218,14 @@ function ResumenMensual({ roomId, centerId, isSuperAdmin }: { roomId: number | n
   const diasConRegistro = Object.keys(byDay).filter(d => byDay[d].total > 0);
   const pctColor = pctMes >= 80 ? "text-green-600" : pctMes >= 60 ? "text-amber-600" : pctMes > 0 ? "text-red-600" : "text-gray-300";
 
+  // CPI stat: unique children who attended at least once
+  const asistieroNAlMenos1Vez = useCpiScope
+    ? new Set(att.filter(a => a.estado === "P").map(a => a.childId)).size
+    : 0;
+  const nuncaAsistieron = useCpiScope
+    ? kids.filter(k => !att.some(a => a.childId === k.id && a.estado === "P")).length
+    : 0;
+
   // Per-child monthly summary
   const kidSummary = kids.map(k => {
     const kAtt = att.filter(a => a.childId === k.id);
@@ -208,15 +233,33 @@ function ResumenMensual({ roomId, centerId, isSuperAdmin }: { roomId: number | n
     const aus = kAtt.filter(a => a.estado === "A").length;
     const total = pres + aus;
     const pct = total > 0 ? Math.round((pres / total) * 100) : 0;
-    return { ...k, pres, aus, total, pct };
-  }).sort((a, b) => a.pct - b.pct); // worst first
+    const sala = useCpiScope && k.roomId ? (roomMap[k.roomId] ?? `Sala ${k.roomId}`) : undefined;
+    return { ...k, pres, aus, total, pct, sala };
+  }).sort((a, b) => a.pct - b.pct);
 
   return (
     <div className="space-y-4">
-      {/* Month selector */}
-      <div className="bg-card rounded-xl border border-border shadow-sm p-4">
-        <div className="flex items-center gap-3 mb-3">
-          <span className="text-sm font-bold text-gray-700">Mes:</span>
+      {/* Scope toggle + Month selector */}
+      <div className="bg-card rounded-xl border border-border shadow-sm p-4 space-y-3">
+
+        {/* Toggle Esta sala / Todo el CPI */}
+        <div className="flex rounded-lg border border-border overflow-hidden">
+          <button
+            className={`flex-1 py-2 text-sm font-semibold transition-colors ${scope === "sala" ? "bg-[#1e1147] text-white" : "bg-background text-muted-foreground hover:bg-muted"}`}
+            onClick={() => setScope("sala")}
+          >
+            Esta sala
+          </button>
+          <button
+            className={`flex-1 py-2 text-sm font-semibold transition-colors border-l border-border ${scope === "cpi" ? "bg-[#1e1147] text-white" : "bg-background text-muted-foreground hover:bg-muted"}`}
+            onClick={() => setScope("cpi")}
+          >
+            Todo el CPI
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-bold text-gray-700 shrink-0">Mes:</span>
           <select
             className="flex-1 text-sm border border-border rounded-lg px-3 py-1.5 bg-background"
             value={selMonth}
@@ -228,11 +271,31 @@ function ResumenMensual({ roomId, centerId, isSuperAdmin }: { roomId: number | n
           </select>
         </div>
 
+        {/* CPI extra stats */}
+        {useCpiScope && (
+          <div className="grid grid-cols-2 gap-3 text-center pt-1">
+            <div className="bg-violet-50 rounded-lg p-3">
+              <div className="text-2xl font-bold text-violet-700">{asistieroNAlMenos1Vez}</div>
+              <div className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mt-0.5">Asistieron al menos 1 vez</div>
+              <div className="text-[11px] text-violet-500 font-medium mt-0.5">
+                {kids.length > 0 ? `${Math.round((asistieroNAlMenos1Vez / kids.length) * 100)}% del total` : ""}
+              </div>
+            </div>
+            <div className="bg-orange-50 rounded-lg p-3">
+              <div className="text-2xl font-bold text-orange-600">{nuncaAsistieron}</div>
+              <div className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mt-0.5">No asistieron ningún día</div>
+              <div className="text-[11px] text-orange-500 font-medium mt-0.5">
+                {kids.length > 0 ? `${Math.round((nuncaAsistieron / kids.length) * 100)}% del total` : ""}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Monthly KPIs */}
         <div className="grid grid-cols-3 gap-3 text-center">
           <div className="bg-gray-50 rounded-lg p-3">
             <div className={`text-2xl font-bold ${pctColor}`}>{pctMes > 0 ? `${pctMes}%` : "—"}</div>
-            <div className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mt-0.5">Asistencia</div>
+            <div className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mt-0.5">% Asistencia</div>
           </div>
           <div className="bg-green-50 rounded-lg p-3">
             <div className="text-2xl font-bold text-green-600">{totalPresent}</div>
@@ -245,7 +308,7 @@ function ResumenMensual({ roomId, centerId, isSuperAdmin }: { roomId: number | n
         </div>
 
         {diasConRegistro.length > 0 && (
-          <p className="text-xs text-gray-400 mt-2 text-center">{diasConRegistro.length} días con registro en el mes</p>
+          <p className="text-xs text-gray-400 text-center">{diasConRegistro.length} días con registro · {kids.length} inscriptos activos</p>
         )}
       </div>
 
@@ -285,6 +348,7 @@ function ResumenMensual({ roomId, centerId, isSuperAdmin }: { roomId: number | n
                 <div key={k.id} className="flex items-center gap-3 px-4 py-2.5">
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-semibold text-gray-800 truncate">{k.apellido}, {k.nombre}</div>
+                    {k.sala && <div className="text-[10px] text-gray-400 font-medium">{k.sala}</div>}
                     <div className="h-1.5 bg-gray-100 rounded-full mt-1 overflow-hidden">
                       <div className={`h-1.5 rounded-full ${barCol}`} style={{ width: `${k.pct}%` }} />
                     </div>

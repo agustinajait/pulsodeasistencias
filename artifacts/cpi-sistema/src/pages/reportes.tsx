@@ -323,23 +323,24 @@ export default function Reportes() {
           <Section title="Asistencia por aldea · hoy">
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
               {/* Header row */}
-              <div className="grid grid-cols-[1fr_52px_52px_52px_64px] gap-0 px-4 py-2 bg-gray-50 border-b border-gray-100">
+              <div className="grid grid-cols-[1fr_44px_44px_44px_60px_60px] gap-0 px-4 py-2 bg-gray-50 border-b border-gray-100">
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Aldea / Barrio</div>
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide text-center">Tope</div>
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide text-center">Pres.</div>
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide text-center">Aus.</div>
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide text-center">% Hoy</div>
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide text-center">% Mes</div>
               </div>
               {/* Aldea rows */}
               {aldeaQ.data.aldeas.map((a) => {
                 const barColor = a.alarma === "ok" ? "bg-green-500" : a.alarma === "alerta" ? "bg-amber-400" : "bg-red-500";
                 const pctColor = a.alarma === "ok" ? "text-green-600" : a.alarma === "alerta" ? "text-amber-600" : "text-red-600";
+                const mesColor = a.pctMes >= 80 ? "text-green-600" : a.pctMes >= 60 ? "text-amber-600" : a.pctMes > 0 ? "text-red-500" : "text-gray-300";
                 const badge = a.alarma === "peligro" ? "⚠️" : a.alarma === "alerta" ? "🔶" : "";
                 return (
-                  <div key={a.barrio} className="grid grid-cols-[1fr_52px_52px_52px_64px] gap-0 px-4 py-3 border-b border-gray-50 last:border-0 items-center">
+                  <div key={a.barrio} className="grid grid-cols-[1fr_44px_44px_44px_60px_60px] gap-0 px-4 py-3 border-b border-gray-50 last:border-0 items-center">
                     <div>
                       <div className="text-sm font-semibold text-gray-800">{a.barrio} {badge}</div>
-                      {/* Mini bar */}
                       <div className="h-1.5 bg-gray-100 rounded-full mt-1 w-full overflow-hidden">
                         <div className={`h-1.5 rounded-full ${barColor}`} style={{ width: `${Math.min(a.pctHoy, 100)}%` }} />
                       </div>
@@ -348,6 +349,7 @@ export default function Reportes() {
                     <div className="text-sm text-green-600 font-bold text-center">{a.presentHoy}</div>
                     <div className="text-sm text-red-500 font-medium text-center">{a.ausentesHoy}</div>
                     <div className={`text-base font-bold text-center ${pctColor}`}>{a.pctHoy}%</div>
+                    <div className={`text-sm font-semibold text-center ${mesColor}`}>{a.pctMes > 0 ? `${a.pctMes}%` : "—"}</div>
                   </div>
                 );
               })}
@@ -355,13 +357,17 @@ export default function Reportes() {
               {(() => {
                 const t = aldeaQ.data.totals;
                 const tColor = t.pct < 60 ? "text-red-600" : t.pct < 80 ? "text-amber-600" : "text-green-600";
+                const totalPctMes = aldeaQ.data.aldeas.reduce((s, a) => s + a.pctMes, 0);
+                const mesAvg = aldeaQ.data.aldeas.length > 0 ? Math.round(totalPctMes / aldeaQ.data.aldeas.filter(a => a.pctMes > 0).length) : 0;
+                const mesAvgColor = mesAvg >= 80 ? "text-green-600" : mesAvg >= 60 ? "text-amber-600" : mesAvg > 0 ? "text-red-500" : "text-gray-300";
                 return (
-                  <div className="grid grid-cols-[1fr_52px_52px_52px_64px] gap-0 px-4 py-3 bg-gray-50 border-t border-gray-200 items-center">
+                  <div className="grid grid-cols-[1fr_44px_44px_44px_60px_60px] gap-0 px-4 py-3 bg-gray-50 border-t border-gray-200 items-center">
                     <div className="text-xs font-bold text-gray-600 uppercase tracking-wide">Total</div>
                     <div className="text-sm font-bold text-gray-700 text-center">{t.tope}</div>
                     <div className="text-sm font-bold text-green-600 text-center">{t.presente}</div>
                     <div className="text-sm font-bold text-red-500 text-center">{t.ausente}</div>
                     <div className={`text-base font-bold text-center ${tColor}`}>{t.pct}%</div>
+                    <div className={`text-sm font-bold text-center ${mesAvgColor}`}>{mesAvg > 0 ? `${mesAvg}%` : "—"}</div>
                   </div>
                 );
               })()}

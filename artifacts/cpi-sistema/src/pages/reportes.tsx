@@ -74,10 +74,11 @@ async function fetchMonthlyTrend(centerId?: number | null): Promise<MonthlyPoint
 }
 
 type AldeaStat = {
-  barrio: string; tope: number; presentHoy: number; ausentesHoy: number;
-  sinMarcarHoy: number; pctHoy: number; pctMes: number; alarma: "ok" | "alerta" | "peligro";
+  barrio: string; tope: number; inscriptos: number; vacantes: number;
+  presentHoy: number; ausentesHoy: number; sinMarcarHoy: number;
+  pctHoy: number; pctMes: number; alarma: "ok" | "alerta" | "peligro";
 };
-type AldeaStats = { aldeas: AldeaStat[]; totals: { tope: number; presente: number; ausente: number; sinMarcar: number; pct: number } };
+type AldeaStats = { aldeas: AldeaStat[]; totals: { tope: number; inscriptos: number; vacantes: number; presente: number; ausente: number; sinMarcar: number; pct: number } };
 
 async function fetchAldeaStats(centerId?: number | null): Promise<AldeaStats | null> {
   const qs = centerId ? `?centerId=${centerId}` : "";
@@ -318,27 +319,28 @@ export default function Reportes() {
           </div>
         </Section>
 
-        {/* ── Asistencia por aldea/barrio ── */}
+        {/* ── Asistencia por sala/aldea ── */}
         {aldeaQ.data && aldeaQ.data.aldeas.length > 0 && (
-          <Section title="Asistencia por aldea · hoy">
+          <Section title="Asistencia por sala · hoy">
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
               {/* Header row */}
-              <div className="grid grid-cols-[1fr_44px_44px_44px_60px_60px] gap-0 px-4 py-2 bg-gray-50 border-b border-gray-100">
-                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Aldea / Barrio</div>
+              <div className="grid grid-cols-[1fr_40px_44px_44px_44px_56px_56px] gap-0 px-3 py-2 bg-gray-50 border-b border-gray-100">
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Sala / Aldea</div>
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide text-center">Tope</div>
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide text-center">Vac.</div>
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide text-center">Pres.</div>
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide text-center">Aus.</div>
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide text-center">% Hoy</div>
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide text-center">% Mes</div>
               </div>
-              {/* Aldea rows */}
+              {/* Sala rows */}
               {aldeaQ.data.aldeas.map((a) => {
                 const barColor = a.alarma === "ok" ? "bg-green-500" : a.alarma === "alerta" ? "bg-amber-400" : "bg-red-500";
                 const pctColor = a.alarma === "ok" ? "text-green-600" : a.alarma === "alerta" ? "text-amber-600" : "text-red-600";
                 const mesColor = a.pctMes >= 80 ? "text-green-600" : a.pctMes >= 60 ? "text-amber-600" : a.pctMes > 0 ? "text-red-500" : "text-gray-300";
                 const badge = a.alarma === "peligro" ? "⚠️" : a.alarma === "alerta" ? "🔶" : "";
                 return (
-                  <div key={a.barrio} className="grid grid-cols-[1fr_44px_44px_44px_60px_60px] gap-0 px-4 py-3 border-b border-gray-50 last:border-0 items-center">
+                  <div key={a.barrio} className="grid grid-cols-[1fr_40px_44px_44px_44px_56px_56px] gap-0 px-3 py-3 border-b border-gray-50 last:border-0 items-center">
                     <div>
                       <div className="text-sm font-semibold text-gray-800">{a.barrio} {badge}</div>
                       <div className="h-1.5 bg-gray-100 rounded-full mt-1 w-full overflow-hidden">
@@ -346,6 +348,7 @@ export default function Reportes() {
                       </div>
                     </div>
                     <div className="text-sm text-gray-500 font-medium text-center">{a.tope}</div>
+                    <div className={`text-sm font-medium text-center ${a.vacantes > 0 ? "text-blue-600 font-bold" : "text-gray-300"}`}>{a.vacantes}</div>
                     <div className="text-sm text-green-600 font-bold text-center">{a.presentHoy}</div>
                     <div className="text-sm text-red-500 font-medium text-center">{a.ausentesHoy}</div>
                     <div className={`text-base font-bold text-center ${pctColor}`}>{a.pctHoy}%</div>
@@ -357,13 +360,14 @@ export default function Reportes() {
               {(() => {
                 const t = aldeaQ.data.totals;
                 const tColor = t.pct < 60 ? "text-red-600" : t.pct < 80 ? "text-amber-600" : "text-green-600";
-                const totalPctMes = aldeaQ.data.aldeas.reduce((s, a) => s + a.pctMes, 0);
-                const mesAvg = aldeaQ.data.aldeas.length > 0 ? Math.round(totalPctMes / aldeaQ.data.aldeas.filter(a => a.pctMes > 0).length) : 0;
+                const validMes = aldeaQ.data.aldeas.filter(a => a.pctMes > 0);
+                const mesAvg = validMes.length > 0 ? Math.round(validMes.reduce((s, a) => s + a.pctMes, 0) / validMes.length) : 0;
                 const mesAvgColor = mesAvg >= 80 ? "text-green-600" : mesAvg >= 60 ? "text-amber-600" : mesAvg > 0 ? "text-red-500" : "text-gray-300";
                 return (
-                  <div className="grid grid-cols-[1fr_44px_44px_44px_60px_60px] gap-0 px-4 py-3 bg-gray-50 border-t border-gray-200 items-center">
+                  <div className="grid grid-cols-[1fr_40px_44px_44px_44px_56px_56px] gap-0 px-3 py-3 bg-gray-50 border-t border-gray-200 items-center">
                     <div className="text-xs font-bold text-gray-600 uppercase tracking-wide">Total</div>
                     <div className="text-sm font-bold text-gray-700 text-center">{t.tope}</div>
+                    <div className={`text-sm font-bold text-center ${t.vacantes > 0 ? "text-blue-600" : "text-gray-300"}`}>{t.vacantes}</div>
                     <div className="text-sm font-bold text-green-600 text-center">{t.presente}</div>
                     <div className="text-sm font-bold text-red-500 text-center">{t.ausente}</div>
                     <div className={`text-base font-bold text-center ${tColor}`}>{t.pct}%</div>
@@ -371,8 +375,15 @@ export default function Reportes() {
                   </div>
                 );
               })()}
+              {/* Vacantes alert */}
+              {aldeaQ.data.totals.vacantes > 0 && (
+                <div className="flex items-center gap-2 px-3 py-2.5 bg-blue-50 border-t border-blue-100">
+                  <span className="text-blue-600 font-bold text-sm">💡</span>
+                  <span className="text-xs text-blue-700 font-semibold">{aldeaQ.data.totals.vacantes} vacante{aldeaQ.data.totals.vacantes !== 1 ? "s" : ""} disponible{aldeaQ.data.totals.vacantes !== 1 ? "s" : ""} para cubrir</span>
+                </div>
+              )}
               {/* Legend */}
-              <div className="flex items-center gap-4 px-4 py-2.5 bg-gray-50/80 border-t border-gray-100">
+              <div className="flex items-center gap-4 px-3 py-2.5 bg-gray-50/80 border-t border-gray-100">
                 <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Alarma:</span>
                 <span className="flex items-center gap-1 text-[11px] text-green-600"><span className="w-2 h-2 rounded-full bg-green-500 inline-block"/>≥80% Ok</span>
                 <span className="flex items-center gap-1 text-[11px] text-amber-600"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block"/>60–79% Alerta</span>

@@ -218,9 +218,10 @@ function ResumenMensual({ roomId, centerId, isSuperAdmin }: { roomId: number | n
   const diasConRegistro = Object.keys(byDay).filter(d => byDay[d].total > 0);
   const pctColor = pctMes >= 80 ? "text-green-600" : pctMes >= 60 ? "text-amber-600" : pctMes > 0 ? "text-red-600" : "text-gray-300";
 
-  // CPI stat: unique children who attended at least once
-  const asistieroNAlMenos1Vez = useCpiScope
-    ? new Set(att.filter(a => a.estado === "P").map(a => a.childId)).size
+  // CPI stat: unique ACTIVE children who attended at least once
+  const kidIds = new Set(kids.map(k => k.id));
+  const asistieronAlMenos1Vez = useCpiScope
+    ? new Set(att.filter(a => a.estado === "P" && kidIds.has(a.childId)).map(a => a.childId)).size
     : 0;
   const nuncaAsistieron = useCpiScope
     ? kids.filter(k => !att.some(a => a.childId === k.id && a.estado === "P")).length
@@ -275,10 +276,10 @@ function ResumenMensual({ roomId, centerId, isSuperAdmin }: { roomId: number | n
         {useCpiScope && (
           <div className="grid grid-cols-2 gap-3 text-center pt-1">
             <div className="bg-violet-50 rounded-lg p-3">
-              <div className="text-2xl font-bold text-violet-700">{asistieroNAlMenos1Vez}</div>
+              <div className="text-2xl font-bold text-violet-700">{asistieronAlMenos1Vez}</div>
               <div className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mt-0.5">Asistieron al menos 1 vez</div>
               <div className="text-[11px] text-violet-500 font-medium mt-0.5">
-                {kids.length > 0 ? `${Math.round((asistieroNAlMenos1Vez / kids.length) * 100)}% del total` : ""}
+                {kids.length > 0 ? `${Math.round((asistieronAlMenos1Vez / kids.length) * 100)}% del total` : ""}
               </div>
             </div>
             <div className="bg-orange-50 rounded-lg p-3">

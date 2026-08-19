@@ -8,13 +8,20 @@ const router = Router();
 // GET /attendance
 router.get("/attendance", async (req, res) => {
   try {
-    const { date, roomId, childId, month, year } = req.query as {
+    const { date, roomId, childId, month, year, centerId: centerIdParam } = req.query as {
       date?: string;
       roomId?: string;
       childId?: string;
       month?: string;
       year?: string;
+      centerId?: string;
     };
+
+    // Resolve effective centerId: token centerId takes priority for non-superadmin
+    const effectiveCenterId =
+      req.auth && req.auth.role !== "superadmin" && req.auth.centerId != null
+        ? Number(req.auth.centerId)
+        : centerIdParam ? Number(centerIdParam) : null;
 
     // Enforce center isolation
     if (req.auth && req.auth.role !== "superadmin" && req.auth.centerId != null) {
@@ -55,9 +62,24 @@ router.get("/attendance", async (req, res) => {
         .from(childrenTable)
         .where(and(eq(childrenTable.roomId, parseInt(roomId)), eq(childrenTable.activo, true)));
       childIds = kids.map((k) => k.id);
+    } else if (effectiveCenterId) {
+      // All active children of this center
+      const centerRooms = await db
+        .select({ id: roomsTable.id })
+        .from(roomsTable)
+        .where(eq(roomsTable.centerId, effectiveCenterId));
+      const roomIds = centerRooms.map((r) => r.id);
+      if (roomIds.length > 0) {
+        const { inArray } = await import("drizzle-orm");
+        const kids = await db
+          .select({ id: childrenTable.id })
+          .from(childrenTable)
+          .where(and(inArray(childrenTable.roomId, roomIds), eq(childrenTable.activo, true)));
+        childIds = kids.map((k) => k.id);
+      }
     }
 
-    if (childIds.length === 0 && (childId || roomId)) {
+    if (childIds.length === 0 && (childId || roomId || effectiveCenterId)) {
       res.json([]);
       return;
     }

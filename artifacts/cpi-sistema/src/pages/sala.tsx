@@ -160,10 +160,15 @@ function ResumenMensual({ roomId, centerId, isSuperAdmin }: { roomId: number | n
 
   // Fetch monthly attendance for selected month
   const attQ = useQuery({
-    queryKey: ["resumen-att", useCpiScope ? "all" : roomId, centerId, selMonth],
+    queryKey: ["resumen-att", useCpiScope ? `center-${centerId}` : roomId, selMonth],
     queryFn: async () => {
       const qs = new URLSearchParams();
-      if (!useCpiScope && roomId) qs.set("roomId", String(roomId));
+      if (useCpiScope) {
+        // All rooms of this center
+        if (centerId) qs.set("centerId", String(centerId));
+      } else {
+        if (roomId) qs.set("roomId", String(roomId));
+      }
       qs.set("month", selMonth);
       const r = await fetch(`${BASE}/attendance?${qs}`);
       if (!r.ok) return [];
@@ -173,10 +178,14 @@ function ResumenMensual({ roomId, centerId, isSuperAdmin }: { roomId: number | n
 
   // Fetch children
   const childrenQ = useQuery({
-    queryKey: ["resumen-children", useCpiScope ? "all" : roomId, centerId],
+    queryKey: ["resumen-children", useCpiScope ? `center-${centerId}` : roomId],
     queryFn: async () => {
       const qs = new URLSearchParams();
-      if (!useCpiScope && roomId) qs.set("roomId", String(roomId));
+      if (useCpiScope) {
+        if (centerId) qs.set("centerId", String(centerId));
+      } else {
+        if (roomId) qs.set("roomId", String(roomId));
+      }
       const r = await fetch(`${BASE}/children?${qs}`);
       if (!r.ok) return [];
       const j = await r.json();

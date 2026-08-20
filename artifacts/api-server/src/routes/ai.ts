@@ -71,4 +71,36 @@ Devolvé solo el texto del informe, sin comentarios adicionales.`;
   }
 });
 
+// POST /ai/resumir-bloque
+router.post("/ai/resumir-bloque", async (req, res) => {
+  try {
+    const { campo, texto, bloque } = req.body as { campo: "inicio" | "desarrollo" | "cierre"; texto: string; bloque?: string };
+    if (!texto?.trim()) { res.status(400).json({ error: "texto requerido" }); return; }
+
+    const labels: Record<string, string> = { inicio: "Inicio", desarrollo: "Desarrollo", cierre: "Cierre" };
+    const label = labels[campo] ?? campo;
+
+    const anthropic = getClient();
+    const message = await anthropic.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 200,
+      system: `Sos asistente pedagógico de un Centro de Primera Infancia (CPI) en Argentina.
+Tu tarea es resumir descripciones de momentos de una planificación pedagógica mensual.
+Escribís en español rioplatense, en tono profesional y claro.
+El resumen debe ser conciso (2-3 oraciones máximo), preservar la información clave y sonar natural.
+No uses bullets ni encabezados. Devolvé solo el resumen, sin comentarios.`,
+      messages: [{
+        role: "user",
+        content: `Resumí el siguiente texto del momento "${label}"${bloque ? ` del bloque "${bloque}"` : ""} de una planificación pedagógica mensual. Mantenélo breve pero completo.\n\nTexto original:\n${texto}`,
+      }],
+    });
+
+    const summary = message.content.find(c => c.type === "text")?.text ?? "";
+    res.json({ summary });
+  } catch (err: any) {
+    req.log.error(err, "AI resumir-bloque error");
+    res.status(500).json({ error: err?.message ?? "Error al resumir" });
+  }
+});
+
 export default router;

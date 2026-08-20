@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useListRooms } from "@workspace/api-client-react";
-import { Plus, ChevronLeft, Trash2, Save, Printer, X } from "lucide-react";
+import { Plus, ChevronLeft, Trash2, Save, Printer, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -51,6 +51,11 @@ async function fetchPlan(id: number): Promise<Plan> {
   const r = await fetch(`${BASE}/planificaciones/${id}`);
   return r.json();
 }
+async function fetchCenterProfile(centerId: number | null | undefined) {
+  if (!centerId) return null;
+  const r = await fetch(`${BASE}/centers/${centerId}/profile`);
+  return r.ok ? r.json() : null;
+}
 
 // ── TextArea helper ────────────────────────────────────────────────────────
 function TA({ value, onChange, placeholder, rows = 4 }: { value: string; onChange: (v: string) => void; placeholder?: string; rows?: number }) {
@@ -62,6 +67,42 @@ function TA({ value, onChange, placeholder, rows = 4 }: { value: string; onChang
       rows={rows}
       className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-violet-400"
     />
+  );
+}
+
+// ── Bullet list from newline-separated text ────────────────────────────────
+function BulletList({ text, color = "bg-violet-100 text-violet-700" }: { text?: string; color?: string }) {
+  if (!text?.trim()) return <span className="text-gray-300 text-xs italic">—</span>;
+  const items = text.split("\n").map(l => l.replace(/^[-•*]\s*/, "").trim()).filter(Boolean);
+  return (
+    <ul className="space-y-1">
+      {items.map((item, i) => (
+        <li key={i} className="flex items-start gap-1.5">
+          <span className={`mt-0.5 shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${color}`}>•</span>
+          <span className="text-xs text-gray-700 leading-relaxed">{item}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// ── Expandable text cell (for inicio/desarrollo/cierre) ───────────────────
+function ExpandableText({ text, label }: { text?: string; label: string }) {
+  const [open, setOpen] = useState(false);
+  if (!text?.trim()) return <span className="text-gray-300 text-xs italic">—</span>;
+  const preview = text.trim().slice(0, 90) + (text.trim().length > 90 ? "…" : "");
+  return (
+    <div>
+      <div className="text-xs text-gray-700 leading-relaxed">{open ? text.trim() : preview}</div>
+      {text.trim().length > 90 && (
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="mt-1 flex items-center gap-0.5 text-[10px] font-semibold text-violet-500 hover:text-violet-700"
+        >
+          {open ? <><ChevronUp className="w-3 h-3"/>Ver menos</> : <><ChevronDown className="w-3 h-3"/>Ver más</>}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -153,28 +194,72 @@ function BloqueForm({
   );
 }
 
-// ── PlanView (tabla estilo PDF) ────────────────────────────────────────────
-function PlanView({ plan, roomName, onEdit }: { plan: Plan; roomName: string; onEdit: () => void }) {
+// ── PlanView (vista card + PDF) ────────────────────────────────────────────
+function PlanView({ plan, roomName, onEdit, profile }: { plan: Plan; roomName: string; onEdit: () => void; profile?: { logoBase64?: string; nombre?: string; direccion?: string } | null }) {
   const printRef = useRef<HTMLDivElement>(null);
 
   function handlePrint() {
-    const content = printRef.current?.innerHTML;
-    if (!content) return;
+    const logo = profile?.logoBase64 ? `<img src="${profile.logoBase64}" style="height:52px;object-fit:contain;" />` : "";
+    const centerName = profile?.nombre ?? "";
+    const address = profile?.direccion ?? "";
+
+    // Build PDF-specific HTML (no expandable buttons, full text)
+    const bloquesHtml = plan.bloques.map(b => {
+      const actItems = (b.actividades ?? "").split("\n").map(l => l.replace(/^[-•*]\s*/, "").trim()).filter(Boolean);
+      const matItems = (b.materiales ?? "").split("\n").map(l => l.replace(/^[-•*]\s*/, "").trim()).filter(Boolean);
+      const actHtml = actItems.length ? `<ul style="margin:0;padding-left:14px;">${actItems.map(i=>`<li>${i}</li>`).join("")}</ul>` : "—";
+      const matHtml = matItems.length ? `<ul style="margin:0;padding-left:14px;">${matItems.map(i=>`<li>${i}</li>`).join("")}</ul>` : "—";
+      return `<tr>
+        <td style="border:1px solid #ccc;padding:6px 8px;font-weight:600;vertical-align:top;min-width:80px;">${b.nombre}</td>
+        <td style="border:1px solid #ccc;padding:6px 8px;vertical-align:top;">${actHtml}</td>
+        <td style="border:1px solid #ccc;padding:6px 8px;vertical-align:top;">${matHtml}</td>
+        <td style="border:1px solid #ccc;padding:6px 8px;vertical-align:top;font-size:9.5px;">${b.inicio ?? "—"}</td>
+        <td style="border:1px solid #ccc;padding:6px 8px;vertical-align:top;font-size:9.5px;">${b.desarrollo ?? "—"}</td>
+        <td style="border:1px solid #ccc;padding:6px 8px;vertical-align:top;font-size:9.5px;">${b.cierre ?? "—"}</td>
+      </tr>`;
+    }).join("");
+
     const w = window.open("", "_blank");
     if (!w) return;
-    w.document.write(`
-      <html><head><title>Planificación ${mesLabel(plan.mes)}</title>
-      <style>
-        body { font-family: serif; font-size: 11px; margin: 20px; }
-        h2 { font-size: 14px; } p { margin: 2px 0; }
-        table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-        th, td { border: 1px solid #000; padding: 6px 8px; vertical-align: top; font-size: 10px; }
-        th { font-weight: bold; background: #f0f0f0; }
-        .label { font-weight: bold; font-size: 10px; }
-      </style></head><body>${content}</body></html>
-    `);
+    w.document.write(`<html><head><title>Planificación ${mesLabel(plan.mes)}</title>
+    <style>
+      @page { size: A4 landscape; margin: 15mm 18mm; }
+      body { font-family: Arial, sans-serif; font-size: 10px; margin: 0; color: #111; }
+      .org-header { display: flex; align-items: center; gap: 14px; border-bottom: 2px solid #1e1147; padding-bottom: 10px; margin-bottom: 10px; }
+      .org-name { font-size: 15px; font-weight: 800; color: #1e1147; }
+      .org-addr { font-size: 9px; color: #666; }
+      .plan-meta { display: flex; gap: 24px; font-size: 10px; margin-bottom: 10px; }
+      .plan-meta span { font-weight: 700; }
+      table { width: 100%; border-collapse: collapse; }
+      th { background: #1e1147; color: #fff; padding: 6px 8px; text-align: left; font-size: 10px; }
+      td { vertical-align: top; font-size: 9.5px; }
+      ul { margin: 0; padding-left: 14px; }
+      li { margin-bottom: 2px; }
+    </style></head><body>
+    <div class="org-header">
+      ${logo}
+      <div>
+        ${centerName ? `<div class="org-name">${centerName}</div>` : ""}
+        ${address ? `<div class="org-addr">${address}</div>` : ""}
+      </div>
+    </div>
+    <div class="plan-meta">
+      <div><span>Sala/Aldea:</span> ${roomName}</div>
+      ${plan.liderPedagogica ? `<div><span>Líder pedagógica:</span> ${plan.liderPedagogica}</div>` : ""}
+      ${plan.facilitadoras ? `<div><span>Facilitadoras:</span> ${plan.facilitadoras}</div>` : ""}
+      <div><span>Mes:</span> ${mesLabel(plan.mes)} ${plan.mes.split("-")[0]}</div>
+    </div>
+    ${plan.observaciones ? `<p style="margin:0 0 10px;font-style:italic;color:#444;">${plan.observaciones}</p>` : ""}
+    <table>
+      <thead><tr>
+        <th style="width:11%">Bloque</th><th style="width:16%">Actividades</th><th style="width:12%">Materiales</th>
+        <th style="width:20%">Inicio</th><th style="width:21%">Desarrollo</th><th style="width:20%">Cierre</th>
+      </tr></thead>
+      <tbody>${bloquesHtml}</tbody>
+    </table>
+    </body></html>`);
     w.document.close();
-    w.print();
+    setTimeout(() => w.print(), 600);
   }
 
   return (
@@ -186,45 +271,68 @@ function PlanView({ plan, roomName, onEdit }: { plan: Plan; roomName: string; on
         </Button>
       </div>
 
-      <div ref={printRef} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        {/* Header */}
-        <div className="space-y-1 mb-5">
-          <p className="text-sm"><span className="font-bold underline">Sala/Aldea:</span> {roomName}</p>
-          {plan.liderPedagogica && <p className="text-sm"><span className="font-bold underline">Líder pedagógica:</span> {plan.liderPedagogica}</p>}
-          {plan.facilitadoras && <p className="text-sm"><span className="font-bold underline">Facilitadoras:</span> {plan.facilitadoras}</p>}
-          <p className="text-sm"><span className="font-bold underline">Mes:</span> {mesLabel(plan.mes)} {plan.mes.split("-")[0]}</p>
-          {plan.observaciones && (
-            <p className="text-sm mt-2"><span className="font-bold">●</span> {plan.observaciones}</p>
+      <div ref={printRef} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        {/* Centro header */}
+        <div className="bg-[#1e1147] px-6 py-4 flex items-center gap-4">
+          {profile?.logoBase64 && (
+            <img src={profile.logoBase64} alt="Logo" className="h-12 w-12 object-contain rounded-lg bg-white/10 p-1 shrink-0" />
           )}
+          <div>
+            {profile?.nombre && <div className="text-white font-bold text-base leading-tight">{profile.nombre}</div>}
+            {profile?.direccion && <div className="text-white/50 text-xs mt-0.5">{profile.direccion}</div>}
+          </div>
         </div>
 
-        {/* Table */}
-        {plan.bloques.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-xs">
-              <thead>
-                <tr className="bg-gray-50">
-                  {["Bloque","Actividad","Materiales","Inicio","Desarrollo","Cierre"].map((h) => (
-                    <th key={h} className="border border-gray-300 px-3 py-2 text-left font-bold text-[11px] min-w-[100px]">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {plan.bloques.map((b) => (
-                  <tr key={b.id} className="align-top">
-                    <td className="border border-gray-300 px-3 py-2 font-semibold whitespace-pre-wrap">{b.nombre}</td>
-                    <td className="border border-gray-300 px-3 py-2 whitespace-pre-wrap">{b.actividades}</td>
-                    <td className="border border-gray-300 px-3 py-2 whitespace-pre-wrap">{b.materiales}</td>
-                    <td className="border border-gray-300 px-3 py-2 whitespace-pre-wrap">{b.inicio}</td>
-                    <td className="border border-gray-300 px-3 py-2 whitespace-pre-wrap">{b.desarrollo}</td>
-                    <td className="border border-gray-300 px-3 py-2 whitespace-pre-wrap">{b.cierre}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        {/* Plan meta */}
+        <div className="px-6 py-4 border-b border-gray-100 flex flex-wrap gap-x-6 gap-y-1">
+          <p className="text-sm"><span className="font-bold text-gray-600">Sala/Aldea:</span> <span className="text-gray-800">{roomName}</span></p>
+          {plan.liderPedagogica && <p className="text-sm"><span className="font-bold text-gray-600">Líder pedagógica:</span> <span className="text-gray-800">{plan.liderPedagogica}</span></p>}
+          {plan.facilitadoras && <p className="text-sm"><span className="font-bold text-gray-600">Facilitadoras:</span> <span className="text-gray-800">{plan.facilitadoras}</span></p>}
+          <p className="text-sm"><span className="font-bold text-gray-600">Mes:</span> <span className="text-gray-800">{mesLabel(plan.mes)} {plan.mes.split("-")[0]}</span></p>
+          {plan.observaciones && <p className="text-sm text-gray-500 italic w-full">{plan.observaciones}</p>}
+        </div>
+
+        {/* Bloques as cards */}
+        {plan.bloques.length === 0 ? (
+          <p className="text-sm text-gray-400 italic text-center py-10">Sin bloques cargados todavía</p>
         ) : (
-          <p className="text-sm text-gray-400 italic text-center py-8">Sin bloques cargados todavía</p>
+          <div className="divide-y divide-gray-100">
+            {plan.bloques.map((b) => (
+              <div key={b.id} className="px-6 py-5">
+                {/* Bloque name */}
+                <div className="text-sm font-bold text-[#1e1147] mb-3 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-violet-400 shrink-0"/>
+                  {b.nombre}
+                </div>
+
+                {/* Actividades + Materiales */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="bg-violet-50 rounded-xl p-3">
+                    <p className="text-[10px] font-bold text-violet-600 uppercase tracking-widest mb-2">Actividades</p>
+                    <BulletList text={b.actividades} color="bg-violet-100 text-violet-700" />
+                  </div>
+                  <div className="bg-amber-50 rounded-xl p-3">
+                    <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-2">Materiales</p>
+                    <BulletList text={b.materiales} color="bg-amber-100 text-amber-700" />
+                  </div>
+                </div>
+
+                {/* Inicio / Desarrollo / Cierre */}
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: "Inicio", text: b.inicio, border: "border-l-sky-400", bg: "bg-sky-50" },
+                    { label: "Desarrollo", text: b.desarrollo, border: "border-l-emerald-400", bg: "bg-emerald-50" },
+                    { label: "Cierre", text: b.cierre, border: "border-l-rose-400", bg: "bg-rose-50" },
+                  ].map(({ label, text, border, bg }) => (
+                    <div key={label} className={`${bg} border-l-2 ${border} rounded-r-xl px-3 py-2.5`}>
+                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">{label}</p>
+                      <ExpandableText text={text} label={label} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>
@@ -235,6 +343,7 @@ function PlanView({ plan, roomName, onEdit }: { plan: Plan; roomName: string; on
 function PlanEditor({ plan, rooms, onBack }: { plan: Plan; rooms: any[]; onBack: () => void }) {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { centerId } = useAuth();
   const [view, setView] = useState<"table" | "edit">("table");
   const [addingBloque, setAddingBloque] = useState(false);
   const [editingBloqueId, setEditingBloqueId] = useState<number | null>(null);
@@ -244,6 +353,12 @@ function PlanEditor({ plan, rooms, onBack }: { plan: Plan; rooms: any[]; onBack:
     observaciones: plan.observaciones ?? "",
     roomId: plan.roomId ? String(plan.roomId) : "",
     mes: plan.mes,
+  });
+
+  const profileQ = useQuery({
+    queryKey: ["center-profile-plan", centerId],
+    queryFn: () => fetchCenterProfile(centerId),
+    enabled: !!centerId,
   });
 
   const planQ = useQuery({
@@ -291,7 +406,7 @@ function PlanEditor({ plan, rooms, onBack }: { plan: Plan; rooms: any[]; onBack:
       </div>
 
       {view === "table" && (
-        <PlanView plan={current} roomName={roomName} onEdit={() => setView("edit")} />
+        <PlanView plan={current} roomName={roomName} onEdit={() => setView("edit")} profile={profileQ.data} />
       )}
 
       {view === "edit" && (

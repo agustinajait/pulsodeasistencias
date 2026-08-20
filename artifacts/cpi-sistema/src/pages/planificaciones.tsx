@@ -1,8 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useListRooms } from "@workspace/api-client-react";
-import { Plus, ChevronLeft, Trash2, Save, Printer, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
+import { Plus, ChevronLeft, Trash2, Save, Printer, ChevronDown, ChevronUp, Sparkles, ShoppingCart, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -108,12 +108,14 @@ function ExpandableText({ text, label }: { text?: string; label: string }) {
 
 // ── BloqueForm ─────────────────────────────────────────────────────────────
 function BloqueForm({
+  token,
   planId,
   bloque,
   onSaved,
   onCancel,
   onDelete,
 }: {
+  token?: string | null;
   planId: number;
   bloque?: Bloque;
   onSaved: () => void;
@@ -138,9 +140,11 @@ function BloqueForm({
     if (!texto?.trim() || texto.trim().length < 40) return;
     setResumiendo(r => ({ ...r, [campo]: true }));
     try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
       const r = await fetch(`${BASE}/ai/resumir-bloque`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ campo, texto, bloque: form.nombre }),
       });
       const j = await r.json();
@@ -231,64 +235,80 @@ function PlanView({ plan, roomName, onEdit, profile }: { plan: Plan; roomName: s
   const printRef = useRef<HTMLDivElement>(null);
 
   function handlePrint() {
-    const logo = profile?.logoBase64 ? `<img src="${profile.logoBase64}" style="height:52px;object-fit:contain;" />` : "";
+    const logo = profile?.logoBase64 ? `<img src="${profile.logoBase64}" style="height:52px;object-fit:contain;border-radius:8px;" />` : "";
     const centerName = profile?.nombre ?? "";
     const address = profile?.direccion ?? "";
 
-    // Build PDF-specific HTML (no expandable buttons, full text)
-    const bloquesHtml = plan.bloques.map(b => {
-      const actItems = (b.actividades ?? "").split("\n").map(l => l.replace(/^[-•*]\s*/, "").trim()).filter(Boolean);
-      const matItems = (b.materiales ?? "").split("\n").map(l => l.replace(/^[-•*]\s*/, "").trim()).filter(Boolean);
-      const actHtml = actItems.length ? `<ul style="margin:0;padding-left:14px;">${actItems.map(i=>`<li>${i}</li>`).join("")}</ul>` : "—";
-      const matHtml = matItems.length ? `<ul style="margin:0;padding-left:14px;">${matItems.map(i=>`<li>${i}</li>`).join("")}</ul>` : "—";
-      return `<tr>
-        <td style="border:1px solid #ccc;padding:6px 8px;font-weight:600;vertical-align:top;min-width:80px;">${b.nombre}</td>
-        <td style="border:1px solid #ccc;padding:6px 8px;vertical-align:top;">${actHtml}</td>
-        <td style="border:1px solid #ccc;padding:6px 8px;vertical-align:top;">${matHtml}</td>
-        <td style="border:1px solid #ccc;padding:6px 8px;vertical-align:top;font-size:9.5px;">${b.inicio ?? "—"}</td>
-        <td style="border:1px solid #ccc;padding:6px 8px;vertical-align:top;font-size:9.5px;">${b.desarrollo ?? "—"}</td>
-        <td style="border:1px solid #ccc;padding:6px 8px;vertical-align:top;font-size:9.5px;">${b.cierre ?? "—"}</td>
-      </tr>`;
-    }).join("");
+    function bulletHtml(text: string | undefined, color: string, dotColor: string) {
+      if (!text?.trim()) return `<span style="color:#ccc;font-style:italic;font-size:9px;">—</span>`;
+      const items = text.split("\n").map(l => l.replace(/^[-•*]\s*/, "").trim()).filter(Boolean);
+      return `<ul style="margin:0;padding:0;list-style:none;">${items.map(i =>
+        `<li style="display:flex;align-items:flex-start;gap:5px;margin-bottom:3px;">
+          <span style="display:inline-block;min-width:14px;height:14px;line-height:14px;text-align:center;background:${color};color:${dotColor};font-size:7px;font-weight:bold;border-radius:50%;margin-top:1px;">•</span>
+          <span style="font-size:9.5px;color:#333;line-height:1.4;">${i}</span>
+        </li>`
+      ).join("")}</ul>`;
+    }
+
+    const bloquesHtml = plan.bloques.map(b => `
+      <div style="border:1px solid #e5e7eb;border-radius:12px;margin-bottom:14px;overflow:hidden;break-inside:avoid;">
+        <div style="background:#f5f3ff;border-bottom:2px solid #ede9fe;padding:8px 14px;display:flex;align-items:center;gap:8px;">
+          <span style="width:8px;height:8px;border-radius:50%;background:#a78bfa;display:inline-block;flex-shrink:0;"></span>
+          <span style="font-size:11px;font-weight:700;color:#1e1147;">${b.nombre}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px 14px;">
+          <div style="background:#f5f3ff;border-radius:10px;padding:10px;">
+            <div style="font-size:8px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Actividades</div>
+            ${bulletHtml(b.actividades, "#ede9fe", "#7c3aed")}
+          </div>
+          <div style="background:#fffbeb;border-radius:10px;padding:10px;">
+            <div style="font-size:8px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Materiales</div>
+            ${bulletHtml(b.materiales, "#fde68a", "#92400e")}
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:0 14px 12px;">
+          <div style="background:#f0f9ff;border-left:3px solid #38bdf8;border-radius:0 8px 8px 0;padding:8px 10px;">
+            <div style="font-size:8px;font-weight:700;color:#0284c7;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;">Inicio</div>
+            <p style="margin:0;font-size:9px;color:#374151;line-height:1.5;">${b.inicio?.trim() || '<span style="color:#ccc;font-style:italic;">—</span>'}</p>
+          </div>
+          <div style="background:#f0fdf4;border-left:3px solid #34d399;border-radius:0 8px 8px 0;padding:8px 10px;">
+            <div style="font-size:8px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;">Desarrollo</div>
+            <p style="margin:0;font-size:9px;color:#374151;line-height:1.5;">${b.desarrollo?.trim() || '<span style="color:#ccc;font-style:italic;">—</span>'}</p>
+          </div>
+          <div style="background:#fff1f2;border-left:3px solid #fb7185;border-radius:0 8px 8px 0;padding:8px 10px;">
+            <div style="font-size:8px;font-weight:700;color:#e11d48;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;">Cierre</div>
+            <p style="margin:0;font-size:9px;color:#374151;line-height:1.5;">${b.cierre?.trim() || '<span style="color:#ccc;font-style:italic;">—</span>'}</p>
+          </div>
+        </div>
+      </div>
+    `).join("");
 
     const w = window.open("", "_blank");
     if (!w) return;
     w.document.write(`<html><head><title>Planificación ${mesLabel(plan.mes)}</title>
     <style>
-      @page { size: A4 landscape; margin: 15mm 18mm; }
-      body { font-family: Arial, sans-serif; font-size: 10px; margin: 0; color: #111; }
-      .org-header { display: flex; align-items: center; gap: 14px; border-bottom: 2px solid #1e1147; padding-bottom: 10px; margin-bottom: 10px; }
-      .org-name { font-size: 15px; font-weight: 800; color: #1e1147; }
-      .org-addr { font-size: 9px; color: #666; }
-      .plan-meta { display: flex; gap: 24px; font-size: 10px; margin-bottom: 10px; }
-      .plan-meta span { font-weight: 700; }
-      table { width: 100%; border-collapse: collapse; }
-      th { background: #1e1147; color: #fff; padding: 6px 8px; text-align: left; font-size: 10px; }
-      td { vertical-align: top; font-size: 9.5px; }
-      ul { margin: 0; padding-left: 14px; }
-      li { margin-bottom: 2px; }
+      @page { size: A4 portrait; margin: 14mm 16mm; }
+      * { box-sizing: border-box; }
+      body { font-family: Arial, sans-serif; font-size: 10px; margin: 0; color: #111; background: #fff; }
     </style></head><body>
-    <div class="org-header">
+    <!-- Header -->
+    <div style="background:#1e1147;border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:14px;margin-bottom:12px;">
       ${logo}
       <div>
-        ${centerName ? `<div class="org-name">${centerName}</div>` : ""}
-        ${address ? `<div class="org-addr">${address}</div>` : ""}
+        ${centerName ? `<div style="font-size:15px;font-weight:800;color:#fff;line-height:1.2;">${centerName}</div>` : ""}
+        ${address ? `<div style="font-size:9px;color:rgba(255,255,255,0.55);margin-top:2px;">${address}</div>` : ""}
       </div>
     </div>
-    <div class="plan-meta">
-      <div><span>Sala/Aldea:</span> ${roomName}</div>
-      ${plan.liderPedagogica ? `<div><span>Líder pedagógica:</span> ${plan.liderPedagogica}</div>` : ""}
-      ${plan.facilitadoras ? `<div><span>Facilitadoras:</span> ${plan.facilitadoras}</div>` : ""}
-      <div><span>Mes:</span> ${mesLabel(plan.mes)} ${plan.mes.split("-")[0]}</div>
+    <!-- Meta -->
+    <div style="display:flex;flex-wrap:wrap;gap:16px;padding:8px 4px 10px;border-bottom:1px solid #e5e7eb;margin-bottom:12px;">
+      <div style="font-size:10px;"><strong style="color:#555;">Sala/Aldea:</strong> ${roomName}</div>
+      ${plan.liderPedagogica ? `<div style="font-size:10px;"><strong style="color:#555;">Líder pedagógica:</strong> ${plan.liderPedagogica}</div>` : ""}
+      ${plan.facilitadoras ? `<div style="font-size:10px;"><strong style="color:#555;">Facilitadoras:</strong> ${plan.facilitadoras}</div>` : ""}
+      <div style="font-size:10px;"><strong style="color:#555;">Mes:</strong> ${mesLabel(plan.mes)} ${plan.mes.split("-")[0]}</div>
+      ${plan.observaciones ? `<div style="font-size:9.5px;color:#888;font-style:italic;width:100%;margin-top:2px;">${plan.observaciones}</div>` : ""}
     </div>
-    ${plan.observaciones ? `<p style="margin:0 0 10px;font-style:italic;color:#444;">${plan.observaciones}</p>` : ""}
-    <table>
-      <thead><tr>
-        <th style="width:11%">Bloque</th><th style="width:16%">Actividades</th><th style="width:12%">Materiales</th>
-        <th style="width:20%">Inicio</th><th style="width:21%">Desarrollo</th><th style="width:20%">Cierre</th>
-      </tr></thead>
-      <tbody>${bloquesHtml}</tbody>
-    </table>
+    <!-- Bloques -->
+    ${bloquesHtml}
     </body></html>`);
     w.document.close();
     setTimeout(() => w.print(), 600);
@@ -371,12 +391,213 @@ function PlanView({ plan, roomName, onEdit, profile }: { plan: Plan; roomName: s
   );
 }
 
+// ── MaterialesCosto ────────────────────────────────────────────────────────
+type MatItem = { id?: number; nombre: string; cantidad: number; precioUnitario: number; unidad: string; orden: number };
+
+function parseMaterialesFromBloques(bloques: Bloque[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  bloques.forEach(b => {
+    (b.materiales ?? "").split("\n").forEach(line => {
+      const clean = line.replace(/^[-•*]\s*/, "").trim();
+      if (clean && !seen.has(clean.toLowerCase())) {
+        seen.add(clean.toLowerCase());
+        result.push(clean);
+      }
+    });
+  });
+  return result;
+}
+
+function MaterialesCosto({ planId, bloques, mesLabel: mes, roomName, profile }: {
+  planId: number; bloques: Bloque[]; mesLabel: string; roomName: string;
+  profile?: { logoBase64?: string; nombre?: string } | null;
+}) {
+  const [items, setItems] = useState<MatItem[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Load saved costs
+  useEffect(() => {
+    fetch(`${BASE}/planificaciones/${planId}/materiales-costo`)
+      .then(r => r.json())
+      .then((data: MatItem[]) => {
+        setItems(data.length ? data : []);
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, [planId]);
+
+  // Import from bloques (deduplicated)
+  function importFromBloques() {
+    const fromBloques = parseMaterialesFromBloques(bloques);
+    const existingNames = new Set(items.map(i => i.nombre.toLowerCase()));
+    const toAdd = fromBloques
+      .filter(n => !existingNames.has(n.toLowerCase()))
+      .map((nombre, i) => ({ nombre, cantidad: 1, precioUnitario: 0, unidad: "unid.", orden: items.length + i }));
+    setItems(prev => [...prev, ...toAdd]);
+  }
+
+  function addRow() {
+    setItems(prev => [...prev, { nombre: "", cantidad: 1, precioUnitario: 0, unidad: "unid.", orden: prev.length }]);
+  }
+
+  function updateItem(idx: number, field: keyof MatItem, value: string | number) {
+    setItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
+  }
+
+  function removeItem(idx: number) {
+    setItems(prev => prev.filter((_, i) => i !== idx));
+  }
+
+  async function save() {
+    setSaving(true);
+    await fetch(`${BASE}/planificaciones/${planId}/materiales-costo`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(items.map((it, i) => ({ ...it, orden: i }))),
+    });
+    setSaving(false);
+  }
+
+  function handlePrint() {
+    const logo = profile?.logoBase64 ? `<img src="${profile.logoBase64}" style="height:44px;object-fit:contain;" />` : "";
+    const rows = items.map(it => {
+      const sub = (it.cantidad * it.precioUnitario).toLocaleString("es-AR", { style: "currency", currency: "ARS" });
+      return `<tr>
+        <td>${it.nombre}</td>
+        <td style="text-align:center">${it.cantidad}</td>
+        <td style="text-align:center">${it.unidad}</td>
+        <td style="text-align:right">${it.precioUnitario > 0 ? it.precioUnitario.toLocaleString("es-AR", { style: "currency", currency: "ARS" }) : "—"}</td>
+        <td style="text-align:right;font-weight:600">${it.precioUnitario > 0 ? sub : "—"}</td>
+      </tr>`;
+    }).join("");
+    const total = items.reduce((s, it) => s + it.cantidad * it.precioUnitario, 0);
+    const w = window.open("", "_blank");
+    if (!w) return;
+    w.document.write(`<html><head><title>Materiales ${mes}</title>
+    <style>
+      @page { size: A4 portrait; margin: 18mm 20mm; }
+      body { font-family: Arial, sans-serif; font-size: 11px; color: #111; }
+      .header { display:flex; align-items:center; gap:12px; border-bottom:2px solid #1e1147; padding-bottom:10px; margin-bottom:12px; }
+      .org { font-size:14px; font-weight:800; color:#1e1147; }
+      h2 { font-size:13px; color:#1e1147; margin:0 0 12px; }
+      table { width:100%; border-collapse:collapse; }
+      th { background:#1e1147; color:#fff; padding:6px 10px; text-align:left; font-size:10px; }
+      td { border-bottom:1px solid #eee; padding:6px 10px; font-size:10px; }
+      .total { font-weight:800; font-size:12px; text-align:right; margin-top:10px; color:#1e1147; }
+    </style></head><body>
+    <div class="header">${logo}<div class="org">${profile?.nombre ?? ""}</div></div>
+    <h2>📦 Materiales necesarios · ${mes} · ${roomName}</h2>
+    <table>
+      <thead><tr><th>Material</th><th>Cant.</th><th>Unidad</th><th>Precio unit.</th><th>Subtotal</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="total">Total estimado: ${total.toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</div>
+    </body></html>`);
+    w.document.close();
+    setTimeout(() => w.print(), 500);
+  }
+
+  const total = items.reduce((s, it) => s + it.cantidad * it.precioUnitario, 0);
+
+  if (!loaded) return <p className="text-center text-sm text-gray-400 py-10">Cargando...</p>;
+
+  return (
+    <div className="space-y-4">
+      {/* Actions */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {bloques.some(b => b.materiales?.trim()) && (
+          <Button size="sm" variant="outline" onClick={importFromBloques}>
+            <Plus className="w-3.5 h-3.5 mr-1" />Importar desde bloques
+          </Button>
+        )}
+        <Button size="sm" variant="outline" onClick={addRow}>
+          <Plus className="w-3.5 h-3.5 mr-1" />Agregar ítem
+        </Button>
+        <Button size="sm" onClick={save} disabled={saving}>
+          <Save className="w-3.5 h-3.5 mr-1" />{saving ? "Guardando..." : "Guardar"}
+        </Button>
+        {items.length > 0 && (
+          <Button size="sm" variant="outline" onClick={handlePrint} className="ml-auto">
+            <Printer className="w-3.5 h-3.5 mr-1" />Imprimir / PDF
+          </Button>
+        )}
+      </div>
+
+      {/* Table */}
+      {items.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
+          <ShoppingCart className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+          <p className="text-sm text-gray-400">Sin materiales cargados.</p>
+          <p className="text-xs text-gray-300 mt-1">Importá desde los bloques o agregá ítems manualmente.</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          {/* Header row */}
+          <div className="grid grid-cols-[1fr_64px_80px_100px_100px_32px] gap-2 px-4 py-2 bg-gray-50 border-b border-gray-100">
+            {["Material","Cant.","Unidad","Precio unit.","Subtotal",""].map(h => (
+              <div key={h} className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{h}</div>
+            ))}
+          </div>
+          <div className="divide-y divide-gray-50">
+            {items.map((it, idx) => {
+              const sub = it.cantidad * it.precioUnitario;
+              return (
+                <div key={idx} className="grid grid-cols-[1fr_64px_80px_100px_100px_32px] gap-2 px-4 py-2 items-center">
+                  <input
+                    className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 w-full focus:outline-none focus:ring-1 focus:ring-violet-400"
+                    value={it.nombre}
+                    onChange={e => updateItem(idx, "nombre", e.target.value)}
+                    placeholder="Nombre del material"
+                  />
+                  <input
+                    type="number" min="0" step="0.5"
+                    className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 w-full text-center focus:outline-none focus:ring-1 focus:ring-violet-400"
+                    value={it.cantidad}
+                    onChange={e => updateItem(idx, "cantidad", parseFloat(e.target.value) || 0)}
+                  />
+                  <input
+                    className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 w-full focus:outline-none focus:ring-1 focus:ring-violet-400"
+                    value={it.unidad}
+                    onChange={e => updateItem(idx, "unidad", e.target.value)}
+                    placeholder="unid."
+                  />
+                  <input
+                    type="number" min="0" step="0.01"
+                    className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 w-full text-right focus:outline-none focus:ring-1 focus:ring-violet-400"
+                    value={it.precioUnitario || ""}
+                    onChange={e => updateItem(idx, "precioUnitario", parseFloat(e.target.value) || 0)}
+                    placeholder="$0"
+                  />
+                  <div className={`text-sm font-semibold text-right pr-1 ${sub > 0 ? "text-violet-700" : "text-gray-300"}`}>
+                    {sub > 0 ? `$${sub.toLocaleString("es-AR")}` : "—"}
+                  </div>
+                  <button onClick={() => removeItem(idx)} className="text-gray-300 hover:text-red-400 flex items-center justify-center">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          {/* Total */}
+          <div className="flex items-center justify-between px-4 py-3 bg-violet-50 border-t border-violet-100">
+            <span className="text-sm font-bold text-violet-700">Total estimado del mes</span>
+            <span className="text-lg font-bold text-violet-700">
+              ${total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── PlanEditor ─────────────────────────────────────────────────────────────
 function PlanEditor({ plan, rooms, onBack }: { plan: Plan; rooms: any[]; onBack: () => void }) {
   const qc = useQueryClient();
   const { toast } = useToast();
-  const { centerId } = useAuth();
-  const [view, setView] = useState<"table" | "edit">("table");
+  const { centerId, token } = useAuth();
+  const [view, setView] = useState<"table" | "edit" | "materiales">("table");
   const [addingBloque, setAddingBloque] = useState(false);
   const [editingBloqueId, setEditingBloqueId] = useState<number | null>(null);
   const [header, setHeader] = useState({
@@ -433,12 +654,25 @@ function PlanEditor({ plan, rooms, onBack }: { plan: Plan; rooms: any[]; onBack:
         <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
           <button onClick={() => setView("table")} className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${view === "table" ? "bg-white shadow-sm text-violet-700" : "text-gray-500"}`}>Vista</button>
           <button onClick={() => setView("edit")} className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${view === "edit" ? "bg-white shadow-sm text-violet-700" : "text-gray-500"}`}>Editar</button>
+          <button onClick={() => setView("materiales")} className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors flex items-center gap-1 ${view === "materiales" ? "bg-white shadow-sm text-violet-700" : "text-gray-500"}`}>
+            <ShoppingCart className="w-3.5 h-3.5" />Materiales
+          </button>
         </div>
         <span className="text-sm font-semibold text-gray-700 ml-1">{mesLabel(current.mes)} {current.mes.split("-")[0]} · {roomName}</span>
       </div>
 
       {view === "table" && (
         <PlanView plan={current} roomName={roomName} onEdit={() => setView("edit")} profile={profileQ.data} />
+      )}
+
+      {view === "materiales" && (
+        <MaterialesCosto
+          planId={plan.id}
+          bloques={current.bloques}
+          mesLabel={`${mesLabel(current.mes)} ${current.mes.split("-")[0]}`}
+          roomName={roomName}
+          profile={profileQ.data}
+        />
       )}
 
       {view === "edit" && (
@@ -490,13 +724,14 @@ function PlanEditor({ plan, rooms, onBack }: { plan: Plan; rooms: any[]; onBack:
             </div>
 
             {addingBloque && (
-              <BloqueForm planId={plan.id} onSaved={refreshPlan} onCancel={() => setAddingBloque(false)} />
+              <BloqueForm token={token} planId={plan.id} onSaved={refreshPlan} onCancel={() => setAddingBloque(false)} />
             )}
 
             {current.bloques.map((b) => (
               <div key={b.id}>
                 {editingBloqueId === b.id ? (
                   <BloqueForm
+                    token={token}
                     planId={plan.id}
                     bloque={b}
                     onSaved={refreshPlan}

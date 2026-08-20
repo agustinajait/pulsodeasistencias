@@ -5,6 +5,19 @@ const router = Router();
 
 async function ensureTables() {
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS planificacion_materiales_costo (
+      id SERIAL PRIMARY KEY,
+      planificacion_id INTEGER NOT NULL,
+      nombre VARCHAR(300) NOT NULL,
+      cantidad NUMERIC(10,2) DEFAULT 1,
+      precio_unitario NUMERIC(10,2) DEFAULT 0,
+      unidad VARCHAR(50),
+      orden INTEGER DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS planificaciones (
       id SERIAL PRIMARY KEY,
       center_id INTEGER NOT NULL,
@@ -158,6 +171,60 @@ router.delete("/planificaciones/:id/bloques/:bloqueId", async (req, res) => {
   await ensureTables();
   await pool.query(`DELETE FROM planificacion_bloques WHERE id=$1 AND planificacion_id=$2`, [req.params.bloqueId, req.params.id]);
   res.json({ ok: true });
+});
+
+// ── Materiales con costo ───────────────────────────────────────────────────
+
+// GET /planificaciones/:id/materiales-costo
+router.get("/planificaciones/:id/materiales-costo", async (req, res) => {
+  await ensureTables();
+  const { rows } = await pool.query(
+    `SELECT * FROM planificacion_materiales_costo WHERE planificacion_id=$1 ORDER BY orden, id`,
+    [req.params.id]
+  );
+  res.json(rows.map(r => ({
+    id: r.id, nombre: r.nombre, cantidad: parseFloat(r.cantidad), precioUnitario: parseFloat(r.precio_unitario),
+    unidad: r.unidad, orden: r.orden,
+  })));
+});
+
+// PUT /planificaciones/:id/materiales-costo  (upsert full list)
+router.put("/planificaciones/:id/materiales-costo", async (req, res) => {
+  await ensureTables();
+  const planId = parseInt(req.params.id);
+  const items: { id?: number; nombre: string; cantidad: number; precioUnitario: number; unidad?: string; orden: number }[] = req.body;
+  // Delete removed items
+  const keepIds = items.filter(i => i.id).map(i => i.id!);
+  if (keepIds.length > 0) {
+    await pool.query(
+      `DELETE FROM planificacion_materiales_costo WHERE planificacion_id=$1 AND id <> ALL($2::int[])`,
+      [planId, keepIds]
+    );
+  } else {
+    await pool.query(`DELETE FROM planificacion_materiales_costo WHERE planificacion_id=$1`, [planId]);
+  }
+  const result = [];
+  for (const item of items) {
+    if (item.id) {
+      const { rows } = await pool.query(
+        `UPDATE planificacion_materiales_costo SET nombre=$1, cantidad=$2, precio_unitario=$3, unidad=$4, orden=$5, updated_at=NOW()
+         WHERE id=$6 AND planificacion_id=$7 RETURNING *`,
+        [item.nombre, item.cantidad, item.precioUnitario, item.unidad ?? null, item.orden, item.id, planId]
+      );
+      if (rows[0]) result.push(rows[0]);
+    } else {
+      const { rows } = await pool.query(
+        `INSERT INTO planificacion_materiales_costo (planificacion_id, nombre, cantidad, precio_unitario, unidad, orden)
+         VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+        [planId, item.nombre, item.cantidad, item.precioUnitario, item.unidad ?? null, item.orden]
+      );
+      if (rows[0]) result.push(rows[0]);
+    }
+  }
+  res.json(result.map(r => ({
+    id: r.id, nombre: r.nombre, cantidad: parseFloat(r.cantidad), precioUnitario: parseFloat(r.precio_unitario),
+    unidad: r.unidad, orden: r.orden,
+  })));
 });
 
 export default router;

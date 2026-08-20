@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useListRooms } from "@workspace/api-client-react";
-import { Plus, ChevronLeft, Trash2, Save, Printer, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, ChevronLeft, Trash2, Save, Printer, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -129,8 +129,26 @@ function BloqueForm({
     cierre: bloque?.cierre ?? "",
   });
   const [saving, setSaving] = useState(false);
+  const [resumiendo, setResumiendo] = useState<Record<string, boolean>>({});
 
   function upd(k: keyof typeof form, v: string) { setForm(f => ({ ...f, [k]: v })); }
+
+  async function resumirCampo(campo: "inicio" | "desarrollo" | "cierre") {
+    const texto = form[campo];
+    if (!texto?.trim() || texto.trim().length < 40) return;
+    setResumiendo(r => ({ ...r, [campo]: true }));
+    try {
+      const r = await fetch(`${BASE}/ai/resumir-bloque`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campo, texto, bloque: form.nombre }),
+      });
+      const j = await r.json();
+      if (j.summary) upd(campo, j.summary);
+    } finally {
+      setResumiendo(r => ({ ...r, [campo]: false }));
+    }
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -166,18 +184,32 @@ function BloqueForm({
         </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <div>
-          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Inicio</label>
-          <TA value={form.inicio} onChange={(v) => upd("inicio", v)} placeholder="Cómo se inicia..." rows={5} />
-        </div>
-        <div>
-          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Desarrollo</label>
-          <TA value={form.desarrollo} onChange={(v) => upd("desarrollo", v)} placeholder="Desarrollo de la actividad..." rows={5} />
-        </div>
-        <div>
-          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Cierre</label>
-          <TA value={form.cierre} onChange={(v) => upd("cierre", v)} placeholder="Cierre y registro..." rows={5} />
-        </div>
+        {([
+          { key: "inicio" as const, label: "Inicio", placeholder: "Cómo se inicia...", border: "border-l-sky-400" },
+          { key: "desarrollo" as const, label: "Desarrollo", placeholder: "Desarrollo de la actividad...", border: "border-l-emerald-400" },
+          { key: "cierre" as const, label: "Cierre", placeholder: "Cierre y registro...", border: "border-l-rose-400" },
+        ]).map(({ key, label, placeholder, border }) => (
+          <div key={key}>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{label}</label>
+              {form[key]?.trim().length > 40 && (
+                <button
+                  type="button"
+                  onClick={() => resumirCampo(key)}
+                  disabled={resumiendo[key]}
+                  className="flex items-center gap-1 text-[10px] font-semibold text-violet-500 hover:text-violet-700 disabled:opacity-50 disabled:cursor-wait"
+                  title="Resumir con IA"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  {resumiendo[key] ? "Resumiendo..." : "Resumir con IA"}
+                </button>
+              )}
+            </div>
+            <div className={`border-l-2 ${border} rounded-r-lg`}>
+              <TA value={form[key]} onChange={(v) => upd(key, v)} placeholder={placeholder} rows={5} />
+            </div>
+          </div>
+        ))}
       </div>
       <div className="flex gap-2 pt-1">
         <Button size="sm" onClick={handleSave} disabled={saving || !form.nombre}>

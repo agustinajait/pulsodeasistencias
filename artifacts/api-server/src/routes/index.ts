@@ -25,6 +25,7 @@ import portfoliosRouter from "./portfolios";
 import mercaderiaFirmaRouter from "./mercaderia-firma";
 import convivirRouter from "./convivir";
 import pidcamRouter from "./pidcam";
+import comprasRouter from "./compras";
 
 const router: IRouter = Router();
 
@@ -54,5 +55,6 @@ router.use(portfoliosRouter);
 router.use(mercaderiaFirmaRouter);
 router.use(convivirRouter);
 router.use(pidcamRouter);
+router.use(comprasRouter);
 
 export default router;

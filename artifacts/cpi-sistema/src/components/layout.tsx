@@ -15,6 +15,7 @@ import {
   Stethoscope,
   BookImage,
   UtensilsCrossed,
+  ShoppingCart,
 } from "lucide-react";
 
 type NavItem = {
@@ -59,6 +60,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Planificaciones",
     path: "/planificaciones",
     icon: <BarChart3 className="w-5 h-5" />,
+    roles: ["admin", "superadmin"],
+  },
+  {
+    label: "Materiales",
+    path: "/compras",
+    icon: <ShoppingCart className="w-5 h-5" />,
     roles: ["admin", "superadmin"],
   },
   {

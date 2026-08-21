@@ -666,7 +666,9 @@ function PlanEditor({ plan, rooms, onBack }: { plan: Plan; rooms: any[]; onBack:
   const qc = useQueryClient();
   const { toast } = useToast();
   const { centerId, token } = useAuth();
-  const [view, setView] = useState<"table" | "edit" | "materiales">("table");
+  // Si la planificación está vacía (sin bloques ni líder), arrancá directo en Editar
+  const isEmpty = !plan.bloques?.length && !plan.liderPedagogica;
+  const [view, setView] = useState<"table" | "edit" | "materiales">(isEmpty ? "edit" : "table");
   const [addingBloque, setAddingBloque] = useState(false);
   const [editingBloqueId, setEditingBloqueId] = useState<number | null>(null);
   const [header, setHeader] = useState({
@@ -931,15 +933,18 @@ export default function Planificaciones() {
             <Plus className="w-4 h-4" />Nueva planificación
           </button>
         ) : (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Nueva planificación</p>
+          <div className="bg-white rounded-2xl border border-violet-100 shadow-sm p-5 space-y-4">
+            <div>
+              <p className="text-sm font-bold text-gray-800">¿Para qué mes y sala es esta planificación?</p>
+              <p className="text-xs text-gray-400 mt-0.5">Después vas a poder completar todos los detalles y los bloques de actividades.</p>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-semibold text-gray-500 block mb-1">Mes</label>
                 <Input type="month" value={newForm.mes} onChange={(e) => setNewForm(f => ({ ...f, mes: e.target.value }))} className="text-sm" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 block mb-1">Sala</label>
+                <label className="text-xs font-semibold text-gray-500 block mb-1">Sala / Aldea</label>
                 <select
                   value={newForm.roomId}
                   onChange={(e) => setNewForm(f => ({ ...f, roomId: e.target.value }))}
@@ -952,7 +957,7 @@ export default function Planificaciones() {
             </div>
             <div className="flex gap-2">
               <Button size="sm" onClick={() => createMut.mutate()} disabled={createMut.isPending}>
-                {createMut.isPending ? "Creando..." : "Crear"}
+                <Plus className="w-3.5 h-3.5 mr-1" />{createMut.isPending ? "Creando..." : "Crear y empezar a completar"}
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setCreating(false)}>Cancelar</Button>
             </div>

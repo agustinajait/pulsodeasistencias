@@ -123,7 +123,7 @@ function Router() {
         {() => <ProtectedRoute component={Convivir} allowedRoles={["admin", "superadmin"]} />}
       </Route>
       <Route path="/compras">
-        {() => <ProtectedRoute component={Compras} allowedRoles={["admin", "superadmin"]} />}
+        {() => <ProtectedRoute component={Compras} allowedRoles={["admin", "superadmin", "sala"]} />}
       </Route>
 
       {/* Root redirect */}

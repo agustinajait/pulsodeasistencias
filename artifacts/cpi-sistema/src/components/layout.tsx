@@ -66,7 +66,7 @@ const NAV_ITEMS: NavItem[] = [
     label: "Materiales",
     path: "/compras",
     icon: <ShoppingCart className="w-5 h-5" />,
-    roles: ["admin", "superadmin"],
+    roles: ["admin", "superadmin", "sala"],
   },
   {
     label: "Servicios",

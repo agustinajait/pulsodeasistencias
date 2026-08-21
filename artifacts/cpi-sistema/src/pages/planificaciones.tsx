@@ -257,10 +257,10 @@ function BloqueForm({
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         {([
-          { key: "inicio" as const, label: "Inicio", placeholder: "Cómo se inicia...", border: "border-l-sky-400" },
-          { key: "desarrollo" as const, label: "Desarrollo", placeholder: "Desarrollo de la actividad...", border: "border-l-emerald-400" },
-          { key: "cierre" as const, label: "Cierre", placeholder: "Cierre y registro...", border: "border-l-rose-400" },
-        ]).map(({ key, label, placeholder, border }) => (
+          { key: "inicio" as const, label: "Inicio", placeholder: "¿Cómo se presenta la actividad? ¿Qué pregunta o consigna se da para motivar al grupo?", hint: "Cómo se abre el espacio y se presenta la propuesta", border: "border-l-sky-400" },
+          { key: "desarrollo" as const, label: "Desarrollo", placeholder: "¿Qué hace el grupo? ¿Cómo interviene la facilitadora? ¿Qué se espera que pase?", hint: "El corazón de la actividad: qué se hace y cómo se acompaña", border: "border-l-emerald-400" },
+          { key: "cierre" as const, label: "Cierre", placeholder: "¿Cómo se cierra? ¿Qué se registra o comparte? ¿Qué se lleva cada uno?", hint: "Cómo se concluye y qué queda registrado", border: "border-l-rose-400" },
+        ]).map(({ key, label, placeholder, hint, border }) => (
           <div key={key}>
             <div className="flex items-center justify-between mb-1">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{label}</label>
@@ -280,6 +280,7 @@ function BloqueForm({
             <div className={`border-l-2 ${border} rounded-r-lg`}>
               <TA value={form[key]} onChange={(v) => upd(key, v)} placeholder={placeholder} rows={5} />
             </div>
+            <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">{hint}</p>
           </div>
         ))}
       </div>
@@ -745,16 +746,32 @@ function PlanEditor({ plan, rooms, onBack }: { plan: Plan; rooms: any[]; onBack:
 
       {view === "edit" && (
         <div className="space-y-5">
+          {/* Instrucción general */}
+          <div className="bg-violet-50 border border-violet-100 rounded-xl px-4 py-3 flex gap-3 items-start">
+            <span className="text-violet-400 text-lg shrink-0">📋</span>
+            <div>
+              <p className="text-xs font-bold text-violet-700 mb-0.5">¿Cómo completar la planificación?</p>
+              <p className="text-xs text-violet-600 leading-relaxed">
+                Primero completá el <strong>encabezado</strong> con los datos generales del mes y guardalo.
+                Después agregá los <strong>bloques</strong> — cada bloque es una actividad o momento del día.
+                Por cada bloque cargá las actividades, materiales, y cómo se desarrolla cada momento.
+              </p>
+            </div>
+          </div>
+
           {/* Header fields */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Encabezado</p>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-6 h-6 rounded-full bg-violet-100 text-violet-600 text-xs font-bold flex items-center justify-center shrink-0">1</span>
+              <p className="text-sm font-bold text-gray-700">Datos generales del mes</p>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-semibold text-gray-500 block mb-1">Mes</label>
                 <Input type="month" value={header.mes} onChange={(e) => setHeader(h => ({ ...h, mes: e.target.value }))} className="text-sm" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 block mb-1">Sala</label>
+                <label className="text-xs font-semibold text-gray-500 block mb-1">Sala / Aldea</label>
                 <select
                   value={header.roomId}
                   onChange={(e) => setHeader(h => ({ ...h, roomId: e.target.value }))}
@@ -767,27 +784,46 @@ function PlanEditor({ plan, rooms, onBack }: { plan: Plan; rooms: any[]; onBack:
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-500 block mb-1">Líder pedagógica</label>
-              <Input value={header.liderPedagogica} onChange={(e) => setHeader(h => ({ ...h, liderPedagogica: e.target.value }))} className="text-sm" />
+              <Input value={header.liderPedagogica} onChange={(e) => setHeader(h => ({ ...h, liderPedagogica: e.target.value }))} placeholder="Nombre completo de la líder pedagógica" className="text-sm" />
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-500 block mb-1">Facilitadoras</label>
               <Input value={header.facilitadoras} onChange={(e) => setHeader(h => ({ ...h, facilitadoras: e.target.value }))} placeholder="Ej: Melina Gallo - Candelaria Salto" className="text-sm" />
+              <p className="text-[10px] text-gray-400 mt-1">Separalas con guión si son varias</p>
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-500 block mb-1">Observaciones generales</label>
-              <TA value={header.observaciones} onChange={(v) => setHeader(h => ({ ...h, observaciones: v }))} placeholder="Descripción general del mes..." rows={2} />
+              <TA value={header.observaciones} onChange={(v) => setHeader(h => ({ ...h, observaciones: v }))} placeholder="Contexto general del mes, ejes temáticos, situación del grupo..." rows={2} />
+              <p className="text-[10px] text-gray-400 mt-1">Describí brevemente el enfoque o contexto del mes</p>
             </div>
             <Button size="sm" onClick={saveHeader}><Save className="w-3.5 h-3.5 mr-1" />Guardar encabezado</Button>
           </div>
 
           {/* Bloques */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Bloques ({current.bloques.length})</p>
-              {!addingBloque && (
-                <button onClick={() => setAddingBloque(true)} className="text-xs font-semibold text-violet-600 hover:text-violet-800 flex items-center gap-1">
-                  <Plus className="w-3.5 h-3.5" />Agregar bloque
-                </button>
+            <div className="bg-white rounded-2xl border-2 border-violet-100 shadow-sm p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-violet-600 text-white text-xs font-bold flex items-center justify-center shrink-0">2</span>
+                  <div>
+                    <p className="text-sm font-bold text-gray-800">Bloques de la planificación</p>
+                    <p className="text-xs text-gray-400">{current.bloques.length === 0 ? "Todavía no hay bloques — agregá el primero" : `${current.bloques.length} bloque${current.bloques.length !== 1 ? "s" : ""} cargado${current.bloques.length !== 1 ? "s" : ""}`}</p>
+                  </div>
+                </div>
+                {!addingBloque && (
+                  <button onClick={() => setAddingBloque(true)} className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors">
+                    <Plus className="w-3.5 h-3.5" />Agregar bloque
+                  </button>
+                )}
+              </div>
+              {current.bloques.length === 0 && !addingBloque && (
+                <div className="mt-3 border-2 border-dashed border-violet-200 rounded-xl p-6 text-center">
+                  <p className="text-sm text-violet-400 font-semibold mb-1">¡Empezá a armar la planificación!</p>
+                  <p className="text-xs text-gray-400">Cada bloque es un momento o actividad del día: Juego, Merienda, Bloque pedagógico, etc.</p>
+                  <button onClick={() => setAddingBloque(true)} className="mt-3 inline-flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors">
+                    <Plus className="w-3.5 h-3.5" />Agregar primer bloque
+                  </button>
+                </div>
               )}
             </div>
 

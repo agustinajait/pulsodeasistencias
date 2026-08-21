@@ -35,7 +35,7 @@ async function ensureTables() {
 
 // Default rutina template
 const RUTINA_TEMPLATE = [
-  { horario: "08:30", bloque: "Pedagógico Lúdico", tipo: "pedagogico", orden: 0 },
+  { horario: "08:30", bloque: "Inicio de jornada", tipo: "rutina", lunes: "Actividades lúdicas y saludo de bienvenida", martes: "Actividades lúdicas y saludo de bienvenida", miercoles: "Actividades lúdicas y saludo de bienvenida", jueves: "Actividades lúdicas y saludo de bienvenida", viernes: "Actividades lúdicas y saludo de bienvenida", orden: 0 },
   { horario: "09:00", bloque: "RUTINA", tipo: "rutina", lunes: "DESAYUNO", martes: "DESAYUNO", miercoles: "DESAYUNO", jueves: "DESAYUNO", viernes: "DESAYUNO", orden: 1 },
   { horario: "09:30", bloque: "RUTINA", tipo: "rutina", lunes: "Cambio de pañal.", martes: "Cambio de pañal.", miercoles: "Cambio de pañal.", jueves: "Cambio de pañal.", viernes: "Cambio de pañal.", orden: 2 },
   { horario: "10:00", bloque: "Pedagógico", tipo: "pedagogico", orden: 3 },
@@ -193,6 +193,27 @@ router.put("/cronogramas-semanales/:id/filas", async (req, res) => {
     }
   }
   res.json(result.map(filaToDto));
+});
+
+// POST /cronogramas-semanales/:id/reset — reinicia filas al template
+router.post("/cronogramas-semanales/:id/reset", async (req, res) => {
+  await ensureTables();
+  const cronoId = parseInt(req.params.id);
+  await pool.query(`DELETE FROM cronograma_filas WHERE cronograma_id=$1`, [cronoId]);
+  for (const fila of RUTINA_TEMPLATE) {
+    await pool.query(
+      `INSERT INTO cronograma_filas (cronograma_id, horario, bloque, tipo, lunes, martes, miercoles, jueves, viernes, orden)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [cronoId, fila.horario, fila.bloque, fila.tipo,
+       (fila as any).lunes ?? null, (fila as any).martes ?? null,
+       (fila as any).miercoles ?? null, (fila as any).jueves ?? null,
+       (fila as any).viernes ?? null, fila.orden]
+    );
+  }
+  const { rows: filas } = await pool.query(
+    `SELECT * FROM cronograma_filas WHERE cronograma_id=$1 ORDER BY orden, id`, [cronoId]
+  );
+  res.json(filas.map(filaToDto));
 });
 
 // DELETE /cronogramas-semanales/:id

@@ -724,11 +724,20 @@ function CronogramaSemanal({ plan, roomName, profile }: {
   const [crono, setCrono] = useState<Cronograma | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [focusedCell, setFocusedCell] = useState<{ idx: number; dia: string } | null>(null);
+  const [panelOpen, setPanelOpen] = useState(true);
   const weeks = getNext8Weeks();
+
+  // All activities from planificacion bloques, grouped by bloque
+  const actividadesPorBloque = plan.bloques.map(b => ({
+    bloque: b.nombre,
+    items: (b.actividades ?? "").split("\n").map(l => l.replace(/^[-•*]\s*/, "").trim()).filter(Boolean),
+  })).filter(b => b.items.length > 0);
+
+  const todasActividades = actividadesPorBloque.flatMap(b => b.items);
 
   async function loadOrCreate() {
     setLoading(true);
-    // Check if exists
     const r = await fetch(`${BASE}/cronogramas-semanales?centerId=${plan.centerId}&planificacionId=${plan.id}`);
     const list: Cronograma[] = await r.json();
     const existing = list.find(c => c.semanaInicio === semana);
@@ -736,7 +745,6 @@ function CronogramaSemanal({ plan, roomName, profile }: {
       const r2 = await fetch(`${BASE}/cronogramas-semanales/${existing.id}`);
       setCrono(await r2.json());
     } else {
-      // Create new
       const r2 = await fetch(`${BASE}/cronogramas-semanales`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -759,6 +767,42 @@ function CronogramaSemanal({ plan, roomName, profile }: {
     setCrono(c => {
       if (!c) return c;
       const filas = c.filas.map((f, i) => i === idx ? { ...f, [dia]: val } : f);
+      return { ...c, filas };
+    });
+  }
+
+  function insertActividad(texto: string) {
+    if (!focusedCell || !crono) return;
+    const { idx, dia } = focusedCell;
+    const current = (crono.filas[idx] as any)[dia] ?? "";
+    const newVal = current ? `${current}\n${texto}` : texto;
+    updateFila(idx, dia, newVal);
+  }
+
+  function autoDistribuir() {
+    if (!crono || todasActividades.length === 0) return;
+    // Get pedagogical rows
+    const pedagogicIdx = crono.filas
+      .map((f, i) => ({ f, i }))
+      .filter(({ f }) => f.tipo === "pedagogico");
+
+    if (pedagogicIdx.length === 0) return;
+
+    // Distribute activities round-robin across days, spreading across all pedagogical rows
+    let actIdx = 0;
+    setCrono(c => {
+      if (!c) return c;
+      const filas = c.filas.map((f, i) => {
+        if (f.tipo !== "pedagogico") return f;
+        const updated: any = { ...f };
+        DIAS.forEach(dia => {
+          if (actIdx < todasActividades.length) {
+            updated[dia] = todasActividades[actIdx % todasActividades.length];
+            actIdx++;
+          }
+        });
+        return updated;
+      });
       return { ...c, filas };
     });
   }
@@ -880,7 +924,12 @@ function CronogramaSemanal({ plan, roomName, profile }: {
             ))}
           </select>
         </div>
-        <div className="flex gap-2 ml-auto">
+        <div className="flex gap-2 ml-auto flex-wrap">
+          {todasActividades.length > 0 && (
+            <Button size="sm" variant="outline" onClick={autoDistribuir} title="Repartir automáticamente las actividades de la planificación">
+              <Sparkles className="w-3.5 h-3.5 mr-1" />Auto-distribuir
+            </Button>
+          )}
           <Button size="sm" variant="outline" onClick={addFila}>
             <Plus className="w-3.5 h-3.5 mr-1" />Agregar fila
           </Button>
@@ -889,73 +938,118 @@ function CronogramaSemanal({ plan, roomName, profile }: {
           </Button>
           {crono && (
             <Button size="sm" variant="outline" onClick={handlePrint}>
-              <Printer className="w-3.5 h-3.5 mr-1" />Imprimir / PDF
+              <Printer className="w-3.5 h-3.5 mr-1" />PDF
             </Button>
           )}
         </div>
       </div>
 
-      {crono && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          {/* Table header */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs border-collapse min-w-[700px]">
-              <thead>
-                <tr className="bg-[#1e1147] text-white">
-                  <th className="px-3 py-2 text-left font-semibold border-r border-white/10 w-20">Horario</th>
-                  <th className="px-3 py-2 text-left font-semibold border-r border-white/10 w-32">Bloque</th>
-                  {DIAS.map(d => (
-                    <th key={d} className="px-3 py-2 text-center font-semibold border-r border-white/10">{DIAS_LABEL[d]}</th>
-                  ))}
-                  <th className="w-8"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {crono.filas.map((fila, idx) => {
-                  const isRutina = fila.tipo === "rutina" || fila.tipo === "salida" || fila.tipo === "patio";
-                  return (
-                    <tr key={idx} className={isRutina ? "bg-gray-50" : "bg-white hover:bg-violet-50/30"}>
-                      <td className="px-2 py-1 border-r border-gray-100">
-                        <input
-                          value={fila.horario}
-                          onChange={e => updateHorario(idx, "horario", e.target.value)}
-                          className="w-full text-xs font-mono bg-transparent focus:outline-none focus:ring-1 focus:ring-violet-300 rounded px-1"
-                        />
-                      </td>
-                      <td className="px-2 py-1 border-r border-gray-100">
-                        <input
-                          value={fila.bloque}
-                          onChange={e => updateHorario(idx, "bloque", e.target.value)}
-                          className={`w-full text-xs bg-transparent focus:outline-none focus:ring-1 focus:ring-violet-300 rounded px-1 ${isRutina ? "font-bold text-gray-700" : "font-semibold text-[#1e1147]"}`}
-                        />
-                      </td>
+      <div className="flex gap-4 items-start">
+        {/* Main grid */}
+        <div className="flex-1 min-w-0">
+          {crono && (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs border-collapse min-w-[600px]">
+                  <thead>
+                    <tr className="bg-[#1e1147] text-white">
+                      <th className="px-3 py-2 text-left font-semibold border-r border-white/10 w-16">Horario</th>
+                      <th className="px-3 py-2 text-left font-semibold border-r border-white/10 w-28">Bloque</th>
                       {DIAS.map(d => (
-                        <td key={d} className="px-1 py-1 border-r border-gray-100">
-                          <textarea
-                            value={(fila as any)[d] ?? ""}
-                            onChange={e => updateFila(idx, d, e.target.value)}
-                            rows={2}
-                            className={`w-full text-xs bg-transparent focus:outline-none focus:ring-1 focus:ring-violet-300 rounded px-1 resize-none ${isRutina ? "font-bold text-center text-gray-600" : "text-gray-700"}`}
-                          />
-                        </td>
+                        <th key={d} className="px-2 py-2 text-center font-semibold border-r border-white/10 text-[10px]">{DIAS_LABEL[d]}</th>
                       ))}
-                      <td className="px-1 py-1 text-center">
-                        <button onClick={() => removeFila(idx)} className="text-gray-200 hover:text-red-400">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
+                      <th className="w-7"></th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {crono.filas.map((fila, idx) => {
+                      const isRutina = fila.tipo === "rutina" || fila.tipo === "salida" || fila.tipo === "patio";
+                      return (
+                        <tr key={idx} className={isRutina ? "bg-gray-50" : "bg-white hover:bg-violet-50/20"}>
+                          <td className="px-2 py-1 border-r border-gray-100">
+                            <input
+                              value={fila.horario}
+                              onChange={e => updateHorario(idx, "horario", e.target.value)}
+                              className="w-full text-xs font-mono bg-transparent focus:outline-none focus:ring-1 focus:ring-violet-300 rounded px-1"
+                            />
+                          </td>
+                          <td className="px-2 py-1 border-r border-gray-100">
+                            <input
+                              value={fila.bloque}
+                              onChange={e => updateHorario(idx, "bloque", e.target.value)}
+                              className={`w-full text-xs bg-transparent focus:outline-none focus:ring-1 focus:ring-violet-300 rounded px-1 ${isRutina ? "font-bold text-gray-700" : "font-semibold text-[#1e1147]"}`}
+                            />
+                          </td>
+                          {DIAS.map(d => (
+                            <td key={d} className={`px-1 py-1 border-r border-gray-100 ${focusedCell?.idx === idx && focusedCell?.dia === d ? "bg-violet-50" : ""}`}>
+                              <textarea
+                                value={(fila as any)[d] ?? ""}
+                                onChange={e => updateFila(idx, d, e.target.value)}
+                                onFocus={() => !isRutina && setFocusedCell({ idx, dia: d })}
+                                rows={2}
+                                className={`w-full text-xs bg-transparent focus:outline-none focus:ring-1 focus:ring-violet-300 rounded px-1 resize-none ${isRutina ? "font-bold text-center text-gray-600" : "text-gray-700"}`}
+                              />
+                            </td>
+                          ))}
+                          <td className="px-1 py-1 text-center">
+                            <button onClick={() => removeFila(idx)} className="text-gray-200 hover:text-red-400">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+          <p className="text-[11px] text-gray-400 mt-2">
+            Filas en gris: rutinas fijas. Hacé click en una celda pedagógica y luego tocá una actividad del panel para insertarla.
+          </p>
         </div>
-      )}
 
-      <p className="text-[11px] text-gray-400 text-center">
-        Las filas en gris son rutinas fijas. Completá las celdas pedagógicas con las actividades de cada día.
-      </p>
+        {/* Activities panel */}
+        {actividadesPorBloque.length > 0 && (
+          <div className="w-56 shrink-0">
+            <div className="bg-white rounded-2xl border border-violet-100 shadow-sm overflow-hidden sticky top-4">
+              <button
+                onClick={() => setPanelOpen(o => !o)}
+                className="w-full flex items-center justify-between px-4 py-3 bg-violet-50 border-b border-violet-100"
+              >
+                <span className="text-xs font-bold text-violet-700">📋 Actividades</span>
+                {panelOpen ? <ChevronUp className="w-3.5 h-3.5 text-violet-400" /> : <ChevronDown className="w-3.5 h-3.5 text-violet-400" />}
+              </button>
+              {panelOpen && (
+                <div className="p-3 max-h-[500px] overflow-y-auto space-y-3">
+                  {focusedCell ? (
+                    <p className="text-[10px] text-violet-500 font-semibold">Insertando en: {DIAS_LABEL[(focusedCell.dia)]} fila {focusedCell.idx + 1}</p>
+                  ) : (
+                    <p className="text-[10px] text-gray-400">Hacé click en una celda del cronograma y luego en una actividad para insertarla.</p>
+                  )}
+                  {actividadesPorBloque.map(({ bloque, items }) => (
+                    <div key={bloque}>
+                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-1">{bloque}</p>
+                      <div className="space-y-1">
+                        {items.map((item, i) => (
+                          <button
+                            key={i}
+                            onClick={() => insertActividad(item)}
+                            disabled={!focusedCell}
+                            className="w-full text-left text-[11px] text-gray-700 bg-violet-50 hover:bg-violet-100 disabled:opacity-40 disabled:cursor-not-allowed px-2.5 py-1.5 rounded-lg transition-colors leading-tight"
+                          >
+                            {item}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

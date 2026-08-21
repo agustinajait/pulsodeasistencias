@@ -103,4 +103,33 @@ No uses bullets ni encabezados. Devolvé solo el resumen, sin comentarios.`,
   }
 });
 
+// POST /ai/adaptar-cronograma
+router.post("/ai/adaptar-cronograma", async (req, res) => {
+  try {
+    const { actividad, bloque, horario } = req.body as { actividad: string; bloque?: string; horario?: string };
+    if (!actividad?.trim()) { res.status(400).json({ error: "actividad requerida" }); return; }
+
+    const anthropic = getClient();
+    const message = await anthropic.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 80,
+      system: `Sos asistente pedagógico de un Centro de Primera Infancia (CPI) en Argentina.
+Tu tarea es adaptar descripciones de actividades para un cronograma semanal.
+El texto del cronograma debe ser muy breve (1 línea, máximo 10 palabras), en infinitivo o sustantivo, sin explicaciones.
+Ejemplos de formato correcto: "Exploración sensorial con masa", "Juego libre en rincones", "Lectura de cuento grupal".
+Devolvé solo la frase adaptada, sin puntos finales ni comentarios.`,
+      messages: [{
+        role: "user",
+        content: `Adaptá esta actividad para el cronograma${bloque ? ` (bloque: ${bloque})` : ""}${horario ? ` a las ${horario}` : ""}:\n\n${actividad}`,
+      }],
+    });
+
+    const adapted = message.content.find(c => c.type === "text")?.text?.trim() ?? actividad;
+    res.json({ adapted });
+  } catch (err: any) {
+    req.log.error(err, "AI adaptar-cronograma error");
+    res.status(500).json({ error: err?.message ?? "Error al adaptar" });
+  }
+});
+
 export default router;

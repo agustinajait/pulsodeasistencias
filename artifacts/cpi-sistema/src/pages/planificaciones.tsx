@@ -764,6 +764,8 @@ function CronogramaSemanal({ plan, roomName, profile }: {
   const [saving, setSaving] = useState(false);
   const [focusedCell, setFocusedCell] = useState<{ idx: number; dia: string } | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
+  const [adaptingItem, setAdaptingItem] = useState<string | null>(null); // item text being AI-adapted
+  const { token } = useAuth();
   const weeks = getNext8Weeks();
 
   // All activities from planificacion bloques, grouped by bloque
@@ -818,12 +820,34 @@ function CronogramaSemanal({ plan, roomName, profile }: {
     });
   }
 
-  function insertActividad(texto: string) {
+  async function insertActividad(texto: string) {
     if (!focusedCell || !crono) return;
     const { idx, dia } = focusedCell;
-    const current = (crono.filas[idx] as any)[dia] ?? "";
-    const newVal = current ? `${current}\n${texto}` : texto;
-    updateFila(idx, dia, newVal);
+    const fila = crono.filas[idx];
+    setAdaptingItem(texto);
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const r = await fetch(`${BASE}/ai/adaptar-cronograma`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          actividad: texto,
+          bloque: fila.bloque,
+          horario: fila.horario,
+        }),
+      });
+      const data = r.ok ? await r.json() : null;
+      const adapted = data?.adapted ?? texto;
+      const current = (crono.filas[idx] as any)[dia] ?? "";
+      updateFila(idx, dia, current ? `${current}\n${adapted}` : adapted);
+    } catch {
+      // fallback: insert raw
+      const current = (crono.filas[idx] as any)[dia] ?? "";
+      updateFila(idx, dia, current ? `${current}\n${texto}` : texto);
+    } finally {
+      setAdaptingItem(null);
+    }
   }
 
   function autoDistribuir() {
@@ -1101,16 +1125,29 @@ function CronogramaSemanal({ plan, roomName, profile }: {
                     <div key={bloque}>
                       <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-1">{bloque}</p>
                       <div className="space-y-1">
-                        {items.map((item, i) => (
-                          <button
-                            key={i}
-                            onClick={() => insertActividad(item)}
-                            disabled={!focusedCell}
-                            className="w-full text-left text-[11px] text-gray-700 bg-violet-50 hover:bg-violet-100 disabled:opacity-40 disabled:cursor-not-allowed px-2.5 py-1.5 rounded-lg transition-colors leading-tight"
-                          >
-                            {item}
-                          </button>
-                        ))}
+                        {items.map((item, i) => {
+                          const isAdapting = adaptingItem === item;
+                          return (
+                            <button
+                              key={i}
+                              onClick={() => insertActividad(item)}
+                              disabled={!focusedCell || !!adaptingItem}
+                              className="w-full text-left text-[11px] text-gray-700 bg-violet-50 hover:bg-violet-100 disabled:opacity-40 disabled:cursor-not-allowed px-2.5 py-1.5 rounded-lg transition-colors leading-tight flex items-center gap-1.5"
+                            >
+                              {isAdapting ? (
+                                <>
+                                  <span className="inline-block w-3 h-3 border-2 border-violet-400 border-t-transparent rounded-full animate-spin shrink-0" />
+                                  <span className="text-violet-500">Adaptando...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Sparkles className="w-2.5 h-2.5 text-violet-300 shrink-0" />
+                                  {item}
+                                </>
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   ))}

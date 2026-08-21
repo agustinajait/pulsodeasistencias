@@ -111,7 +111,7 @@ function Router() {
         {() => <ProtectedRoute component={Calendario} allowedRoles={["admin", "superadmin"]} />}
       </Route>
       <Route path="/planificaciones">
-        {() => <ProtectedRoute component={Planificaciones} allowedRoles={["admin", "superadmin"]} />}
+        {() => <ProtectedRoute component={Planificaciones} allowedRoles={["admin", "superadmin", "sala"]} />}
       </Route>
       <Route path="/diagnostico">
         {() => <ProtectedRoute component={Diagnostico} allowedRoles={["admin", "superadmin"]} />}
@@ -123,7 +123,7 @@ function Router() {
         {() => <ProtectedRoute component={Convivir} allowedRoles={["admin", "superadmin"]} />}
       </Route>
       <Route path="/compras">
-        {() => <ProtectedRoute component={Compras} allowedRoles={["admin", "superadmin"]} />}
+        {() => <ProtectedRoute component={Compras} allowedRoles={["admin", "superadmin", "sala"]} />}
       </Route>
 
       {/* Root redirect */}

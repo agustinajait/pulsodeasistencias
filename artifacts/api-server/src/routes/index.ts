@@ -26,6 +26,7 @@ import mercaderiaFirmaRouter from "./mercaderia-firma";
 import convivirRouter from "./convivir";
 import pidcamRouter from "./pidcam";
 import comprasRouter from "./compras";
+import cronogramaSemanalRouter from "./cronograma-semanal";
 
 const router: IRouter = Router();
 
@@ -56,5 +57,6 @@ router.use(mercaderiaFirmaRouter);
 router.use(convivirRouter);
 router.use(pidcamRouter);
 router.use(comprasRouter);
+router.use(cronogramaSemanalRouter);
 
 export default router;

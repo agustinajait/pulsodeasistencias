@@ -1001,6 +1001,16 @@ function CronogramaSemanal({ plan, roomName, profile }: {
           <Button size="sm" variant="outline" onClick={addFila}>
             <Plus className="w-3.5 h-3.5 mr-1" />Agregar fila
           </Button>
+          {crono && (
+            <Button size="sm" variant="ghost" className="text-gray-400 hover:text-red-500" title="Reiniciar al template original" onClick={async () => {
+              if (!confirm("¿Reiniciar las filas al template original? Se perderán los cambios de esta semana.")) return;
+              const r = await fetch(`${BASE}/cronogramas-semanales/${crono.id}/reset`, { method: "POST" });
+              const filas = await r.json();
+              setCrono(c => c ? { ...c, filas } : c);
+            }}>
+              Reiniciar plantilla
+            </Button>
+          )}
           <Button size="sm" onClick={save} disabled={saving}>
             <Save className="w-3.5 h-3.5 mr-1" />{saving ? "Guardando..." : "Guardar"}
           </Button>

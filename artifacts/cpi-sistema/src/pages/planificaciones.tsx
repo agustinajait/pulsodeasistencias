@@ -122,18 +122,33 @@ function BloqueForm({
   onCancel: () => void;
   onDelete?: () => void;
 }) {
+  function parseLines(text?: string) {
+    const lines = (text ?? "").split("\n").map(l => l.replace(/^[-•*]\s*/, "").trim()).filter(Boolean);
+    return lines.length ? lines : [""];
+  }
+
   const [form, setForm] = useState({
     nombre: bloque?.nombre ?? "",
-    actividades: bloque?.actividades ?? "",
-    materiales: bloque?.materiales ?? "",
     inicio: bloque?.inicio ?? "",
     desarrollo: bloque?.desarrollo ?? "",
     cierre: bloque?.cierre ?? "",
   });
+  const [actividades, setActividades] = useState<string[]>(parseLines(bloque?.actividades));
+  const [materiales, setMateriales] = useState<string[]>(parseLines(bloque?.materiales));
   const [saving, setSaving] = useState(false);
   const [resumiendo, setResumiendo] = useState<Record<string, boolean>>({});
 
   function upd(k: keyof typeof form, v: string) { setForm(f => ({ ...f, [k]: v })); }
+
+  function addItem(setter: React.Dispatch<React.SetStateAction<string[]>>) {
+    setter(prev => [...prev, ""]);
+  }
+  function updateItem(setter: React.Dispatch<React.SetStateAction<string[]>>, idx: number, val: string) {
+    setter(prev => prev.map((v, i) => i === idx ? val : v));
+  }
+  function removeItem(setter: React.Dispatch<React.SetStateAction<string[]>>, idx: number) {
+    setter(prev => prev.length > 1 ? prev.filter((_, i) => i !== idx) : [""]);
+  }
 
   async function resumirCampo(campo: "inicio" | "desarrollo" | "cierre") {
     const texto = form[campo];
@@ -156,15 +171,20 @@ function BloqueForm({
 
   async function handleSave() {
     setSaving(true);
+    const payload = {
+      ...form,
+      actividades: actividades.filter(Boolean).join("\n"),
+      materiales: materiales.filter(Boolean).join("\n"),
+    };
     if (bloque) {
       await fetch(`${BASE}/planificaciones/${planId}/bloques/${bloque.id}`, {
         method: "PUT", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
     } else {
       await fetch(`${BASE}/planificaciones/${planId}/bloques`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
     }
     setSaving(false);
@@ -178,13 +198,61 @@ function BloqueForm({
         <Input value={form.nombre} onChange={(e) => upd("nombre", e.target.value)} placeholder="Ej: Bloque Pedagógico" className="text-sm" />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        {/* Actividades */}
         <div>
-          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Actividades</label>
-          <TA value={form.actividades} onChange={(v) => upd("actividades", v)} placeholder="Lista de actividades..." rows={5} />
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Actividades</label>
+            <button type="button" onClick={() => addItem(setActividades)}
+              className="flex items-center gap-1 text-[10px] font-bold text-violet-500 hover:text-violet-700 bg-violet-100 hover:bg-violet-200 px-2 py-0.5 rounded-full transition-colors">
+              <Plus className="w-3 h-3" />Agregar
+            </button>
+          </div>
+          <div className="space-y-1.5">
+            {actividades.map((item, idx) => (
+              <div key={idx} className="flex items-center gap-1.5">
+                <span className="shrink-0 w-5 h-5 rounded-full bg-violet-100 text-violet-600 text-[9px] font-bold flex items-center justify-center">{idx + 1}</span>
+                <input
+                  value={item}
+                  onChange={e => updateItem(setActividades, idx, e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addItem(setActividades); } }}
+                  placeholder={`Actividad ${idx + 1}...`}
+                  className="flex-1 text-sm border border-violet-200 bg-white rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-400"
+                />
+                <button type="button" onClick={() => removeItem(setActividades, idx)}
+                  className="shrink-0 text-gray-300 hover:text-red-400 p-0.5">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
+        {/* Materiales */}
         <div>
-          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Materiales</label>
-          <TA value={form.materiales} onChange={(v) => upd("materiales", v)} placeholder="Lista de materiales..." rows={5} />
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Materiales</label>
+            <button type="button" onClick={() => addItem(setMateriales)}
+              className="flex items-center gap-1 text-[10px] font-bold text-amber-600 hover:text-amber-800 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded-full transition-colors">
+              <Plus className="w-3 h-3" />Agregar
+            </button>
+          </div>
+          <div className="space-y-1.5">
+            {materiales.map((item, idx) => (
+              <div key={idx} className="flex items-center gap-1.5">
+                <span className="shrink-0 w-5 h-5 rounded-full bg-amber-100 text-amber-600 text-[9px] font-bold flex items-center justify-center">{idx + 1}</span>
+                <input
+                  value={item}
+                  onChange={e => updateItem(setMateriales, idx, e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addItem(setMateriales); } }}
+                  placeholder={`Material ${idx + 1}...`}
+                  className="flex-1 text-sm border border-amber-200 bg-white rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                />
+                <button type="button" onClick={() => removeItem(setMateriales, idx)}
+                  className="shrink-0 text-gray-300 hover:text-red-400 p-0.5">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useListRooms } from "@workspace/api-client-react";
-import { Plus, ChevronLeft, Trash2, Save, Printer, ChevronDown, ChevronUp, Sparkles, ShoppingCart, X } from "lucide-react";
+import { Plus, ChevronLeft, Trash2, Save, Printer, ChevronDown, ChevronUp, Sparkles, ShoppingCart, X, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -661,6 +661,305 @@ function MaterialesCosto({ planId, bloques, mesLabel: mes, roomName, profile }: 
   );
 }
 
+// ── CronogramaSemanal ─────────────────────────────────────────────────────
+const DIAS = ["lunes", "martes", "miercoles", "jueves", "viernes"] as const;
+const DIAS_LABEL: Record<string, string> = { lunes: "LUNES", martes: "MARTES", miercoles: "MIÉRCOLES", jueves: "JUEVES", viernes: "VIERNES" };
+
+type CronoFila = {
+  id?: number;
+  horario: string;
+  bloque: string;
+  tipo: string;
+  lunes?: string;
+  martes?: string;
+  miercoles?: string;
+  jueves?: string;
+  viernes?: string;
+  orden: number;
+};
+
+type Cronograma = {
+  id: number;
+  semanaInicio: string;
+  coach?: string;
+  filas: CronoFila[];
+};
+
+function getMondayOfWeek(dateStr: string) {
+  const d = new Date(dateStr + "T12:00:00");
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().slice(0, 10);
+}
+
+function getSemanaLabel(semanaInicio: string) {
+  const mon = new Date(semanaInicio + "T12:00:00");
+  const fri = new Date(mon);
+  fri.setDate(fri.getDate() + 4);
+  const fmt = (d: Date) => `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}`;
+  return `${fmt(mon)} al ${fmt(fri)}`;
+}
+
+function getNext8Weeks() {
+  const weeks: string[] = [];
+  const today = new Date();
+  // start from 2 weeks back
+  const start = new Date(today);
+  start.setDate(start.getDate() - 14);
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i * 7);
+    weeks.push(getMondayOfWeek(d.toISOString().slice(0, 10)));
+  }
+  return [...new Set(weeks)].sort().reverse();
+}
+
+function CronogramaSemanal({ plan, roomName, profile }: {
+  plan: Plan;
+  roomName: string;
+  profile?: { logoBase64?: string; nombre?: string; direccion?: string } | null;
+}) {
+  const [semana, setSemana] = useState<string>(getMondayOfWeek(new Date().toISOString().slice(0, 10)));
+  const [crono, setCrono] = useState<Cronograma | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const weeks = getNext8Weeks();
+
+  async function loadOrCreate() {
+    setLoading(true);
+    // Check if exists
+    const r = await fetch(`${BASE}/cronogramas-semanales?centerId=${plan.centerId}&planificacionId=${plan.id}`);
+    const list: Cronograma[] = await r.json();
+    const existing = list.find(c => c.semanaInicio === semana);
+    if (existing) {
+      const r2 = await fetch(`${BASE}/cronogramas-semanales/${existing.id}`);
+      setCrono(await r2.json());
+    } else {
+      // Create new
+      const r2 = await fetch(`${BASE}/cronogramas-semanales`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          centerId: plan.centerId,
+          roomId: plan.roomId,
+          planificacionId: plan.id,
+          semanaInicio: semana,
+        }),
+      });
+      setCrono(await r2.json());
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => { loadOrCreate(); }, [semana, plan.id]);
+
+  function updateFila(idx: number, dia: string, val: string) {
+    if (!crono) return;
+    setCrono(c => {
+      if (!c) return c;
+      const filas = c.filas.map((f, i) => i === idx ? { ...f, [dia]: val } : f);
+      return { ...c, filas };
+    });
+  }
+
+  function updateHorario(idx: number, field: "horario" | "bloque", val: string) {
+    if (!crono) return;
+    setCrono(c => {
+      if (!c) return c;
+      const filas = c.filas.map((f, i) => i === idx ? { ...f, [field]: val } : f);
+      return { ...c, filas };
+    });
+  }
+
+  function addFila() {
+    if (!crono) return;
+    setCrono(c => {
+      if (!c) return c;
+      return { ...c, filas: [...c.filas, { horario: "", bloque: "", tipo: "pedagogico", orden: c.filas.length }] };
+    });
+  }
+
+  function removeFila(idx: number) {
+    if (!crono) return;
+    setCrono(c => {
+      if (!c) return c;
+      return { ...c, filas: c.filas.filter((_, i) => i !== idx) };
+    });
+  }
+
+  async function save() {
+    if (!crono) return;
+    setSaving(true);
+    await fetch(`${BASE}/cronogramas-semanales/${crono.id}/filas`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(crono.filas.map((f, i) => ({ ...f, orden: i }))),
+    });
+    setSaving(false);
+  }
+
+  function handlePrint() {
+    if (!crono) return;
+    const logo = profile?.logoBase64 ? `<img src="${profile.logoBase64}" style="height:44px;object-fit:contain;" />` : "";
+    const semanaLabel = getSemanaLabel(crono.semanaInicio);
+    const { liderPedagogica, facilitadoras } = plan;
+
+    const rows = crono.filas.map(f => {
+      const isRutina = f.tipo === "rutina" || f.tipo === "salida" || f.tipo === "patio";
+      const cellStyle = isRutina
+        ? `font-weight:bold;background:#f0f0f0;text-align:center;`
+        : `vertical-align:top;`;
+      const dias = DIAS.map(d => {
+        const val = (f as any)[d] ?? "";
+        return `<td style="border:1px solid #ccc;padding:5px 6px;font-size:9px;${cellStyle}">${val || (isRutina ? "" : "")}</td>`;
+      }).join("");
+      return `<tr>
+        <td style="border:1px solid #ccc;padding:5px 6px;font-size:9px;font-weight:600;white-space:nowrap;">${f.horario}</td>
+        <td style="border:1px solid #ccc;padding:5px 6px;font-size:9px;font-weight:${isRutina ? "700" : "600"};background:${isRutina ? "#f0f0f0" : "white"};">${f.bloque}</td>
+        ${dias}
+      </tr>`;
+    }).join("");
+
+    const w = window.open("", "_blank");
+    if (!w) return;
+    w.document.write(`<html><head><title>Cronograma ${semanaLabel}</title>
+    <style>
+      @page { size: A4 landscape; margin: 10mm 12mm; }
+      * { box-sizing: border-box; }
+      body { font-family: Arial, sans-serif; font-size: 10px; margin: 0; color: #111; }
+      .top { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #1e1147; padding-bottom:8px; margin-bottom:8px; }
+      .meta { font-size:9px; line-height:1.8; }
+      .meta strong { display:inline-block; min-width:120px; }
+      .title { font-size:11px; font-weight:800; color:#1e1147; text-align:right; max-width:400px; }
+      table { width:100%; border-collapse:collapse; margin-top:6px; }
+      th { background:#1e1147; color:#fff; padding:5px 6px; font-size:9px; border:1px solid #1e1147; }
+      td { font-size:9px; }
+    </style></head><body>
+    <div class="top">
+      <div style="display:flex;align-items:center;gap:10px;">
+        ${logo}
+        <div class="meta">
+          <div><strong>Coach:</strong></div>
+          <div><strong>Líder Pedagógica:</strong> ${liderPedagogica ?? ""}</div>
+          <div><strong>Facilitadora:</strong> ${facilitadoras ?? ""}</div>
+          <div><strong>Mes:</strong> ${["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"][parseInt(plan.mes.split("-")[1])-1]}</div>
+          <div><strong>Semana:</strong> ${semanaLabel}</div>
+        </div>
+      </div>
+      <div class="title">CRONOGRAMA CORRESPONDIENTE A LAS SEMANAS DEL ${semanaLabel.toUpperCase()}<br/><small style="font-size:9px;font-weight:400;color:#666;">${roomName}</small></div>
+    </div>
+    <table>
+      <thead><tr>
+        <th style="width:7%">HORARIO</th>
+        <th style="width:12%">BLOQUE</th>
+        <th>LUNES</th><th>MARTES</th><th>MIÉRCOLES</th><th>JUEVES</th><th>VIERNES</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </body></html>`);
+    w.document.close();
+    setTimeout(() => w.print(), 600);
+  }
+
+  if (loading) return <p className="text-center py-12 text-sm text-gray-400">Cargando cronograma...</p>;
+
+  return (
+    <div className="space-y-4">
+      {/* Week selector + actions */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <CalendarDays className="w-4 h-4 text-violet-500" />
+          <select
+            value={semana}
+            onChange={e => setSemana(e.target.value)}
+            className="rounded-lg border border-input bg-background px-3 py-1.5 text-sm font-semibold"
+          >
+            {weeks.map(w => (
+              <option key={w} value={w}>Semana del {getSemanaLabel(w)}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex gap-2 ml-auto">
+          <Button size="sm" variant="outline" onClick={addFila}>
+            <Plus className="w-3.5 h-3.5 mr-1" />Agregar fila
+          </Button>
+          <Button size="sm" onClick={save} disabled={saving}>
+            <Save className="w-3.5 h-3.5 mr-1" />{saving ? "Guardando..." : "Guardar"}
+          </Button>
+          {crono && (
+            <Button size="sm" variant="outline" onClick={handlePrint}>
+              <Printer className="w-3.5 h-3.5 mr-1" />Imprimir / PDF
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {crono && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          {/* Table header */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs border-collapse min-w-[700px]">
+              <thead>
+                <tr className="bg-[#1e1147] text-white">
+                  <th className="px-3 py-2 text-left font-semibold border-r border-white/10 w-20">Horario</th>
+                  <th className="px-3 py-2 text-left font-semibold border-r border-white/10 w-32">Bloque</th>
+                  {DIAS.map(d => (
+                    <th key={d} className="px-3 py-2 text-center font-semibold border-r border-white/10">{DIAS_LABEL[d]}</th>
+                  ))}
+                  <th className="w-8"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {crono.filas.map((fila, idx) => {
+                  const isRutina = fila.tipo === "rutina" || fila.tipo === "salida" || fila.tipo === "patio";
+                  return (
+                    <tr key={idx} className={isRutina ? "bg-gray-50" : "bg-white hover:bg-violet-50/30"}>
+                      <td className="px-2 py-1 border-r border-gray-100">
+                        <input
+                          value={fila.horario}
+                          onChange={e => updateHorario(idx, "horario", e.target.value)}
+                          className="w-full text-xs font-mono bg-transparent focus:outline-none focus:ring-1 focus:ring-violet-300 rounded px-1"
+                        />
+                      </td>
+                      <td className="px-2 py-1 border-r border-gray-100">
+                        <input
+                          value={fila.bloque}
+                          onChange={e => updateHorario(idx, "bloque", e.target.value)}
+                          className={`w-full text-xs bg-transparent focus:outline-none focus:ring-1 focus:ring-violet-300 rounded px-1 ${isRutina ? "font-bold text-gray-700" : "font-semibold text-[#1e1147]"}`}
+                        />
+                      </td>
+                      {DIAS.map(d => (
+                        <td key={d} className="px-1 py-1 border-r border-gray-100">
+                          <textarea
+                            value={(fila as any)[d] ?? ""}
+                            onChange={e => updateFila(idx, d, e.target.value)}
+                            rows={2}
+                            className={`w-full text-xs bg-transparent focus:outline-none focus:ring-1 focus:ring-violet-300 rounded px-1 resize-none ${isRutina ? "font-bold text-center text-gray-600" : "text-gray-700"}`}
+                          />
+                        </td>
+                      ))}
+                      <td className="px-1 py-1 text-center">
+                        <button onClick={() => removeFila(idx)} className="text-gray-200 hover:text-red-400">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <p className="text-[11px] text-gray-400 text-center">
+        Las filas en gris son rutinas fijas. Completá las celdas pedagógicas con las actividades de cada día.
+      </p>
+    </div>
+  );
+}
+
 // ── PlanEditor ─────────────────────────────────────────────────────────────
 function PlanEditor({ plan, rooms, onBack }: { plan: Plan; rooms: any[]; onBack: () => void }) {
   const qc = useQueryClient();
@@ -668,7 +967,7 @@ function PlanEditor({ plan, rooms, onBack }: { plan: Plan; rooms: any[]; onBack:
   const { centerId, token } = useAuth();
   // Si la planificación está vacía (sin bloques ni líder), arrancá directo en Editar
   const isEmpty = !plan.bloques?.length && !plan.liderPedagogica;
-  const [view, setView] = useState<"table" | "edit" | "materiales">(isEmpty ? "edit" : "table");
+  const [view, setView] = useState<"table" | "edit" | "materiales" | "cronograma">(isEmpty ? "edit" : "table");
   const [addingBloque, setAddingBloque] = useState(false);
   const [editingBloqueId, setEditingBloqueId] = useState<number | null>(null);
   const [header, setHeader] = useState({
@@ -728,12 +1027,23 @@ function PlanEditor({ plan, rooms, onBack }: { plan: Plan; rooms: any[]; onBack:
           <button onClick={() => setView("materiales")} className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors flex items-center gap-1 ${view === "materiales" ? "bg-white shadow-sm text-violet-700" : "text-gray-500"}`}>
             <ShoppingCart className="w-3.5 h-3.5" />Materiales
           </button>
+          <button onClick={() => setView("cronograma")} className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors flex items-center gap-1 ${view === "cronograma" ? "bg-white shadow-sm text-violet-700" : "text-gray-500"}`}>
+            <CalendarDays className="w-3.5 h-3.5" />Cronograma
+          </button>
         </div>
         <span className="text-sm font-semibold text-gray-700 ml-1">{mesLabel(current.mes)} {current.mes.split("-")[0]} · {roomName}</span>
       </div>
 
       {view === "table" && (
         <PlanView plan={current} roomName={roomName} onEdit={() => setView("edit")} profile={profileQ.data} />
+      )}
+
+      {view === "cronograma" && (
+        <CronogramaSemanal
+          plan={current}
+          roomName={roomName}
+          profile={profileQ.data}
+        />
       )}
 
       {view === "materiales" && (

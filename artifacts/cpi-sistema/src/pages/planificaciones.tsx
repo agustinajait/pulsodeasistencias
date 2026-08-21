@@ -670,6 +670,7 @@ type CronoFila = {
   horario: string;
   bloque: string;
   tipo: string;
+  bloqueSource?: string; // which planificacion bloque to pull activities from
   lunes?: string;
   martes?: string;
   miercoles?: string;
@@ -715,6 +716,43 @@ function getNext8Weeks() {
   return [...new Set(weeks)].sort().reverse();
 }
 
+// Detect whether a fila is "pedagogico" or "ludico" based on its bloque name and horario
+function detectTipoBloqueRow(fila: CronoFila): "pedagogico" | "ludico" | null {
+  if (fila.tipo === "rutina" || fila.tipo === "salida" || fila.tipo === "patio") return null;
+  const nombre = (fila.bloque ?? "").toLowerCase();
+  const normalize = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const nb = normalize(nombre);
+  if (nb.includes("ludico") || nb.includes("lúdico") || nb.includes("juego")) return "ludico";
+  if (nb.includes("pedagogic") || nb.includes("pedagog")) return "pedagogico";
+  // fallback: morning = pedagogico, afternoon = ludico
+  const h = parseInt((fila.horario ?? "00:00").split(":")[0]);
+  if (!isNaN(h)) return h < 12 ? "pedagogico" : "ludico";
+  return "pedagogico";
+}
+
+// Get activities from plan bloques matching a tipo (pedagogico/ludico)
+function getActividadesPorTipo(bloques: Bloque[], tipo: "pedagogico" | "ludico" | null, overrideBloque?: string) {
+  const normalize = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const all = bloques.map(b => ({
+    bloque: b.nombre,
+    items: (b.actividades ?? "").split("\n").map(l => l.replace(/^[-•*]\s*/, "").trim()).filter(Boolean),
+  })).filter(b => b.items.length > 0);
+
+  if (overrideBloque && overrideBloque !== "__all__") {
+    return all.filter(b => b.bloque === overrideBloque);
+  }
+  if (!tipo) return all;
+
+  const filtered = all.filter(b => {
+    const nb = normalize(b.bloque);
+    if (tipo === "ludico") return nb.includes("ludic") || nb.includes("lúdic") || nb.includes("jueg");
+    if (tipo === "pedagogico") return nb.includes("pedagog");
+    return false;
+  });
+  // if nothing matched, return all so the panel isn't empty
+  return filtered.length > 0 ? filtered : all;
+}
+
 function CronogramaSemanal({ plan, roomName, profile }: {
   plan: Plan;
   roomName: string;
@@ -735,6 +773,15 @@ function CronogramaSemanal({ plan, roomName, profile }: {
   })).filter(b => b.items.length > 0);
 
   const todasActividades = actividadesPorBloque.flatMap(b => b.items);
+
+  // Activities relevant to focused cell
+  const actividadesFocused = focusedCell && crono
+    ? getActividadesPorTipo(
+        plan.bloques,
+        detectTipoBloqueRow(crono.filas[focusedCell.idx]),
+        crono.filas[focusedCell.idx]?.bloqueSource
+      )
+    : actividadesPorBloque;
 
   async function loadOrCreate() {
     setLoading(true);
@@ -781,25 +828,22 @@ function CronogramaSemanal({ plan, roomName, profile }: {
 
   function autoDistribuir() {
     if (!crono || todasActividades.length === 0) return;
-    // Get pedagogical rows
-    const pedagogicIdx = crono.filas
-      .map((f, i) => ({ f, i }))
-      .filter(({ f }) => f.tipo === "pedagogico");
-
-    if (pedagogicIdx.length === 0) return;
-
-    // Distribute activities round-robin across days, spreading across all pedagogical rows
-    let actIdx = 0;
     setCrono(c => {
       if (!c) return c;
-      const filas = c.filas.map((f, i) => {
+      // Track index per bloque type
+      const counters: Record<string, number> = {};
+      const filas = c.filas.map(f => {
         if (f.tipo !== "pedagogico") return f;
+        const tipo = detectTipoBloqueRow(f);
+        const actList = getActividadesPorTipo(plan.bloques, tipo, f.bloqueSource);
+        const items = actList.flatMap(b => b.items);
+        if (items.length === 0) return f;
+        const key = tipo ?? "all";
+        if (counters[key] === undefined) counters[key] = 0;
         const updated: any = { ...f };
         DIAS.forEach(dia => {
-          if (actIdx < todasActividades.length) {
-            updated[dia] = todasActividades[actIdx % todasActividades.length];
-            actIdx++;
-          }
+          updated[dia] = items[counters[key] % items.length];
+          counters[key]++;
         });
         return updated;
       });
@@ -807,7 +851,7 @@ function CronogramaSemanal({ plan, roomName, profile }: {
     });
   }
 
-  function updateHorario(idx: number, field: "horario" | "bloque", val: string) {
+  function updateHorario(idx: number, field: "horario" | "bloque" | "bloqueSource", val: string) {
     if (!crono) return;
     setCrono(c => {
       if (!c) return c;
@@ -979,6 +1023,20 @@ function CronogramaSemanal({ plan, roomName, profile }: {
                               onChange={e => updateHorario(idx, "bloque", e.target.value)}
                               className={`w-full text-xs bg-transparent focus:outline-none focus:ring-1 focus:ring-violet-300 rounded px-1 ${isRutina ? "font-bold text-gray-700" : "font-semibold text-[#1e1147]"}`}
                             />
+                            {!isRutina && actividadesPorBloque.length > 1 && (
+                              <select
+                                value={fila.bloqueSource ?? "__auto__"}
+                                onChange={e => updateHorario(idx, "bloqueSource", e.target.value === "__auto__" ? "" : e.target.value)}
+                                className="mt-0.5 w-full text-[9px] bg-gray-50 border border-gray-200 rounded px-1 py-0.5 text-gray-500"
+                                title="Fuente de actividades para esta fila"
+                              >
+                                <option value="__auto__">auto ({detectTipoBloqueRow(fila) ?? "—"})</option>
+                                <option value="__all__">Todos los bloques</option>
+                                {actividadesPorBloque.map(b => (
+                                  <option key={b.bloque} value={b.bloque}>{b.bloque}</option>
+                                ))}
+                              </select>
+                            )}
                           </td>
                           {DIAS.map(d => (
                             <td key={d} className={`px-1 py-1 border-r border-gray-100 ${focusedCell?.idx === idx && focusedCell?.dia === d ? "bg-violet-50" : ""}`}>
@@ -1005,7 +1063,7 @@ function CronogramaSemanal({ plan, roomName, profile }: {
             </div>
           )}
           <p className="text-[11px] text-gray-400 mt-2">
-            Filas en gris: rutinas fijas. Hacé click en una celda pedagógica y luego tocá una actividad del panel para insertarla.
+            Filas en gris: rutinas fijas. Hacé click en una celda pedagógica/lúdica y luego tocá una actividad del panel para insertarla. El panel filtra automáticamente por tipo de bloque. Podés cambiar la fuente de actividades con el selector debajo del nombre del bloque.
           </p>
         </div>
 
@@ -1022,12 +1080,24 @@ function CronogramaSemanal({ plan, roomName, profile }: {
               </button>
               {panelOpen && (
                 <div className="p-3 max-h-[500px] overflow-y-auto space-y-3">
-                  {focusedCell ? (
-                    <p className="text-[10px] text-violet-500 font-semibold">Insertando en: {DIAS_LABEL[(focusedCell.dia)]} fila {focusedCell.idx + 1}</p>
+                  {focusedCell && crono ? (
+                    <div>
+                      <p className="text-[10px] text-violet-500 font-semibold">
+                        Insertando en: {DIAS_LABEL[focusedCell.dia]} · {crono.filas[focusedCell.idx]?.bloque}
+                      </p>
+                      {(() => {
+                        const tipo = detectTipoBloqueRow(crono.filas[focusedCell.idx]);
+                        return tipo ? (
+                          <p className="text-[9px] text-violet-300 mt-0.5">
+                            Mostrando actividades: <strong>{tipo === "pedagogico" ? "Pedagógico" : "Lúdico"}</strong>
+                          </p>
+                        ) : null;
+                      })()}
+                    </div>
                   ) : (
                     <p className="text-[10px] text-gray-400">Hacé click en una celda del cronograma y luego en una actividad para insertarla.</p>
                   )}
-                  {actividadesPorBloque.map(({ bloque, items }) => (
+                  {actividadesFocused.map(({ bloque, items }) => (
                     <div key={bloque}>
                       <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-1">{bloque}</p>
                       <div className="space-y-1">

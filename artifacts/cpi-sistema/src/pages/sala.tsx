@@ -13,8 +13,14 @@ import { useToast } from "@/hooks/use-toast";
 import type { Child, AttendanceRecord, Room, RoomSummary, Alert } from "@workspace/api-client-react";
 import ChildSheet from "@/components/child-sheet";
 
-const TODAY = new Date().toISOString().slice(0, 10);
-const MES_ACTUAL = new Date().toISOString().slice(0, 7);
+function localDateStr(d = new Date()) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+const TODAY = localDateStr();
+const MES_ACTUAL = TODAY.slice(0, 7);
 
 const MOTIVOS = ["Enfermedad", "Logistica", "Turno medico", "Clima", "Otros"];
 

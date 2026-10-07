@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, ChevronLeft, ChevronRight, AlertTriangle, MessageCircle, X, PenLine, CheckCircle2 } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, AlertTriangle, MessageCircle, X, PenLine, CheckCircle2, FileDown, Sheet } from "lucide-react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import type { Child, AttendanceRecord, Room, RoomSummary, Alert } from "@workspace/api-client-react";
@@ -253,6 +253,67 @@ function ResumenMensual({ roomId, centerId, isSuperAdmin }: { roomId: number | n
     return { ...k, pres, aus, total, pct, sala };
   }).sort((a, b) => a.pct - b.pct);
 
+  function exportPDF() {
+    const titulo = `Asistencias ${mesLargo(selMonth)}${scope === "cpi" ? " — Todo el CPI" : ""}`;
+    const filas = kidSummary.map(k => `
+      <tr>
+        <td>${k.apellido}, ${k.nombre}</td>
+        ${k.sala ? `<td>${k.sala}</td>` : ""}
+        <td style="text-align:center;color:#16a34a">${k.pres}</td>
+        <td style="text-align:center;color:#dc2626">${k.aus}</td>
+        <td style="text-align:center;font-weight:bold;color:${k.pct>=80?"#16a34a":k.pct>=60?"#d97706":"#dc2626"}">${k.total>0?`${k.pct}%`:"—"}</td>
+      </tr>`).join("");
+    const w = window.open("", "_blank");
+    if (!w) return;
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${titulo}</title>
+    <style>
+      body{font-family:Arial,sans-serif;padding:24px;color:#111}
+      h1{font-size:18px;margin-bottom:4px}
+      p.sub{font-size:12px;color:#666;margin-bottom:16px}
+      table{width:100%;border-collapse:collapse;font-size:13px}
+      th{background:#1e1147;color:#fff;padding:8px 10px;text-align:left}
+      td{padding:7px 10px;border-bottom:1px solid #e5e7eb}
+      tr:nth-child(even) td{background:#f9fafb}
+      .totals{margin-top:16px;font-size:12px;color:#555}
+      @media print{body{padding:0}}
+    </style></head><body>
+    <h1>${titulo}</h1>
+    <p class="sub">${kids.length} inscriptos activos · ${diasConRegistro.length} días con registro · ${pctMes}% asistencia general</p>
+    <table>
+      <thead><tr>
+        <th>Apellido y nombre</th>
+        ${scope==="cpi"?"<th>Sala</th>":""}
+        <th style="text-align:center">Presencias</th>
+        <th style="text-align:center">Ausencias</th>
+        <th style="text-align:center">%</th>
+      </tr></thead>
+      <tbody>${filas}</tbody>
+    </table>
+    <p class="totals">Generado el ${new Date().toLocaleDateString("es-AR")} · Pulso</p>
+    <script>window.onload=()=>{window.print();}<\/script>
+    </body></html>`);
+    w.document.close();
+  }
+
+  function exportCSV() {
+    const hasSala = scope === "cpi";
+    const header = ["Apellido", "Nombre", hasSala ? "Sala" : null, "Presencias", "Ausencias", "Total días", "% Asistencia"]
+      .filter(Boolean).join(",");
+    const rows = kidSummary.map(k => [
+      `"${k.apellido}"`, `"${k.nombre}"`,
+      ...(hasSala ? [`"${k.sala ?? ""}"`] : []),
+      k.pres, k.aus, k.total, k.total > 0 ? k.pct : ""
+    ].join(","));
+    const csv = [header, ...rows].join("\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `asistencias_${selMonth}${hasSala ? "_cpi" : ""}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="space-y-4">
       {/* Scope toggle + Month selector */}
@@ -286,6 +347,26 @@ function ResumenMensual({ roomId, centerId, isSuperAdmin }: { roomId: number | n
             ))}
           </select>
         </div>
+
+        {/* Export buttons */}
+        {kidSummary.length > 0 && (
+          <div className="flex gap-2">
+            <button
+              onClick={exportPDF}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-border bg-background text-sm font-semibold text-gray-700 hover:bg-muted transition-colors"
+            >
+              <FileDown className="w-4 h-4" />
+              PDF
+            </button>
+            <button
+              onClick={exportCSV}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-border bg-background text-sm font-semibold text-gray-700 hover:bg-muted transition-colors"
+            >
+              <Sheet className="w-4 h-4" />
+              Excel / CSV
+            </button>
+          </div>
+        )}
 
         {/* CPI extra stats */}
         {useCpiScope && (

@@ -157,6 +157,189 @@ function getLast12Months() {
   return months;
 }
 
+function ExportModal({ roomId, centerId, centerName, roomName, onClose }: {
+  roomId: number | null;
+  centerId: number | null | undefined;
+  centerName?: string;
+  roomName?: string;
+  onClose: () => void;
+}) {
+  const months = getLast12Months();
+  const [selMonth, setSelMonth] = useState(months[months.length - 1]);
+  const [scope, setScope] = useState<"sala" | "cpi">(roomId ? "sala" : "cpi");
+  const [loading, setLoading] = useState(false);
+
+  async function fetchData() {
+    const qs = new URLSearchParams();
+    if (scope === "cpi") {
+      if (centerId) qs.set("centerId", String(centerId));
+    } else {
+      if (roomId) qs.set("roomId", String(roomId));
+    }
+    qs.set("month", selMonth);
+
+    const [attRes, kidsRes, roomsRes] = await Promise.all([
+      fetch(`${BASE}/attendance?${qs}`).then(r => r.json()),
+      fetch(`${BASE}/children?${scope === "cpi" ? (centerId ? `centerId=${centerId}` : "") : `roomId=${roomId}`}&active=true&excludeRevision=true`).then(r => r.json()),
+      scope === "cpi" ? fetch(`${BASE}/rooms`).then(r => r.json()) : Promise.resolve(null),
+    ]);
+
+    const att: AttendanceRecord[] = attRes ?? [];
+    const rawKids = kidsRes.children ?? kidsRes;
+    const kids: { id: number; nombre: string; apellido: string; roomId?: number }[] = rawKids;
+    const roomMap: Record<number, string> = {};
+    if (roomsRes) (roomsRes.rooms ?? roomsRes).forEach((r: any) => { roomMap[r.id] = r.name; });
+
+    const summary = kids.map(k => {
+      const kAtt = att.filter(a => a.childId === k.id);
+      const pres = kAtt.filter(a => a.estado === "P").length;
+      const aus = kAtt.filter(a => a.estado === "A").length;
+      const total = pres + aus;
+      const pct = total > 0 ? Math.round((pres / total) * 100) : 0;
+      const sala = scope === "cpi" && k.roomId ? (roomMap[k.roomId] ?? "") : undefined;
+      return { ...k, pres, aus, total, pct, sala };
+    }).sort((a, b) => a.apellido.localeCompare(b.apellido));
+
+    const diasConRegistro = [...new Set(att.map(a => a.fecha))].length;
+    const totalPres = att.filter(a => a.estado === "P").length;
+    const totalRec = att.filter(a => a.estado === "P" || a.estado === "A").length;
+    const pctMes = totalRec > 0 ? Math.round((totalPres / totalRec) * 100) : 0;
+
+    return { summary, kids, diasConRegistro, pctMes };
+  }
+
+  async function handlePDF() {
+    setLoading(true);
+    try {
+      const { summary, kids, diasConRegistro, pctMes } = await fetchData();
+      const titulo = scope === "cpi"
+        ? `Asistencias ${mesLargo(selMonth)} — Todo el CPI${centerName ? ` (${centerName})` : ""}`
+        : `Asistencias ${mesLargo(selMonth)} — ${roomName ?? "Sala"}`;
+      const filas = summary.map(k => `
+        <tr>
+          <td>${k.apellido}, ${k.nombre}</td>
+          ${k.sala !== undefined ? `<td>${k.sala}</td>` : ""}
+          <td style="text-align:center;color:#16a34a">${k.pres}</td>
+          <td style="text-align:center;color:#dc2626">${k.aus}</td>
+          <td style="text-align:center;font-weight:bold;color:${k.pct>=80?"#16a34a":k.pct>=60?"#d97706":"#dc2626"}">${k.total>0?`${k.pct}%`:"—"}</td>
+        </tr>`).join("");
+      const w = window.open("", "_blank");
+      if (!w) return;
+      w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${titulo}</title>
+      <style>
+        body{font-family:Arial,sans-serif;padding:24px;color:#111}
+        h1{font-size:18px;margin-bottom:4px}
+        p.sub{font-size:12px;color:#666;margin-bottom:16px}
+        table{width:100%;border-collapse:collapse;font-size:13px}
+        th{background:#1e1147;color:#fff;padding:8px 10px;text-align:left}
+        td{padding:7px 10px;border-bottom:1px solid #e5e7eb}
+        tr:nth-child(even) td{background:#f9fafb}
+        .totals{margin-top:16px;font-size:12px;color:#555}
+        @media print{body{padding:0}}
+      </style></head><body>
+      <h1>${titulo}</h1>
+      <p class="sub">${kids.length} destinatarios activos · ${diasConRegistro} días con registro · ${pctMes}% asistencia general</p>
+      <table>
+        <thead><tr>
+          <th>Apellido y nombre</th>
+          ${scope==="cpi"?"<th>Sala</th>":""}
+          <th style="text-align:center">Presencias</th>
+          <th style="text-align:center">Ausencias</th>
+          <th style="text-align:center">%</th>
+        </tr></thead>
+        <tbody>${filas}</tbody>
+      </table>
+      <p class="totals">Generado el ${new Date().toLocaleDateString("es-AR")} · Pulso</p>
+      <script>window.onload=()=>{window.print();}<\/script>
+      </body></html>`);
+      w.document.close();
+    } finally { setLoading(false); }
+  }
+
+  async function handleCSV() {
+    setLoading(true);
+    try {
+      const { summary } = await fetchData();
+      const hasSala = scope === "cpi";
+      const header = ["Apellido", "Nombre", ...(hasSala ? ["Sala"] : []), "Presencias", "Ausencias", "Total días", "% Asistencia"].join(",");
+      const rows = summary.map(k => [
+        `"${k.apellido}"`, `"${k.nombre}"`,
+        ...(hasSala ? [`"${k.sala ?? ""}"`] : []),
+        k.pres, k.aus, k.total, k.total > 0 ? k.pct : ""
+      ].join(","));
+      const csv = [header, ...rows].join("\n");
+      const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `asistencias_${selMonth}${hasSala ? "_cpi" : `_${roomName ?? "sala"}`.replace(/\s+/g, "_").toLowerCase()}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally { setLoading(false); }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-card rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-bold">Descargar asistencias</h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+        </div>
+
+        {/* Scope toggle — solo si tiene sala seleccionada */}
+        {roomId && (
+          <div className="flex rounded-lg border border-border overflow-hidden">
+            <button
+              className={`flex-1 py-2 text-sm font-semibold transition-colors ${scope === "sala" ? "bg-[#1e1147] text-white" : "bg-background text-muted-foreground hover:bg-muted"}`}
+              onClick={() => setScope("sala")}
+            >
+              Esta sala
+            </button>
+            <button
+              className={`flex-1 py-2 text-sm font-semibold transition-colors border-l border-border ${scope === "cpi" ? "bg-[#1e1147] text-white" : "bg-background text-muted-foreground hover:bg-muted"}`}
+              onClick={() => setScope("cpi")}
+            >
+              Todo el CPI
+            </button>
+          </div>
+        )}
+
+        <div className="space-y-1">
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Mes</label>
+          <select
+            className="w-full text-sm border border-border rounded-lg px-3 py-2 bg-background"
+            value={selMonth}
+            onChange={e => setSelMonth(e.target.value)}
+          >
+            {months.map(m => <option key={m} value={m}>{mesLargo(m)}</option>)}
+          </select>
+        </div>
+
+        <p className="text-xs text-muted-foreground">Solo se incluyen destinatarios activos (sin casos en revisión).</p>
+
+        <div className="flex gap-3">
+          <button
+            onClick={handlePDF}
+            disabled={loading}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#1e1147] text-white text-sm font-semibold hover:bg-[#2d1a6e] transition-colors disabled:opacity-50"
+          >
+            <FileDown className="w-4 h-4" />
+            PDF
+          </button>
+          <button
+            onClick={handleCSV}
+            disabled={loading}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-border bg-background text-sm font-semibold text-gray-700 hover:bg-muted transition-colors disabled:opacity-50"
+          >
+            <Sheet className="w-4 h-4" />
+            Excel / CSV
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ResumenMensual({ roomId, centerId, isSuperAdmin }: { roomId: number | null; centerId: number | null | undefined; isSuperAdmin: boolean }) {
   const months = getLast12Months();
   const [selMonth, setSelMonth] = useState(months[months.length - 1]);
@@ -253,67 +436,6 @@ function ResumenMensual({ roomId, centerId, isSuperAdmin }: { roomId: number | n
     return { ...k, pres, aus, total, pct, sala };
   }).sort((a, b) => a.pct - b.pct);
 
-  function exportPDF() {
-    const titulo = `Asistencias ${mesLargo(selMonth)}${scope === "cpi" ? " — Todo el CPI" : ""}`;
-    const filas = kidSummary.map(k => `
-      <tr>
-        <td>${k.apellido}, ${k.nombre}</td>
-        ${k.sala ? `<td>${k.sala}</td>` : ""}
-        <td style="text-align:center;color:#16a34a">${k.pres}</td>
-        <td style="text-align:center;color:#dc2626">${k.aus}</td>
-        <td style="text-align:center;font-weight:bold;color:${k.pct>=80?"#16a34a":k.pct>=60?"#d97706":"#dc2626"}">${k.total>0?`${k.pct}%`:"—"}</td>
-      </tr>`).join("");
-    const w = window.open("", "_blank");
-    if (!w) return;
-    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${titulo}</title>
-    <style>
-      body{font-family:Arial,sans-serif;padding:24px;color:#111}
-      h1{font-size:18px;margin-bottom:4px}
-      p.sub{font-size:12px;color:#666;margin-bottom:16px}
-      table{width:100%;border-collapse:collapse;font-size:13px}
-      th{background:#1e1147;color:#fff;padding:8px 10px;text-align:left}
-      td{padding:7px 10px;border-bottom:1px solid #e5e7eb}
-      tr:nth-child(even) td{background:#f9fafb}
-      .totals{margin-top:16px;font-size:12px;color:#555}
-      @media print{body{padding:0}}
-    </style></head><body>
-    <h1>${titulo}</h1>
-    <p class="sub">${kids.length} inscriptos activos · ${diasConRegistro.length} días con registro · ${pctMes}% asistencia general</p>
-    <table>
-      <thead><tr>
-        <th>Apellido y nombre</th>
-        ${scope==="cpi"?"<th>Sala</th>":""}
-        <th style="text-align:center">Presencias</th>
-        <th style="text-align:center">Ausencias</th>
-        <th style="text-align:center">%</th>
-      </tr></thead>
-      <tbody>${filas}</tbody>
-    </table>
-    <p class="totals">Generado el ${new Date().toLocaleDateString("es-AR")} · Pulso</p>
-    <script>window.onload=()=>{window.print();}<\/script>
-    </body></html>`);
-    w.document.close();
-  }
-
-  function exportCSV() {
-    const hasSala = scope === "cpi";
-    const header = ["Apellido", "Nombre", hasSala ? "Sala" : null, "Presencias", "Ausencias", "Total días", "% Asistencia"]
-      .filter(Boolean).join(",");
-    const rows = kidSummary.map(k => [
-      `"${k.apellido}"`, `"${k.nombre}"`,
-      ...(hasSala ? [`"${k.sala ?? ""}"`] : []),
-      k.pres, k.aus, k.total, k.total > 0 ? k.pct : ""
-    ].join(","));
-    const csv = [header, ...rows].join("\n");
-    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `asistencias_${selMonth}${hasSala ? "_cpi" : ""}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
   return (
     <div className="space-y-4">
       {/* Scope toggle + Month selector */}
@@ -347,26 +469,6 @@ function ResumenMensual({ roomId, centerId, isSuperAdmin }: { roomId: number | n
             ))}
           </select>
         </div>
-
-        {/* Export buttons */}
-        {kidSummary.length > 0 && (
-          <div className="flex gap-2">
-            <button
-              onClick={exportPDF}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-border bg-background text-sm font-semibold text-gray-700 hover:bg-muted transition-colors"
-            >
-              <FileDown className="w-4 h-4" />
-              PDF
-            </button>
-            <button
-              onClick={exportCSV}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-border bg-background text-sm font-semibold text-gray-700 hover:bg-muted transition-colors"
-            >
-              <Sheet className="w-4 h-4" />
-              Excel / CSV
-            </button>
-          </div>
-        )}
 
         {/* CPI extra stats */}
         {useCpiScope && (
@@ -495,6 +597,7 @@ export default function SalaPage() {
   const coordinadorNombre: string = profileQ.data?.coordinadorNombre ?? "";
 
   const [search, setSearch] = useState("");
+  const [showExport, setShowExport] = useState(false);
   const [listaDate, setListaDate] = useState(TODAY);
   const [calMonth, setCalMonth] = useState(MES_ACTUAL);
   const [selectedChild, setSelectedChild] = useState<number | null>(null);
@@ -744,8 +847,18 @@ export default function SalaPage() {
             {!isCoord && <Badge variant="secondary" className="text-xs font-semibold">{roomLabel}</Badge>}
             {isCoord && roomId && <Badge variant="secondary" className="text-xs font-semibold">{roomInfo?.name ?? ""}</Badge>}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground capitalize hidden sm:inline">{formatDateLabel(TODAY)}</span>
+            {roomId && (
+              <button
+                onClick={() => setShowExport(true)}
+                title="Descargar asistencias"
+                className="flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-2.5 py-1.5 transition-colors"
+              >
+                <FileDown className="w-4 h-4" />
+                <span className="hidden sm:inline">Descargar</span>
+              </button>
+            )}
             <button
               onClick={() => { logout(); setLocation("/login"); }}
               className="text-xs font-semibold text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 rounded-lg px-3 py-1.5 transition-colors"
@@ -1240,6 +1353,17 @@ export default function SalaPage() {
           childId={selectedChild}
           onClose={() => setSelectedChild(null)}
           roomId={roomId}
+        />
+      )}
+
+      {/* Export modal */}
+      {showExport && (
+        <ExportModal
+          roomId={roomId}
+          centerId={isSuperAdmin ? superCenterId : authCenterId}
+          centerName={centerName ?? undefined}
+          roomName={roomInfo?.name ?? undefined}
+          onClose={() => setShowExport(false)}
         />
       )}
     </div>

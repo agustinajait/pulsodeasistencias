@@ -1709,6 +1709,7 @@ function FollowupReportModal({
         toast({ title: isEdit ? "Informe actualizado" : "Informe creado" });
         if (!isEdit) {
           onSaved();
+          onClose();
         } else {
           // stay open; only update firma state if server returned real data
           if (saved.firmaLiderData != null) { setFirmaLiderData(saved.firmaLiderData); setFirmaLiderAt(saved.firmaLiderAt); }
@@ -2736,7 +2737,7 @@ export default function Informes() {
           defaultEco={ecoNumber}
           periods={periods}
           onClose={() => setShowNew(false)}
-          onSaved={() => qc.invalidateQueries({ queryKey: ["all-reports"] })}
+          onSaved={() => { setShowNew(false); qc.invalidateQueries({ queryKey: ["all-reports"] }); }}
           logoBase64={logoBase64}
         />
       )}
@@ -2757,7 +2758,7 @@ export default function Informes() {
           logoBase64={logoBase64}
           email={profileQ.data?.email}
           onClose={() => { setShowNewFollowup(false); setSelectedFollowup(null); }}
-          onSaved={() => { qc.invalidateQueries({ queryKey: ["followup-reports"] }); }}
+          onSaved={() => { if (!selectedFollowup) setShowNewFollowup(false); qc.invalidateQueries({ queryKey: ["followup-reports"] }); }}
         />
       )}
       {(showNewEscolar || selectedEscolar) && centerId && (
@@ -2770,7 +2771,7 @@ export default function Informes() {
           email={profileQ.data?.email}
           reportType="escolar"
           onClose={() => { setShowNewEscolar(false); setSelectedEscolar(null); }}
-          onSaved={() => { qc.invalidateQueries({ queryKey: ["escolar-reports"] }); }}
+          onSaved={() => { if (!selectedEscolar) setShowNewEscolar(false); qc.invalidateQueries({ queryKey: ["escolar-reports"] }); }}
         />
       )}
       {(showNewPidcam || selectedPidcam) && centerId && (

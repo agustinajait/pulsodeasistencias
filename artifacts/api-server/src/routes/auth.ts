@@ -1,5 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
+import { OAuth2Client } from "google-auth-library";
 import { db, centersTable, orgUsersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { signToken } from "../lib/jwt.js";
@@ -129,6 +130,60 @@ router.post("/auth/login", async (req, res) => {
   } catch (err) {
     req.log.error(err, "Error logging in");
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── Google OAuth ─────────────────────────────────────────────────────────────
+
+router.post("/auth/google", async (req, res) => {
+  try {
+    const { credential } = req.body as { credential?: string };
+    if (!credential) { res.status(400).json({ error: "credential requerido" }); return; }
+
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    if (!clientId) { res.status(500).json({ error: "Google OAuth no configurado" }); return; }
+
+    const client = new OAuth2Client(clientId);
+    const ticket = await client.verifyIdToken({ idToken: credential, audience: clientId });
+    const payload = ticket.getPayload();
+
+    if (!payload?.email) {
+      res.status(401).json({ error: "No se pudo verificar la cuenta de Google" });
+      return;
+    }
+
+    const email = payload.email.toLowerCase();
+
+    const [orgUser] = await db
+      .select()
+      .from(orgUsersTable)
+      .where(eq(orgUsersTable.email, email))
+      .limit(1);
+
+    if (!orgUser) {
+      res.status(401).json({ error: "Este email no está registrado en el sistema. Contactá a tu coordinador." });
+      return;
+    }
+
+    const [center] = await db
+      .select()
+      .from(centersTable)
+      .where(eq(centersTable.id, orgUser.centerId))
+      .limit(1);
+
+    const token = process.env.JWT_SECRET
+      ? signToken({ centerId: orgUser.centerId, role: "center" })
+      : null;
+
+    res.json({
+      status: "ok",
+      token,
+      center: center ? { id: center.id, name: center.name } : null,
+      userId: orgUser.id,
+    });
+  } catch (err) {
+    req.log.error(err, "Error en Google login");
+    res.status(500).json({ error: "Error al verificar cuenta de Google" });
   }
 });
 

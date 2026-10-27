@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useAuth, Role } from "@/lib/auth-context";
 import { useListRooms, getListRoomsQueryKey } from "@workspace/api-client-react";
@@ -39,9 +39,63 @@ export default function Login() {
   const [superError, setSuperError] = useState("");
   const [verifyingSuper, setVerifyingSuper] = useState(false);
 
+  // google
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleError, setGoogleError] = useState("");
+  const googleBtnRef = useRef<HTMLDivElement>(null);
+
   // after login: center + token stored here before role selection
   const [authedCenter, setAuthedCenter] = useState<{ id: number; name: string } | null>(null);
   const [authedToken, setAuthedToken] = useState<string | null>(null);
+
+  const GOOGLE_CLIENT_ID = "237989975390-hultaqf9fr6okbebpj88h0051bmlkpr4.apps.googleusercontent.com";
+
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.onload = () => {
+      if (googleBtnRef.current && (window as any).google) {
+        (window as any).google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleCredential,
+          use_fedcm_for_prompt: false,
+        });
+        (window as any).google.accounts.id.renderButton(googleBtnRef.current, {
+          theme: "outline",
+          size: "large",
+          width: googleBtnRef.current.offsetWidth || 400,
+          text: "signin_with",
+          locale: "es",
+        });
+      }
+    };
+    document.head.appendChild(script);
+    return () => { document.head.removeChild(script); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleGoogleCredential = async (response: { credential: string }) => {
+    setGoogleLoading(true);
+    setGoogleError("");
+    try {
+      const res = await fetch("/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential: response.credential }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setGoogleError(data.error ?? "Error al ingresar con Google");
+        return;
+      }
+      setAuthedCenter(data.center);
+      setAuthedToken(data.token ?? null);
+      setStep("role");
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const roomsParams = authedCenter ? { centerId: authedCenter.id } : {};
   const rooms = useListRooms(
@@ -262,6 +316,21 @@ export default function Login() {
                 >
                   {loggingIn ? "Ingresando..." : "Ingresar"}
                 </Button>
+              </div>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-100" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-[#fafafa] px-3 text-gray-400">o continuá con</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div ref={googleBtnRef} className="w-full flex justify-center" />
+                {googleLoading && <p className="text-xs text-gray-400 text-center">Verificando cuenta...</p>}
+                {googleError && <p className="text-sm text-red-500 text-center">{googleError}</p>}
               </div>
 
               <div className="relative">

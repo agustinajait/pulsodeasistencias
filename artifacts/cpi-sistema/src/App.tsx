@@ -28,7 +28,7 @@ import Compras from "@/pages/compras";
 import CheckIn from "@/pages/check-in";
 import ChildDocs from "@/pages/child-docs";
 
-const queryClient = new QueryClient({
+export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: false,

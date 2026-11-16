@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useAuth, Role } from "@/lib/auth-context";
+import { queryClient } from "@/App";
 import { useListRooms, getListRoomsQueryKey } from "@workspace/api-client-react";
 import type { Room } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -89,6 +90,7 @@ export default function Login() {
         setGoogleError(data.error ?? "Error al ingresar con Google");
         return;
       }
+      queryClient.clear();
       setAuthedCenter(data.center);
       setAuthedToken(data.token ?? null);
       setStep("role");
@@ -120,6 +122,7 @@ export default function Login() {
         setLoginError(data.error ?? "Error al iniciar sesión");
         return;
       }
+      queryClient.clear();
       setAuthedCenter(data.center);
       setAuthedToken(data.token ?? null);
       setStep("role");
@@ -147,6 +150,7 @@ export default function Login() {
         setRegError(data.error ?? "Error al registrar");
         return;
       }
+      queryClient.clear();
       setAuthedCenter(data.center);
       setAuthedToken(data.token ?? null);
       setStep("role");

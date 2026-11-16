@@ -32,6 +32,62 @@ async function ensureTable() {
     EXCEPTION WHEN others THEN NULL;
     END $$
   `);
+
+  // History table: stores a snapshot of the row before each update
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS child_reports_history (
+      history_id SERIAL PRIMARY KEY,
+      report_id INTEGER NOT NULL,
+      child_id INTEGER NOT NULL,
+      period VARCHAR(100),
+      eco_number INTEGER,
+      lider VARCHAR(200),
+      facilitadora VARCHAR(200),
+      hitos JSONB,
+      textos JSONB,
+      observaciones TEXT,
+      status VARCHAR(20),
+      firma_lider_data TEXT,
+      firma_lider_at TIMESTAMPTZ,
+      firma_facilitadora_data TEXT,
+      firma_facilitadora_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ,
+      updated_at TIMESTAMPTZ,
+      saved_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
+  // Trigger function: insert OLD row into history before every update
+  await pool.query(`
+    CREATE OR REPLACE FUNCTION child_reports_save_history()
+    RETURNS TRIGGER AS $$
+    BEGIN
+      INSERT INTO child_reports_history (
+        report_id, child_id, period, eco_number, lider, facilitadora,
+        hitos, textos, observaciones, status,
+        firma_lider_data, firma_lider_at,
+        firma_facilitadora_data, firma_facilitadora_at,
+        created_at, updated_at
+      ) VALUES (
+        OLD.id, OLD.child_id, OLD.period, OLD.eco_number, OLD.lider, OLD.facilitadora,
+        OLD.hitos, OLD.textos, OLD.observaciones, OLD.status,
+        OLD.firma_lider_data, OLD.firma_lider_at,
+        OLD.firma_facilitadora_data, OLD.firma_facilitadora_at,
+        OLD.created_at, OLD.updated_at
+      );
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql
+  `);
+
+  await pool.query(`
+    DO $$ BEGIN
+      CREATE TRIGGER child_reports_history_trigger
+      BEFORE UPDATE ON child_reports
+      FOR EACH ROW EXECUTE FUNCTION child_reports_save_history();
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$
+  `);
 }
 
 // GET /reports?centerId=X&ecoNumber=Y&period=Z  — all reports for a center
@@ -192,6 +248,28 @@ router.delete("/children/:id/reports/:reportId/sign", async (req, res) => {
     res.json(result.rows[0]);
   } catch (err) {
     req.log.error(err, "Error clearing signature");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /children/:id/reports/:reportId/history
+router.get("/children/:id/reports/:reportId/history", async (req, res) => {
+  try {
+    const reportId = parseInt(req.params.reportId);
+    if (isNaN(reportId)) { res.status(400).json({ error: "Invalid reportId" }); return; }
+    const { rows } = await pool.query(
+      `SELECT history_id AS "historyId", report_id AS "reportId", child_id AS "childId",
+              period, eco_number AS "ecoNumber", lider, facilitadora, hitos, textos,
+              observaciones, status, created_at AS "createdAt", updated_at AS "updatedAt",
+              saved_at AS "savedAt"
+       FROM child_reports_history
+       WHERE report_id = $1
+       ORDER BY saved_at DESC`,
+      [reportId]
+    );
+    res.json(rows);
+  } catch (err) {
+    req.log.error(err, "Error fetching report history");
     res.status(500).json({ error: "Internal server error" });
   }
 });

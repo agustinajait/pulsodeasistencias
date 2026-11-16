@@ -469,7 +469,7 @@ function NewReportModal({
         body: JSON.stringify({ period, ecoNumber: eco, lider: lider || null, facilitadora: facilitadora || null, hitos, textos, observaciones: observaciones || null, status: resolvedStatus }),
       });
       if (res.ok) {
-        toast({ title: "Informe guardado" });
+        toast({ title: "✓ Informe guardado", description: "El informe quedó registrado correctamente.", duration: 5000 });
         onSaved();
         onClose();
       } else {
@@ -773,8 +773,9 @@ function ReportModal({ report, onClose, onSaved, logoBase64, userRole, centerNam
       });
       if (res.ok) {
         setStatus(newStatus);
-        const msg = newStatus === "en_revision" ? "Informe enviado para validación" : newStatus === "aprobado" ? "Informe aprobado" : "Informe guardado";
-        toast({ title: msg });
+        const msg = newStatus === "en_revision" ? "✓ Informe enviado para validación" : newStatus === "aprobado" ? "✓ Informe aprobado" : "✓ Informe guardado";
+        const desc = newStatus === "en_revision" ? "Quedó en revisión para el coordinador." : newStatus === "aprobado" ? "El informe fue aprobado." : "Los cambios quedaron guardados.";
+        toast({ title: msg, description: desc, duration: 5000 });
         onSaved();
       } else {
         const body = await res.json().catch(() => ({}));
@@ -1706,7 +1707,7 @@ function FollowupReportModal({
       const res = await fetch(url, { method: isEdit ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (res.ok) {
         const saved = await res.json();
-        toast({ title: isEdit ? "Informe actualizado" : "Informe creado" });
+        toast({ title: isEdit ? "✓ Informe actualizado" : "✓ Informe guardado", description: "El informe quedó registrado correctamente.", duration: 5000 });
         if (!isEdit) {
           onSaved();
           onClose();
